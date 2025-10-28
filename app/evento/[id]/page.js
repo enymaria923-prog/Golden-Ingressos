@@ -1,4 +1,4 @@
-// app/evento/[id]/page.js - Página de Detalhes do Evento
+"use client"; // app/evento/[id]/page.js - Página de Detalhes do Evento
 
 // Reutilizamos os mesmos dados simulados (em um app real, isso viria de um banco de dados)
 const DADOS_EVENTOS = [
