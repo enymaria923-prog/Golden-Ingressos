@@ -1,6 +1,6 @@
 // app/page.js - Página Inicial LENDO DO SUPABASE
 
-// 1. Importa o "cérebro" do Supabase que criamos
+// 1. Importa o "cérebro" do Supabase (com o caminho CORRETO)
 import { createClient } from '../utils/supabase/server';
 
 // A página agora é 'async' para poder esperar o banco de dados
@@ -16,9 +16,9 @@ export default async function HomePage() {
     .select('*')
     .order('id', { ascending: false });
 
+  // Mostra um erro no console do Vercel se a busca falhar
   if (error) {
     console.error("Erro ao buscar eventos:", error);
-    // Você pode mostrar uma mensagem de erro aqui
   }
 
   return (
@@ -29,10 +29,11 @@ export default async function HomePage() {
         <h1 style={{ margin: '0' }}>GOLDEN INGRESSOS</h1>
         <p>A sua plataforma de eventos VIP.</p>
         
+        {/* Link para a página de Publicar Evento */}
         <a 
           href="/publicar-evento"
           style={{
-            backgroundColor: '#f1c40f', color: 'black', padding: '10px 15px',
+            backgroundColor: '#f1c4f', color: 'black', padding: '10px 15px',
             borderRadius: '5px', fontWeight: 'bold', textDecoration: 'none',
             position: 'absolute', top: '20px', right: '20px'
           }}
