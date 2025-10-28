@@ -1,5 +1,5 @@
 // utils/supabase/server.js
-// CÓDIGO OFICIAL E CORRIGIDO
+// CÓDIGO OFICIAL E CORRIGIDO COM A CHAVE CERTA
 
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
@@ -9,10 +9,10 @@ export function createClient() {
 
   // Cria o cliente Supabase usando as chaves secretas
   // que o Vercel injetou automaticamente (process.env)
-  // Este cliente é para Server Components e Server Actions
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SECRET_KEY,
+    // AQUI ESTAVA O ERRO. A CHAVE CORRETA É A ANON_KEY:
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
       cookies: {
         get(name) {
@@ -23,16 +23,13 @@ export function createClient() {
             cookieStore.set({ name, value, ...options })
           } catch (error) {
             // O 'set' foi chamado a partir de um Server Component.
-            // Isto pode ser ignorado se tiver um middleware a atualizar as sessões.
           }
         },
         remove(name, options) {
           try {
-            // AQUI ESTAVA O ERRO. AGORA ESTÁ CORRETO:
             cookieStore.set({ name, value: '', ...options })
           } catch (error) {
             // O 'remove' foi chamado a partir de um Server Component.
-            // Isto pode ser ignorado se tiver um middleware a atualizar as sessões.
           }
         },
       },
