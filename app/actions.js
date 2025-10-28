@@ -1,41 +1,43 @@
-// app/actions.js - O Backend (Server Action)
+// app/actions.js - O Backend (Atualizado para Supabase)
 
-"use server"; // <-- Mágico! Diz ao Next.js que isso roda SÓ no servidor.
+"use server"; // <-- Isso continua igual
 
-import { sql } from '@vercel/postgres'; // <-- Importa o "tradutor" que instalamos
-import { revalidatePath } from 'next/cache'; // <-- Ferramenta para atualizar a Home
-import { redirect } from 'next/navigation'; // <-- Ferramenta para redirecionar o usuário
+// 1. Importa o "cérebro" do Supabase que criamos
+import { createClient } from '@/utils/supabase/server'; 
+import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 
 // Esta é a função que o formulário chama
 export async function criarEvento(formData) {
   
-  // 1. Pega os dados do formulário
-  const nome = formData.get('nome');
-  const categoria = formData.get('categoria');
-  const data = formData.get('data');
-  const hora = formData.get('hora');
-  const local = formData.get('local');
-  const preco = formData.get('preco');
-  const descricao = formData.get('descricao');
+  // 2. Cria o cliente Supabase
+  const supabase = createClient();
 
-  // 2. Tenta salvar no banco de dados
-  try {
-    await sql`
-      INSERT INTO eventos (nome, data, hora, local, descricao, preco, categoria)
-      VALUES (${nome}, ${data}, ${hora}, ${local}, ${descricao}, ${preco}, ${categoria})
-    `;
-  } catch (error) {
+  // 3. Pega os dados do formulário (igual a antes)
+  const dadosDoFormulario = {
+    nome: formData.get('nome'),
+    categoria: formData.get('categoria'),
+    data: formData.get('data'),
+    hora: formData.get('hora'),
+    local: formData.get('local'),
+    preco: formData.get('preco'),
+    descricao: formData.get('descricao'),
+    // NOTA: Ainda falta o ID do vendedor e a URL da imagem.
+    // Vamos adicionar isso quando fizermos o Login e o Upload.
+  };
+
+  // 4. Tenta salvar no banco de dados (sintaxe do Supabase)
+  const { error } = await supabase
+    .from('eventos') // Seleciona a tabela 'eventos'
+    .insert([dadosDoFormulario]); // Insere os dados
+
+  if (error) {
     // Se der erro, mostra no console (visível no Vercel Logs)
     console.error("Erro ao salvar evento:", error);
-    // Poderíamos retornar uma mensagem de erro aqui
     return;
   }
 
-  // 3. Se deu certo:
-  
-  // Limpa o cache da Home Page (para o novo evento aparecer)
+  // 5. Se deu certo (igual a antes):
   revalidatePath('/'); 
-  
-  // Redireciona o usuário de volta para a Home Page
   redirect('/'); 
 }
