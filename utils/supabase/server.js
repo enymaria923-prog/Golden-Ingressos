@@ -1,5 +1,5 @@
 // utils/supabase/server.js
-// ESTE É O CÓDIGO OFICIAL DO TEMPLATE SUPABASE
+// CÓDIGO OFICIAL E CORRIGIDO
 
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
@@ -28,7 +28,8 @@ export function createClient() {
         },
         remove(name, options) {
           try {
-            cookieStore.set({ name, '', ...options })
+            // AQUI ESTAVA O ERRO. AGORA ESTÁ CORRETO:
+            cookieStore.set({ name, value: '', ...options })
           } catch (error) {
             // O 'remove' foi chamado a partir de um Server Component.
             // Isto pode ser ignorado se tiver um middleware a atualizar as sessões.
