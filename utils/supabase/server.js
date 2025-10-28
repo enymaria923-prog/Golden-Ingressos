@@ -1,6 +1,3 @@
-// utils/supabase/server.js
-// CÓDIGO SUPER LIMPO - CORREÇÃO FINAL
-
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
@@ -19,17 +16,17 @@ export function createClient() {
           try {
             cookieStore.set({ name, value, ...options })
           } catch (error) {
-            // Lida com erros
+            // erro
           }
         },
         remove(name, options) {
           try {
             cookieStore.set({ name, '', ...options })
           } catch (error) {
-            // Lida com erros
+            // erro
           }
-        },
-      },
+        }
+      }
     }
   )
 }
