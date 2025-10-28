@@ -1,15 +1,25 @@
-// app/page.js - Página Inicial LENDO DO BANCO DE DADOS
+// app/page.js - Página Inicial LENDO DO SUPABASE
 
-import { sql } from '@vercel/postgres'; // Importa o "tradutor" do banco de dados
+// 1. Importa o "cérebro" do Supabase que criamos
+import { createClient } from '@/utils/supabase/server';
 
 // A página agora é 'async' para poder esperar o banco de dados
 export default async function HomePage() {
   
-  // Busca os eventos REAIS do banco de dados (Neon)
-  // 'ORDER BY id DESC' mostra os eventos mais novos primeiro
-  const { rows: eventos } = await sql`
-    SELECT * FROM eventos ORDER BY id DESC;
-  `;
+  // 2. Cria o cliente Supabase
+  const supabase = createClient();
+
+  // 3. Busca os eventos REAIS do banco de dados (Sintaxe do Supabase)
+  // 'order' mostra os eventos mais novos primeiro
+  const { data: eventos, error } = await supabase
+    .from('eventos')
+    .select('*')
+    .order('id', { ascending: false });
+
+  if (error) {
+    console.error("Erro ao buscar eventos:", error);
+    // Você pode mostrar uma mensagem de erro aqui
+  }
 
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh' }}>
@@ -19,7 +29,6 @@ export default async function HomePage() {
         <h1 style={{ margin: '0' }}>GOLDEN INGRESSOS</h1>
         <p>A sua plataforma de eventos VIP.</p>
         
-        {/* Link para a página de Publicar Evento */}
         <a 
           href="/publicar-evento"
           style={{
@@ -36,16 +45,15 @@ export default async function HomePage() {
       <div style={{ width: '80%', margin: '20px auto', padding: '20px' }}>
         <h2 style={{ color: '#5d34a4' }}>Eventos em Destaque</h2>
         
-        {/* Lista de Eventos (agora vindo do banco de dados) */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
           
           {/* Se não houver eventos, mostra uma mensagem */}
-          {eventos.length === 0 && (
+          {(!eventos || eventos.length === 0) && (
             <p>Ainda não há eventos publicados. Seja o primeiro!</p>
           )}
 
           {/* Mapeia e mostra os eventos do banco */}
-          {eventos.map(evento => (
+          {eventos && eventos.map(evento => (
             <div key={evento.id} style={{ border: '1px solid #ddd', padding: '15px', borderRadius: '8px', backgroundColor: 'white', boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)' }}>
               <span style={{ fontSize: '12px', color: '#5d34a4', fontWeight: 'bold' }}>{evento.categoria.toUpperCase()}</span>
               <h3 style={{ color: '#333', marginTop: '5px' }}>{evento.nome}</h3>
