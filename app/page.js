@@ -1,7 +1,7 @@
 // app/page.js - Página Inicial LENDO DO SUPABASE
 
 // 1. Importa o "cérebro" do Supabase que criamos
-import { createClient } from '@/utils/supabase/server';
+import { createClient } from '../utils/supabase/server';
 
 // A página agora é 'async' para poder esperar o banco de dados
 export default async function HomePage() {
