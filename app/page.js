@@ -13,7 +13,7 @@ export default async function HomePage() {
   // 'order' mostra os eventos mais novos primeiro
   const { data: eventos, error } = await supabase
     .from('eventos')
-    .select('*')
+   .select('id, nome, data, hora, local, preco, categoria')
     .order('id', { ascending: false });
 
   // Mostra um erro no console do Vercel se a busca falhar
