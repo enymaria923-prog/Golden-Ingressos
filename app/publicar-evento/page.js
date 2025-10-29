@@ -40,7 +40,7 @@ export default async function PublicarEventoPage() {
         {/* INÍCIO DO FORMULÁRIO */}
         <form 
           // Action do Next.js
-          action={criarEvento} 
+   action={async (formData) => { await criarEvento(formData); }}
           style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginTop: '20px' }}
         >
           
