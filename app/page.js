@@ -9,7 +9,8 @@ export default async function HomePage() {
   const supabase = createClient();
 
   // 2. TENTA BUSCAR O USUÁRIO LOGADO
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data, error: userError } = await supabase.auth.getUser();
+const user = data?.user; // 'user' será o usuário ou 'null'
 
   // 3. BUSCA OS EVENTOS (igual a antes, com a correção do 'select')
   const { data: eventos, error } = await supabase
