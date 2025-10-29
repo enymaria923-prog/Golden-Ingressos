@@ -1,16 +1,16 @@
-// app/publicar-evento/page.js (CÓDIGO FINAL DE LIMPEZA DO JSX)
+// app/publicar-evento/page.js (CÓDIGO DE RESTAURAÇÃO FINAL COM CORREÇÃO DE ESTILO)
 
 import { createClient } from '../../utils/supabase/server'; 
 import { criarEvento } from '../actions';
-// Não precisamos mais do 'redirect' aqui, a Action cuida disso
 
 export default async function PublicarEventoPage() {
   
   const supabase = createClient();
+
   const { data, error: userError } = await supabase.auth.getUser();
   const user = data?.user;
 
-  // Proteção de Produtor
+  // --- LÓGICA DE PROTEÇÃO DE PRODUTOR ---
   if (userError || !user) {
     return (
       <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px', textAlign: 'center' }}>
@@ -26,21 +26,17 @@ export default async function PublicarEventoPage() {
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px' }}>
       
-      {/* Cabeçalho */}
       <header style={{ backgroundColor: '#5d34a4', color: 'white', padding: '20px', textAlign: 'center' }}>
         <a href="/" style={{ color: 'white', textDecoration: 'none', float: 'left' }}>&larr; Voltar para a Home</a>
         <h1 style={{ margin: '0' }}>Publicar Novo Evento</h1>
       </header>
 
-      {/* Container do Formulário */}
       <div style={{ maxWidth: '800px', margin: '40px auto', padding: '30px', backgroundColor: 'white', borderRadius: '8px' }}>
         
         <p>Logado como: {user.email}</p>
         
-        {/* INÍCIO DO FORMULÁRIO */}
         <form 
-          // Action do Next.js
-   action={async (formData) => { await criarEvento(formData); }}
+          action={criarEvento} 
           style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginTop: '20px' }}
         >
           
@@ -75,25 +71,27 @@ export default async function PublicarEventoPage() {
           <label htmlFor="descricao">Descrição do Evento:</label>
           <textarea id="descricao" name="descricao" rows="5" style={{ padding: '10px' }}></textarea>
 
-          {/* BOTÃO - Mantendo o style mais limpo */}
+          {/* BOTÃO HTML PURO COM A CORREÇÃO DE FORÇA */}
           <button 
             type="submit"
-            // Retiramos o z-index e position para limpar, confiando na correção do erro de sintaxe
             style={{ 
                 backgroundColor: '#f1c40f', 
                 color: 'black', 
                 padding: '15px', 
                 fontWeight: 'bold', 
                 border: 'none', 
-                cursor: 'pointer', 
-                fontSize: '16px' 
+                fontSize: '16px',
+                display: 'block', 
+                width: '100%',
+                // Adicionando um z-index de fallback final
+                position: 'relative',
+                zIndex: 999 
             }}
           >
             Publicar Evento
           </button>
 
         </form>
-        {/* FIM DO FORMULÁRIO */}
       </div>
     </div>
   );
