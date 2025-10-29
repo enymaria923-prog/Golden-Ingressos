@@ -31,14 +31,62 @@ export default async function PublicarEventoPage() {
         <h1 style={{ margin: '0' }}>Publicar Novo Evento</h1>
       </header>
 
-      <div style={{ maxWidth: '800px', margin: '40px auto', padding: '30px', backgroundColor: 'white', borderRadius: '8px' }}>
+    // CÓDIGO CORRIGIDO/SIMPLIFICADO
+// Removemos a DIV do container, deixando apenas o FORM com os estilos de container.
+  return (
+    <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px' }}>
+      
+      {/* Cabeçalho permanece */}
+      <header style={{ backgroundColor: '#5d34a4', color: 'white', padding: '20px', textAlign: 'center' }}>
+        <a href="/" style={{ color: 'white', textDecoration: 'none', float: 'left' }}>&larr; Voltar para a Home</a>
+        <h1 style={{ margin: '0' }}>Publicar Novo Evento</h1>
+      </header>
+
+      {/* INÍCIO DO FORMULÁRIO - AGORA É O CONTAINER PRINCIPAL */}
+      <form 
+        action={criarEvento} 
+        style={{ 
+          maxWidth: '800px', 
+          margin: '40px auto', 
+          padding: '30px', 
+          backgroundColor: 'white', 
+          borderRadius: '8px',
+          // Flexbox do formulário
+          display: 'flex', 
+          flexDirection: 'column', 
+          gap: '20px', 
+          marginTop: '20px' 
+        }}
+      >
         
-        <p>Logado como: {user.email}</p>
+        {/* Adicione o parágrafo de login de volta dentro do form */}
+        <p style={{ margin: '0' }}>Logado como: {user.email}</p>
         
-        <form 
-          action={criarEvento} 
-          style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginTop: '20px' }}
+        {/* ... todos os inputs ... */}
+        
+        {/* BOTÃO (mantido da Restauração Final) */}
+        <button 
+          type="submit"
+          style={{ 
+              backgroundColor: '#f1c40f', 
+              color: 'black', 
+              padding: '15px', 
+              fontWeight: 'bold', 
+              border: 'none', 
+              fontSize: '16px',
+              display: 'block', 
+              width: '100%',
+              position: 'relative',
+              zIndex: 999 
+          }}
         >
+          Publicar Evento
+        </button>
+
+      </form>
+    </div>
+  );
+}
           
           <label htmlFor="nome">Nome do Evento:</label>
           <input id="nome" name="nome" type="text" style={{ padding: '10px' }} required />
