@@ -1,68 +1,75 @@
-// app/publicar-evento/page.js - O Formulário (Frontend)
+// app/publicar-evento/page.js
+// PÁGINA AGORA "PROTEGIDA"
 
-// Importa a AÇÃO que vamos criar no próximo passo
+import { redirect } from 'next/navigation';
+// Importa o "cérebro" (caminho com UMA pasta, pois está em 'app/publicar-evento')
+import { createClient } from '../utils/supabase/server'; 
+// Importa a Ação de salvar o evento (que já funciona)
 import { criarEvento } from '../actions';
 
-export default function PaginaPublicarEvento() {
+// 1. A página agora é 'async' para poder verificar o usuário
+export default async function PublicarEventoPage() {
+
+  const supabase = createClient();
+
+  // 2. Protege a rota (de forma segura):
+  const { data, error: userError } = await supabase.auth.getUser();
+  if (userError || !data?.user) {
+    // 3. Se não houver usuário, EXPULSA para o Login.
+    return redirect('/login?message=Você precisa estar logado para publicar um evento.');
+  }
+  // Se houver usuário, a página continua a carregar:
+
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px' }}>
       
       {/* Cabeçalho */}
       <header style={{ backgroundColor: '#5d34a4', color: 'white', padding: '20px', textAlign: 'center' }}>
-        <a href="/" style={{ color: 'white', textDecoration: 'none', float: 'left' }}>&larr; Voltar</a>
-        <h1 style={{ margin: '0' }}>Golden Ingressos - Publicar Evento</h1>
+        <a href="/" style={{ color: 'white', textDecoration: 'none', float: 'left' }}>&larr; Voltar para a Home</a>
+        <h1 style={{ margin: '0' }}>Publicar Novo Evento</h1>
       </header>
 
-      {/* Formulário */}
-      <div style={{ maxWidth: '800px', margin: '20px auto', padding: '20px', backgroundColor: 'white', borderRadius: '8px' }}>
+      {/* Formulário (O código do formulário é o mesmo de antes) */}
+      <div style={{ maxWidth: '800px', margin: '40px auto', padding: '30px', backgroundColor: 'white', borderRadius: '8px' }}>
         
-        {/* O 'action={criarEvento}' é o que liga o formulário ao Backend (Passo 3) */}
-        <form action={criarEvento} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-
+        <form action={criarEvento} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          
           <label htmlFor="nome">Nome do Evento:</label>
-          <input type="text" id="nome" name="nome" required style={{ padding: '10px' }} />
+          <input id="nome" name="nome" type="text" style={{ padding: '10px' }} required />
 
           <label htmlFor="categoria">Categoria:</label>
-          <select id="categoria" name="categoria" required style={{ padding: '10px' }}>
-            <option value="">Selecione uma categoria</option>
-            <option value="Música">Música</option>
-            <option value="Negócios">Negócios</option>
-            <option value="Gastronomia">Gastronomia</option>
+          <select id="categoria" name="categoria" style={{ padding: '10px' }} required>
+            <option value="">Selecione...</option>
+            <option value="Show">Show</option>
             <option value="Teatro">Teatro</option>
+            <option value="Standup">Stand-up</option>
+            <option value="Congresso">Congresso</option>
             <option value="Outro">Outro</option>
           </select>
 
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <div style={{ flex: 1 }}>
-              <label htmlFor="data">Data:</label>
-              <input type="date" id="data" name="data" required style={{ padding: '10px', width: '100%' }} />
-            </div>
-            <div style={{ flex: 1 }}>
-              <label htmlFor="hora">Hora:</label>
-              <input type="time" id="hora" name="hora" required style={{ padding: '10px', width: '100%' }} />
-            </div>
-          </div>
+          <label htmlFor="data">Data:</label>
+          <input id="data" name="data" type="date" style={{ padding: '10px' }} required />
 
-          <label htmlFor="local">Local:</label>
-          <input type="text" id="local" name="local" required style={{ padding: '10px' }} />
+          <label htmlFor="hora">Hora:</label>
+          <input id="hora" name="hora" type="time" style={{ padding: '10px' }} required />
 
-          <label htmlFor="preco">Preço (ex: R$ 80,00 ou Gratuito):</label>
-          <input type="text" id="preco" name="preco" required style={{ padding: '10px' }} />
+          <label htmlFor="local">Local (Endereço completo):</label>
+          <input id="local" name="local" type="text" style={{ padding: '10px' }} required />
 
-          <label htmlFor="descricao">Descrição:</label>
-          <textarea id="descricao" name="descricao" rows="5" required style={{ padding: '10px', fontFamily: 'sans-serif' }}></textarea>
+          <label htmlFor="preco">Preço (Ex: 50,00 ou "Gratuito"):</label>
+          <input id="preco" name="preco" type="text" style={{ padding: '10px' }} required />
+
+          <label htmlFor="descricao">Descrição do Evento:</label>
+          <textarea id="descricao" name="descricao" rows="5" style={{ padding: '10px' }}></textarea>
+
+          {/* O campo da IMAGEM virá AQUI no próximo passo! */}
 
           <button 
             type="submit"
-            style={{ 
-              backgroundColor: '#f1c40f', color: 'black', padding: '15px 20px',
-              borderRadius: '5px', fontWeight: 'bold', fontSize: '18px',
-              border: 'none', cursor: 'pointer'
-            }}
+            style={{ backgroundColor: '#f1c40f', color: 'black', padding: '15px', fontWeight: 'bold', border: 'none', cursor: 'pointer', fontSize: '16px' }}
           >
             Publicar Evento
           </button>
-
         </form>
       </div>
     </div>
