@@ -1,165 +1,167 @@
-// app/page.js (CÓDIGO COMPLETO E FINAL - Com Imagem e Layout Corrigido)
+// app/page.js
 import { createClient } from '../utils/supabase/server';
-import Link from 'next/link';
+import Link from 'next/link'; // CRÍTICO: Importar o Link
 
+// --- Componente do Cartão do Evento (CardEvento) ---
+function CardEvento({ evento }) {
+  // Converte o preço para formato BRL (se for um número)
+  const precoFormatado = isNaN(parseFloat(evento.preco)) 
+    ? evento.preco 
+    : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parseFloat(evento.preco));
+  
+  // CRÍTICO: O link para a página de detalhes
+  const eventoDetalheUrl = `/evento/${evento.id}`; // Assumindo /evento/[id]
+
+  return (
+    <div style={{ 
+      backgroundColor: 'white', 
+      borderRadius: '8px', 
+      boxShadow: '0 4px 8px rgba(0,0,0,0.1)', 
+      overflow: 'hidden', 
+      width: '300px', 
+      margin: '20px',
+      transition: 'transform 0.3s',
+      fontFamily: 'sans-serif'
+    }}
+    onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
+    onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+    >
+      {/* Imagem da Capa */}
+      <div style={{ height: '180px', overflow: 'hidden' }}>
+        <img 
+          src={evento.imagem_url || 'https://placehold.co/300x180/5d34a4/ffffff?text=EVENTO'} 
+          alt={`Capa do evento ${evento.nome}`} 
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+        />
+      </div>
+      
+      {/* Detalhes */}
+      <div style={{ padding: '15px' }}>
+        <h3 style={{ margin: '0 0 10px 0', color: '#5d34a4', fontSize: '1.4em' }}>
+          {evento.nome}
+        </h3>
+        <p style={{ margin: '0 0 5px 0', fontSize: '0.9em' }}>
+          **{evento.categoria}** | {new Date(evento.data).toLocaleDateString('pt-BR')}
+        </p>
+        <p style={{ margin: '0 0 15px 0', fontWeight: 'bold' }}>
+          Preço: {precoFormatado}
+        </p>
+
+        {/* CORREÇÃO DO BOTÃO: Usando Link do Next.js */}
+        <Link href={eventoDetalheUrl}>
+          <button style={{
+            backgroundColor: '#f1c40f',
+            color: 'black',
+            padding: '10px 15px',
+            border: 'none',
+            borderRadius: '4px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            width: '100%',
+            transition: 'background-color 0.3s'
+          }}>
+            Comprar Ingresso
+          </button>
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+
+// --- Componente Principal da Home Page ---
 export default async function Index() {
   const supabase = createClient();
-
-  // 1. OBRIGATÓRIO: Obter a lista de eventos (agora com o novo campo 'imagem_url')
+  
+  // Buscando todos os eventos para exibição na home
   const { data: eventos, error } = await supabase
     .from('eventos')
-    .select('*') // Seleciona todos os campos, incluindo 'imagem_url'
-    .order('data', { ascending: true });
+    .select('*')
+    .order('data', { ascending: true }); // Ordena pelos mais próximos
 
-  // 2. OBRIGATÓRIO: Obter o usuário logado para a interface
-  const { data: userData } = await supabase.auth.getUser();
-  const user = userData.user;
+  if (error) {
+    console.error('Erro ao buscar eventos:', error);
+    return <div>Erro ao carregar eventos. Tente novamente mais tarde.</div>;
+  }
+  
+  // Configuração de estilo geral
+  const containerStyle = {
+    fontFamily: 'sans-serif',
+    backgroundColor: '#f4f4f4',
+    minHeight: '100vh',
+    padding: '20px',
+  };
 
-  // 3. Função para formatar a data
-  const formatarData = (dataStr) => {
-    try {
-      const dataObj = new Date(dataStr + 'T00:00:00'); // Adiciona T00:00:00 para evitar problemas de fuso horário
-      return dataObj.toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-      });
-    } catch (e) {
-      return dataStr; // Retorna o original em caso de erro
-    }
+  const eventosGridStyle = {
+    display: 'flex',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: '30px',
+    maxWidth: '1200px',
+    margin: '40px auto',
   };
 
   return (
-    <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh' }}>
+    <div style={containerStyle}>
       
       {/* Cabeçalho */}
-      <header style={{ backgroundColor: '#5d34a4', color: 'white', padding: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1 style={{ margin: '0' }}>GOLDEN INGRESSOS</h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          
-          {/* Botão de Publicar Evento (Aparece se o usuário estiver logado) */}
-          {user ? (
-            <Link href="/publicar-evento" style={{ 
-              backgroundColor: '#f1c40f', 
-              color: 'black', 
-              padding: '10px 15px', 
-              textDecoration: 'none', 
-              fontWeight: 'bold',
-              borderRadius: '5px'
-            }}>
-              Publicar Evento
-            </Link>
-          ) : (
-            <Link href="/login" style={{ 
-              backgroundColor: '#f1c40f', 
-              color: 'black', 
-              padding: '10px 15px', 
-              textDecoration: 'none', 
-              fontWeight: 'bold',
-              borderRadius: '5px'
-            }}>
-              Login / Produtor
-            </Link>
-          )}
-
-          {/* Nome e Botão de Sair (Aparece se o usuário estiver logado) */}
-          {user && (
-            <>
-              <span style={{ color: 'white' }}>Olá, {user.email}</span>
-              <form action="/auth/sign-out" method="post">
-                <button type="submit" style={{ 
-                  backgroundColor: '#c0392b', 
-                  color: 'white', 
-                  padding: '10px 15px', 
-                  border: 'none', 
-                  borderRadius: '5px', 
-                  cursor: 'pointer'
-                }}>
-                  Sair
-                </button>
-              </form>
-            </>
-          )}
-        </div>
+      <header style={{ 
+        backgroundColor: '#5d34a4', 
+        color: 'white', 
+        padding: '20px', 
+        textAlign: 'center',
+        marginBottom: '20px',
+        borderRadius: '8px'
+      }}>
+        <h1 style={{ margin: '0', fontSize: '2em' }}>Bem-vindo ao Elite Tickets</h1>
+        <p style={{ margin: '5px 0 0 0' }}>Encontre seu próximo evento inesquecível.</p>
       </header>
+      
+      {/* Botões de Ação */}
+      <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+        <Link href="/publicar-evento">
+          <button style={{ 
+            backgroundColor: '#f1c40f', 
+            color: 'black', 
+            padding: '12px 25px', 
+            border: 'none', 
+            borderRadius: '5px', 
+            fontWeight: 'bold', 
+            cursor: 'pointer',
+            marginRight: '15px'
+          }}>
+            Publicar Novo Evento
+          </button>
+        </Link>
+        <Link href="/login">
+          <button style={{ 
+            backgroundColor: '#fff', 
+            color: '#5d34a4', 
+            padding: '12px 25px', 
+            border: '2px solid #5d34a4', 
+            borderRadius: '5px', 
+            fontWeight: 'bold', 
+            cursor: 'pointer'
+          }}>
+            Entrar
+          </button>
+        </Link>
+      </div>
 
-      {/* Conteúdo Principal (Lista de Eventos) */}
-      <main style={{ padding: '40px', maxWidth: '1200px', margin: '0 auto' }}>
-        <h2 style={{ color: '#5d34a4', borderBottom: '2px solid #5d34a4', paddingBottom: '10px', marginBottom: '30px' }}>
-          Eventos em Destaque
-        </h2>
+      {/* Exibição dos Eventos */}
+      <h2 style={{ textAlign: 'center', color: '#333' }}>Próximos Eventos</h2>
 
-        {/* Grade dos Eventos */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '30px' }}>
-          {error && <p style={{ color: 'red' }}>Erro ao carregar eventos.</p>}
-          {eventos && eventos.length === 0 && <p>Nenhum evento publicado ainda. Seja o primeiro!</p>}
-
-          {/* LOOP PELOS EVENTOS */}
-          {eventos && eventos.map((evento) => (
-            <div 
-              key={evento.id} 
-              style={{ 
-                backgroundColor: 'white', 
-                borderRadius: '10px', 
-                overflow: 'hidden', 
-                boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
-                display: 'flex',
-                flexDirection: 'column'
-              }}
-            >
-              
-              {/* NOVO: Imagem do Evento (CRÍTICO: Esta parte exibe a URL salva) */}
-              {evento.imagem_url && (
-                <img 
-                  src={evento.imagem_url} 
-                  alt={`Capa do Evento: ${evento.nome}`} 
-                  style={{ width: '100%', height: '200px', objectFit: 'cover' }} 
-                />
-              )}
-              
-              {/* Conteúdo do Card */}
-              <div style={{ padding: '20px', flexGrow: 1 }}>
-                <p style={{ margin: '0 0 5px 0', fontSize: '0.8em', fontWeight: 'bold', color: '#f1c40f' }}>
-                  {evento.categoria ? evento.categoria.toUpperCase() : 'CATEGORIA INDEFINIDA'}
-                </p>
-                
-                <h3 style={{ color: '#2c3e50', margin: '0 0 15px 0', fontSize: '1.4em' }}>
-                  {evento.nome}
-                </h3>
-                
-                <p style={{ margin: '0 0 8px 0', fontSize: '0.9em' }}>
-                  🗓️ Data: **{formatarData(evento.data)}** às **{evento.hora}**
-                </p>
-                
-                <p style={{ margin: '0 0 8px 0', fontSize: '0.9em' }}>
-                  📍 Local: **{evento.local}**
-                </p>
-                
-                <p style={{ margin: '0 0 20px 0', fontSize: '1.1em', fontWeight: 'bold', color: '#27ae60' }}>
-                  💰 Preço: **{evento.preco}**
-                </p>
-
-                {/* Botão de Comprar Ingresso */}
-                <button 
-                  style={{ 
-                    backgroundColor: '#e67e22', 
-                    color: 'white', 
-                    padding: '10px 15px', 
-                    fontWeight: 'bold', 
-                    border: 'none', 
-                    borderRadius: '5px', 
-                    cursor: 'pointer',
-                    width: '100%'
-                  }}
-                  // FUTURO: Aqui a lógica levaria para a página de compra
-                >
-                  Comprar Ingresso
-                </button>
-              </div>
-            </div>
+      {eventos && eventos.length > 0 ? (
+        <div style={eventosGridStyle}>
+          {eventos.map((evento) => (
+            // CRÍTICO: O evento precisa ter um ID único para a chave e para o Link
+            <CardEvento key={evento.id} evento={evento} />
           ))}
         </div>
-      </main>
+      ) : (
+        <p style={{ textAlign: 'center', fontSize: '1.2em', color: '#666' }}>Nenhum evento encontrado no momento. Seja o primeiro a publicar!</p>
+      )}
+
     </div>
   );
 }
