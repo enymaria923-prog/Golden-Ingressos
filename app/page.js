@@ -1,15 +1,8 @@
-// app/page.js - VERSÃO SEGURA
-import { createClient } from '../utils/supabase/server.js';
+// app/page.js - VERSÃO DE EMERGÊNCIA (HOME FUNCIONAL)
 import Link from 'next/link';
 
-// Componente do Cartão do Evento (CardEvento)
+// Componente do Cartão do Evento (Fake)
 function CardEvento({ evento }) {
-  const precoFormatado = isNaN(parseFloat(evento.preco)) 
-    ? evento.preco 
-    : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parseFloat(evento.preco));
-  
-  const eventoDetalheUrl = `/evento/${evento.id}`;
-
   return (
     <div style={{ 
       backgroundColor: 'white', 
@@ -26,7 +19,7 @@ function CardEvento({ evento }) {
     >
       <div style={{ height: '180px', overflow: 'hidden' }}>
         <img 
-          src={evento.imagem_url || 'https://placehold.co/300x180/5d34a4/ffffff?text=EVENTO'} 
+          src={evento.imagem_url} 
           alt={`Capa do evento ${evento.nome}`} 
           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
         />
@@ -37,14 +30,13 @@ function CardEvento({ evento }) {
           {evento.nome}
         </h3>
         <p style={{ margin: '0 0 5px 0', fontSize: '0.9em' }}>
-          **{evento.categoria}** | {new Date(evento.data).toLocaleDateString('pt-BR')}
+          {evento.categoria} | {evento.data}
         </p>
         <p style={{ margin: '0 0 15px 0', fontWeight: 'bold' }}>
-          Preço: {precoFormatado}
+          Preço: {evento.preco}
         </p>
 
-        {/* BOTÃO COMPRAR INGRESSO */}
-        <Link href={eventoDetalheUrl}>
+        <Link href={evento.detalheUrl}>
           <button style={{
             backgroundColor: '#f1c40f',
             color: 'black',
@@ -64,26 +56,38 @@ function CardEvento({ evento }) {
   );
 }
 
-// Componente Principal da Home Page
-export default async function Index() {
-  // Tenta buscar os eventos, mas se houver erro, usa array vazio
-  let eventos = [];
-
-  try {
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from('eventos')
-      .select('*')
-      .order('data', { ascending: true });
-
-    if (error) {
-      console.error('Erro ao buscar eventos:', error);
-    } else {
-      eventos = data || [];
+// Componente Principal da Home Page (SEM SUPABASE)
+export default function Index() {
+  // Eventos de exemplo (FAKE DATA)
+  const eventosExemplo = [
+    {
+      id: 1,
+      nome: "Show da Taylor Swift",
+      categoria: "Música",
+      data: "15/12/2024",
+      preco: "R$ 250,00",
+      imagem_url: "https://placehold.co/300x180/5d34a4/ffffff?text=TAYLOR+SWIFT",
+      detalheUrl: "/evento/1"
+    },
+    {
+      id: 2,
+      nome: "Festival de Rock",
+      categoria: "Música",
+      data: "20/12/2024", 
+      preco: "R$ 120,00",
+      imagem_url: "https://placehold.co/300x180/ff6b6b/ffffff?text=FESTIVAL+ROCK",
+      detalheUrl: "/evento/2"
+    },
+    {
+      id: 3,
+      nome: "Peça de Teatro - Hamlet",
+      categoria: "Teatro",
+      data: "25/12/2024",
+      preco: "R$ 80,00",
+      imagem_url: "https://placehold.co/300x180/4ecdc4/ffffff?text=TEATRO+HAMLET",
+      detalheUrl: "/evento/3"
     }
-  } catch (error) {
-    console.error('Erro inesperado:', error);
-  }
+  ];
 
   const containerStyle = {
     fontFamily: 'sans-serif',
@@ -120,8 +124,7 @@ export default async function Index() {
       {/* Botões de Ação */}
       <div style={{ textAlign: 'center', marginBottom: '40px' }}>
         
-        {/* BOTÃO PUBLICAR EVENTO */}
-        <a href="/publicar-evento" style={{ textDecoration: 'none' }}>
+        <Link href="/publicar-evento" style={{ textDecoration: 'none' }}>
             <button style={{ 
                 backgroundColor: '#f1c40f', 
                 color: 'black', 
@@ -134,10 +137,9 @@ export default async function Index() {
             }}>
                 Publicar Novo Evento
             </button>
-        </a>
+        </Link>
 
-        {/* Botão Entrar */}
-        <a href="/login" style={{ textDecoration: 'none' }}>
+        <Link href="/login" style={{ textDecoration: 'none' }}>
             <button style={{ 
                 backgroundColor: '#fff', 
                 color: '#5d34a4', 
@@ -149,25 +151,24 @@ export default async function Index() {
             }}>
                 Entrar
             </button>
-        </a>
+        </Link>
       </div>
 
-      {/* Exibição dos Eventos */}
+      {/* Exibição dos Eventos (FAKE DATA) */}
       <h2 style={{ textAlign: 'center', color: '#333' }}>Eventos em Destaque</h2>
 
-      {eventos.length > 0 ? (
-        <div style={eventosGridStyle}>
-          {eventos.map((evento) => (
-            <CardEvento key={evento.id} evento={evento} />
-          ))}
-        </div>
-      ) : (
-        <div style={eventosGridStyle}>
-          <p style={{ textAlign: 'center', fontSize: '1.2em', color: '#666', width: '100%' }}>
-            Nenhum evento encontrado. Seja o primeiro a publicar!
-          </p>
-        </div>
-      )}
+      <div style={eventosGridStyle}>
+        {eventosExemplo.map((evento) => (
+          <CardEvento key={evento.id} evento={evento} />
+        ))}
+      </div>
+
+      {/* Aviso */}
+      <div style={{ textAlign: 'center', marginTop: '40px', padding: '20px', backgroundColor: '#fff', borderRadius: '8px' }}>
+        <p style={{ color: '#666', fontStyle: 'italic' }}>
+          ⚠️ Modo de demonstração - Conectando ao banco de dados...
+        </p>
+      </div>
 
     </div>
   );
