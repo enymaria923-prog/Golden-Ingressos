@@ -2,12 +2,12 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
-// EXPORTA A FUNÇÃO CORRETA USANDO AS VARIÁVEIS PÚBLICAS
+// Este cliente é usado em Server Components e Server Actions.
 export const createClient = () => {
   const cookieStore = cookies();
 
-  // OBRIGA O CLIENTE DO SERVIDOR A USAR AS CHAVES PÚBLICAS 
-  // QUE JÁ ESTÃO CONFIGURADAS NO VERCEL.
+  // Garante que o cliente do servidor use as variáveis públicas 
+  // para evitar problemas de permissão se a Service Role Key falhar.
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -16,17 +16,17 @@ export const createClient = () => {
         get: (name) => cookieStore.get(name)?.value,
         set: (name, value, options) => {
           try {
+            // Tenta definir cookies no lado do servidor
             cookieStore.set({ name, value, ...options });
           } catch (error) {
-            // A função 'set' pode ser chamada em Server Components, que não têm acesso a cookies.
-            // Isso não é crítico, apenas ignoramos.
+            // Este erro é esperado em Server Components estáticos, não é crítico.
           }
         },
         remove: (name, options) => {
           try {
             cookieStore.set({ name, value: '', ...options });
           } catch (error) {
-            // Ignorado, igual ao set.
+            // Este erro é esperado em Server Components estáticos, não é crítico.
           }
         },
       },
