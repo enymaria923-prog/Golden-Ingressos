@@ -1,18 +1,16 @@
 // app/publicar-evento/page.js
-// CÓDIGO FINAL E COMPLETO COM CORREÇÕES DE ESTILO E FORÇA DE CLIQUE (formAction)
 
 import { createClient } from '../../utils/supabase/server'; 
-import { criarEvento } from '../actions'; 
+import { criarEvento } from '../actions';
+import FormularioPublicacao from './FormularioPublicacao'; // NOVO COMPONENTE CLIENTE
 
 export default async function PublicarEventoPage() {
   
   const supabase = createClient();
-
-  // Obter o usuário
   const { data, error: userError } = await supabase.auth.getUser();
   const user = data?.user;
 
-  // --- LÓGICA DE PROTEÇÃO DE PRODUTOR ---
+  // LÓGICA DE PROTEÇÃO DE PRODUTOR
   if (userError || !user) {
     return (
       <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px', textAlign: 'center' }}>
@@ -34,78 +32,11 @@ export default async function PublicarEventoPage() {
         <h1 style={{ margin: '0' }}>Publicar Novo Evento</h1>
       </header>
 
-      {/* Container do Formulário */}
-      <div style={{ 
-        maxWidth: '800px', 
-        margin: '40px auto', 
-        padding: '30px', 
-        backgroundColor: 'white', 
-        borderRadius: '8px',
-        // Removendo position: relative e zIndex do container para não criar conflito
-      }}>
-        
-        <p>Logado como: {user.email}</p>
-        
-        {/* INÍCIO DO FORMULÁRIO com a Ação do Servidor */}
-        <form 
-          action={criarEvento} 
-          style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginTop: '20px' }}
-        >
-          
-          <label htmlFor="nome">Nome do Evento:</label>
-          <input id="nome" name="nome" type="text" style={{ padding: '10px' }} required />
-
-          <label htmlFor="capa">Capa do Evento (Imagem):</label>
-          <input id="capa" name="capa" type="file" accept="image/*" style={{ padding: '10px' }} required />
-          
-          <label htmlFor="categoria">Categoria:</label>
-          <select id="categoria" name="categoria" style={{ padding: '10px' }} required>
-            <option value="">Selecione...</option>
-            <option value="Show">Show</option>
-            <option value="Teatro">Teatro</option>
-            <option value="Standup">Stand-up</option>
-            <option value="Congresso">Congresso</option>
-            <option value="Outro">Outro</option>
-          </select>
-          
-          <label htmlFor="data">Data:</label>
-          <input id="data" name="data" type="date" style={{ padding: '10px' }} required />
-          
-          <label htmlFor="hora">Hora:</label>
-          <input id="hora" name="hora" type="time" style={{ padding: '10px' }} required />
-          
-          <label htmlFor="local">Local (Endereço completo):</label>
-          <input id="local" name="local" type="text" style={{ padding: '10px' }} required />
-          
-          <label htmlFor="preco">Preço (Ex: 50,00 ou "Gratuito"):</label>
-          <input id="preco" name="preco" type="text" style={{ padding: '10px' }} required />
-          
-          <label htmlFor="descricao">Descrição do Evento:</label>
-          <textarea id="descricao" name="descricao" rows="5" style={{ padding: '10px' }}></textarea>
-
-          {/* BOTÃO FINAL com formAction e zIndex alto */}
-          <button 
-            type="submit"
-            formAction={criarEvento} // Propriedade de força para Next.js Server Actions
-            style={{ 
-                backgroundColor: '#f1c40f', 
-                color: 'black', 
-                padding: '15px', 
-                fontWeight: 'bold', 
-                border: 'none', 
-                fontSize: '16px',
-                display: 'block', 
-                width: '100%',
-                cursor: 'pointer', // Garante que o cursor de clique apareça
-                position: 'relative',
-                zIndex: 9999 // zIndex muito alto no próprio botão
-            }}
-          >
-            Publicar Evento
-          </button>
-
-        </form>
-      </div>
+      {/* Renderiza o Formulário Cliente */}
+      <FormularioPublicacao 
+        criarEventoAction={criarEvento} 
+        userEmail={user.email} 
+      />
     </div>
   );
 }
