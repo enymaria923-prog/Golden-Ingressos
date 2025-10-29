@@ -1,47 +1,92 @@
-// app/actions.js - O Backend (Atualizado para Supabase)
+// app/actions.js
+'use server';
 
-"use server"; // <-- Isso é importante
+import { createClient } from './utils/supabase/server';
+import { revalidatePath } from 'next/cache'; // Usado para forçar a Home a atualizar
+import { redirect } from 'next/navigation'; // Usado para redirecionar após o sucesso
 
-// 1. Importa o "cérebro" do Supabase (com o caminho CORRETO)
-import { createClient } from '../utils/supabase/server'; 
-import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
-
-// Esta é a função que o formulário chama
+// Função PRINCIPAL: Responsável por processar o formulário de novo evento
 export async function criarEvento(formData) {
   
-  // 2. Cria o cliente Supabase
   const supabase = createClient();
-
-  // 3. Pega os dados do formulário
-  const dadosDoFormulario = {
-    nome: formData.get('nome'),
-    categoria: formData.get('categoria'),
-    data: formData.get('data'),
-    hora: formData.get('hora'),
-    local: formData.get('local'),
-    preco: formData.get('preco'),
-    descricao: formData.get('descricao'),
-    // NOTA: user_id e image_url virão quando fizermos o Login/Upload
-  };
-
-  // 4. Tenta salvar no banco de dados
-  const { error } = await supabase
-    .from('eventos') // Seleciona a tabela 'eventos'
-    .insert([dadosDoFormulario]); // Insere os dados
-
-  if (error) {
-    // Se der erro, mostra no console (visível no Vercel Logs)
-    console.error("Erro ao salvar evento:", error);
-    // Em um site real, retornaríamos uma mensagem de erro para o usuário
+  
+  // 1. OBRIGATÓRIO: Obter o ID do usuário (produtor) logado
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user) {
+    // Se não estiver logado, redireciona (isso não deveria acontecer, pois a página está protegida)
+    redirect('/login');
     return;
   }
+  const user_id = userData.user.id;
 
-  // 5. Se deu certo:
+  // 2. EXTRAIR OS DADOS DO FORMULÁRIO (Incluindo a imagem)
+  const nome = formData.get('nome');
+  // NOVO: A imagem é recebida como um objeto File
+  const capaFile = formData.get('capa'); 
+  const categoria = formData.get('categoria');
+  const data = formData.get('data');
+  const hora = formData.get('hora');
+  const local = formData.get('local');
+  const preco = formData.get('preco');
+  const descricao = formData.get('descricao');
   
-  // Limpa o cache da Home Page (para o novo evento aparecer)
+  // Variável para guardar o URL da imagem
+  let imagem_url = null;
+
+  // 3. FAZER O UPLOAD DA IMAGEM PARA O SUPABASE STORAGE
+  if (capaFile && capaFile.size > 0) {
+    // Gerar um nome de arquivo único (ex: "IDdoUsuario_NomeDoEvento_timestamp.jpg")
+    const fileExtension = capaFile.name.split('.').pop();
+    const fileName = `${user_id}_${Date.now()}.${fileExtension}`;
+
+    // Tentar fazer o upload para o bucket 'imagens_eventos'
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('imagens_eventos') // O nome do bucket que criamos
+      .upload(fileName, capaFile, {
+        cacheControl: '3600',
+        upsert: false // Não substitui
+      });
+
+    if (uploadError) {
+      console.error('Erro no upload da imagem:', uploadError);
+      // Se falhar o upload, podemos continuar sem a imagem ou retornar um erro.
+      // Por enquanto, vamos retornar um erro simples:
+      return { error: 'Falha ao fazer upload da imagem.' };
+    }
+
+    // Se o upload foi um sucesso, obter o URL público
+    const { data: publicUrlData } = supabase.storage
+      .from('imagens_eventos')
+      .getPublicUrl(fileName); // O fileName é o caminho dentro do bucket
+
+    imagem_url = publicUrlData.publicUrl;
+  }
+  
+  // 4. INSERIR OS DADOS NA TABELA 'eventos'
+  const { error: insertError } = await supabase
+    .from('eventos')
+    .insert([
+      {
+        nome,
+        // CRÍTICO: Incluímos o URL da imagem e o ID do produtor
+        imagem_url: imagem_url, 
+        user_id: user_id,
+        // Fim dos novos campos
+        categoria,
+        data,
+        hora,
+        local,
+        preco,
+        descricao,
+      },
+    ]);
+
+  if (insertError) {
+    console.error('Erro ao inserir evento:', insertError);
+    return { error: 'Falha ao publicar o evento.' };
+  }
+  
+  // 5. FINALIZAÇÃO: Recarrega a Home e redireciona para lá
   revalidatePath('/'); 
-  
-  // Redireciona o usuário de volta para a Home Page
-  redirect('/'); 
+  redirect('/');
 }
