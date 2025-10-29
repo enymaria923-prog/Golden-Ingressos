@@ -19,7 +19,7 @@ export default async function PerfilPage() {
   // 2. Busca o perfil existente:
   // Busca na tabela 'perfis' pela linha que tem o ID do usuário logado.
   const { data: perfil, error } = await supabase
-    .from('perfis')
+    .select('nome_completo, chave_pix, tipo_chave_pix, banco_conta_corrente, preferencia_pagamento')
     .select('*')
     .eq('id', user.id) // O 'id' do perfil TEM que ser igual ao 'id' do usuário
     .single(); // .single() pega só um resultado (ou dá erro se houver vários)
