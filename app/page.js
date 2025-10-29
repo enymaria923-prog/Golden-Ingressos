@@ -1,7 +1,7 @@
 // app/page.js
 // HOME PAGE: CORRIGIDA PARA ABRIR O SITE E CONSERTAR O BOTÃO DE COMPRA
 
-import { createClient } from '../utils/supabase/server'; 
+import { createClient } from '../utils/supabase/server.js'; // ← ADICIONE .js
 import Link from 'next/link'; 
 
 // --- Componente do Cartão do Evento (CardEvento) ---
