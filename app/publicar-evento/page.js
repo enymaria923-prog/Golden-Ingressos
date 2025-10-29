@@ -1,9 +1,8 @@
 // app/publicar-evento/page.js
-// CÓDIGO FINAL DE FORÇA EXTREMA NO BOTÃO, SEM COMPONENTE CLIENTE SEPARADO.
+// PÁGINA DE PUBLICAÇÃO: BOTÃO DE FORÇA E CAMINHOS CORRIGIDOS
 
-import { createClient } from '../../utils/supabase/server'; 
+import { createClient } from '../utils/supabase/server'; 
 import { criarEvento } from '../actions'; 
-// REMOVEMOS: import FormularioPublicacao from './FormularioPublicacao';
 
 export default async function PublicarEventoPage() {
   
@@ -40,7 +39,6 @@ export default async function PublicarEventoPage() {
         padding: '30px', 
         backgroundColor: 'white', 
         borderRadius: '8px',
-        // Removendo zIndex/position aqui para simplificar
       }}>
         
         <p>Logado como: {user.email}</p>
@@ -82,10 +80,10 @@ export default async function PublicarEventoPage() {
           <label htmlFor="descricao">Descrição do Evento:</label>
           <textarea id="descricao" name="descricao" rows="5" style={{ padding: '10px' }}></textarea>
 
-          {/* BOTÃO FINAL com formAction e zIndex alto */}
+          {/* BOTÃO FINAL com formAction para forçar o envio */}
           <button 
             type="submit"
-            formAction={criarEvento} // Propriedade de força
+            formAction={criarEvento} 
             style={{ 
                 backgroundColor: '#f1c40f', 
                 color: 'black', 
@@ -97,7 +95,7 @@ export default async function PublicarEventoPage() {
                 width: '100%',
                 cursor: 'pointer', 
                 position: 'relative',
-                zIndex: 9999 // zIndex muito alto
+                zIndex: 9999 
             }}
           >
             Publicar Evento
