@@ -1,23 +1,28 @@
 // app/publicar-evento/page.js
-// CÓDIGO COMPLETO E CORRIGIDO (RESET LIMPO)
+// CÓDIGO DE TESTE (Sem 'redirect')
 
-import { redirect } from 'next/navigation';
-
-// CORREÇÃO 1: Caminho '../../'
+// import { redirect } from 'next/navigation'; // <-- REMOVEMOS O 'redirect'
 import { createClient } from '../../utils/supabase/server'; 
-// CORREÇÃO 2: Caminho '../' (que está correto)
 import { criarEvento } from '../actions';
 
-// 1. A página agora é 'async'
 export default async function PublicarEventoPage() {
   
   const supabase = createClient();
 
-  // CORREÇÃO 3: 'getUser' robusto (A CAUSA DO ERRO 500)
+  // 'getUser' robusto
   const { data, error: userError } = await supabase.auth.getUser();
-  if (userError || !data?.user) {
-    // 3. Se não houver usuário, EXPULSA para o Login.
-    return redirect('/login?message=Você precisa estar logado para publicar um evento.');
+  const user = data?.user; // 'user' será o usuário ou 'null'
+
+  // --- NOVA LÓGICA DE TESTE ---
+  // Se não houver usuário, MOSTRA UMA MENSAGEM DE ERRO
+  if (userError || !user) {
+    return (
+      <div style={{ fontFamily: 'sans-serif', padding: '40px' }}>
+        <h1 style={{ color: 'red' }}>Acesso Negado</h1>
+        <p>Você precisa estar logado para publicar um evento.</p>
+        <a href="/login" style={{ color: 'blue', fontSize: '20px' }}>Clique aqui para fazer o login</a>
+      </div>
+    );
   }
   // Se houver usuário, a página continua a carregar:
 
@@ -33,11 +38,14 @@ export default async function PublicarEventoPage() {
       {/* Formulário (O código do formulário é o mesmo de antes) */}
       <div style={{ maxWidth: '800px', margin: '40px auto', padding: '30px', backgroundColor: 'white', borderRadius: '8px' }}>
         
-        <form action={criarEvento} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <p>Logado como: {user.email}</p> {/* Prova de que o 'user' existe */}
+        
+        <form action={criarEvento} style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginTop: '20px' }}>
           
           <label htmlFor="nome">Nome do Evento:</label>
           <input id="nome" name="nome" type="text" style={{ padding: '10px' }} required />
 
+          {/* ... (O resto do formulário é idêntico) ... */}
           <label htmlFor="categoria">Categoria:</label>
           <select id="categoria" name="categoria" style={{ padding: '10px' }} required>
             <option value="">Selecione...</option>
@@ -47,23 +55,16 @@ export default async function PublicarEventoPage() {
             <option value="Congresso">Congresso</option>
             <option value="Outro">Outro</option>
           </select>
-
           <label htmlFor="data">Data:</label>
           <input id="data" name="data" type="date" style={{ padding: '10px' }} required />
-
           <label htmlFor="hora">Hora:</label>
           <input id="hora" name="hora" type="time" style={{ padding: '10px' }} required />
-
           <label htmlFor="local">Local (Endereço completo):</label>
           <input id="local" name="local" type="text" style={{ padding: '10px' }} required />
-
           <label htmlFor="preco">Preço (Ex: 50,00 ou "Gratuito"):</label>
           <input id="preco" name="preco" type="text" style={{ padding: '10px' }} required />
-
           <label htmlFor="descricao">Descrição do Evento:</label>
           <textarea id="descricao" name="descricao" rows="5" style={{ padding: '10px' }}></textarea>
-
-          {/* O campo da IMAGEM virá AQUI no próximo passo! */}
 
           <button 
             type="submit"
