@@ -1,7 +1,7 @@
 // app/publicar-evento/page.js
 // PÁGINA DE PUBLICAÇÃO: BOTÃO DE FORÇA E CAMINHOS CORRIGIDOS
 
-import { createClient } from '../utils/supabase/server'; 
+import { createClient } from '../../utils/supabase/server';
 import { criarEvento } from '../actions'; 
 
 export default async function PublicarEventoPage() {
