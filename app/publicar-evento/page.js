@@ -3,7 +3,7 @@
 
 import { redirect } from 'next/navigation';
 // Importa o "cérebro" (caminho com UMA pasta, pois está em 'app/publicar-evento')
-import { createClient } from '../utils/supabase/server'; 
+import { createClient } from '../../utils/supabase/server'; 
 // Importa a Ação de salvar o evento (que já funciona)
 import { criarEvento } from '../actions';
 
