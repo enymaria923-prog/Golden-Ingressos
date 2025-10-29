@@ -1,5 +1,5 @@
 // app/page.js (CÓDIGO COMPLETO E FINAL - Com Imagem e Layout Corrigido)
-import { createClient } from './utils/supabase/server';
+import { createClient } from '../utils/supabase/server';
 import Link from 'next/link';
 
 export default async function Index() {
