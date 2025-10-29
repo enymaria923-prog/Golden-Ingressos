@@ -17,11 +17,13 @@ export default async function PublicarEventoPage() {
   // Se não houver usuário, MOSTRA UMA MENSAGEM DE ERRO
   if (userError || !user) {
     return (
-      <div style={{ fontFamily: 'sans-serif', padding: '40px' }}>
-        <h1 style={{ color: 'red' }}>Acesso Negado</h1>
-        <p>Você precisa estar logado para publicar um evento.</p>
-        <a href="/login" style={{ color: 'blue', fontSize: '20px' }}>Clique aqui para fazer o login</a>
-      </div>
+     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px', textAlign: 'center' }}>
+<h1 style={{ color: '#5d34a4', marginTop: '50px' }}>Acesso de Produtor Requerido</h1>
+<p style={{ fontSize: '18px' }}>Para criar um evento, você precisa ter seu login de produtor.</p>
+<a href="/login" style={{ backgroundColor: '#f1c40f', color: 'black', padding: '15px 20px', textDecoration: 'none', fontWeight: 'bold', borderRadius: '5px', display: 'inline-block', marginTop: '20px' }}>
+Ir para a Página de Login
+</a>
+</div>
     );
   }
   // Se houver usuário, a página continua a carregar:
