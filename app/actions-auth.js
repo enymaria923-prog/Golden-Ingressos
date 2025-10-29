@@ -53,3 +53,13 @@ export async function signup(formData) {
   // O Supabase vai enviar um email de confirmação.
   return redirect('/');
 }
+// --- FUNÇÃO DE LOGOUT (SAIR) ---
+export async function logout() {
+  const supabase = createClient();
+  
+  // Chama a função de logout do Supabase
+  await supabase.auth.signOut();
+  
+  // Redireciona para a Home
+  return redirect('/');
+}
