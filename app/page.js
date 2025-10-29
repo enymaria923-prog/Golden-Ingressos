@@ -1,16 +1,14 @@
-// app/page.js
-// HOME PAGE: CORRIGIDA PARA ABRIR O SITE E CONSERTAR O BOTÃO DE COMPRA
+// app/page.js - VERSÃO SEGURA
+import { createClient } from '../utils/supabase/server.js';
+import Link from 'next/link';
 
-import { createClient } from '../utils/supabase/server.js'; // ← ADICIONE .js
-import Link from 'next/link'; 
-
-// --- Componente do Cartão do Evento (CardEvento) ---
+// Componente do Cartão do Evento (CardEvento)
 function CardEvento({ evento }) {
   const precoFormatado = isNaN(parseFloat(evento.preco)) 
     ? evento.preco 
     : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parseFloat(evento.preco));
   
-  const eventoDetalheUrl = `/evento/${evento.id}`; 
+  const eventoDetalheUrl = `/evento/${evento.id}`;
 
   return (
     <div style={{ 
@@ -45,7 +43,7 @@ function CardEvento({ evento }) {
           Preço: {precoFormatado}
         </p>
 
-        {/* BOTÃO COMPRAR INGRESSO CORRIGIDO */}
+        {/* BOTÃO COMPRAR INGRESSO */}
         <Link href={eventoDetalheUrl}>
           <button style={{
             backgroundColor: '#f1c40f',
@@ -66,27 +64,27 @@ function CardEvento({ evento }) {
   );
 }
 
-
-// --- Componente Principal da Home Page ---
+// Componente Principal da Home Page
 export default async function Index() {
-  
-  const supabase = createClient(); 
-  
-  const { data: eventos, error } = await supabase
-    .from('eventos')
-    .select('*')
-    .order('data', { ascending: true }); 
+  // Tenta buscar os eventos, mas se houver erro, usa array vazio
+  let eventos = [];
 
-  if (error) {
-    console.error('Erro ao buscar eventos:', error);
-    return (
-      <div style={{ fontFamily: 'sans-serif', textAlign: 'center', padding: '50px' }}>
-        <h1>Erro ao carregar eventos</h1>
-        <p>A Home Page não pôde se conectar ao banco de dados. Verifique a importação do createClient e as credenciais.</p>
-      </div>
-    );
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('eventos')
+      .select('*')
+      .order('data', { ascending: true });
+
+    if (error) {
+      console.error('Erro ao buscar eventos:', error);
+    } else {
+      eventos = data || [];
+    }
+  } catch (error) {
+    console.error('Erro inesperado:', error);
   }
-  
+
   const containerStyle = {
     fontFamily: 'sans-serif',
     backgroundColor: '#f4f4f4',
@@ -122,7 +120,7 @@ export default async function Index() {
       {/* Botões de Ação */}
       <div style={{ textAlign: 'center', marginBottom: '40px' }}>
         
-        {/* BOTÃO PUBLICAR EVENTO: A puro */}
+        {/* BOTÃO PUBLICAR EVENTO */}
         <a href="/publicar-evento" style={{ textDecoration: 'none' }}>
             <button style={{ 
                 backgroundColor: '#f1c40f', 
@@ -157,14 +155,18 @@ export default async function Index() {
       {/* Exibição dos Eventos */}
       <h2 style={{ textAlign: 'center', color: '#333' }}>Eventos em Destaque</h2>
 
-      {eventos && eventos.length > 0 ? (
+      {eventos.length > 0 ? (
         <div style={eventosGridStyle}>
           {eventos.map((evento) => (
             <CardEvento key={evento.id} evento={evento} />
           ))}
         </div>
       ) : (
-        <p style={{ textAlign: 'center', fontSize: '1.2em', color: '#666' }}>Nenhum evento encontrado no momento. Seja o primeiro a publicar!</p>
+        <div style={eventosGridStyle}>
+          <p style={{ textAlign: 'center', fontSize: '1.2em', color: '#666', width: '100%' }}>
+            Nenhum evento encontrado. Seja o primeiro a publicar!
+          </p>
+        </div>
       )}
 
     </div>
