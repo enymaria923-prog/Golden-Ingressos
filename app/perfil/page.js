@@ -1,28 +1,30 @@
 // app/perfil/page.js
+// CÓDIGO COMPLETO E CORRIGIDO
 
-import { createClient } from '../../utils/supabase/server';
+// CORREÇÃO 1: Caminho '../../'
+import { createClient } from '../../utils/supabase/server'; 
 import { redirect } from 'next/navigation';
-// Vamos criar este arquivo no próximo passo:
 import { atualizarPerfil } from '../actions-perfil'; 
 
 export default async function PerfilPage() {
   
   const supabase = createClient();
 
-// 1. Protege a rota (de forma segura):
-const { data, error: userError } = await supabase.auth.getUser();
-`if (userError
-return redirect('/login?message=Você precisa estar logado para ver seu perfil.');
-}
-const user = data.user; // Agora 'user' é seguro de usar
+  // CORREÇÃO 2: 'getUser' robusto
+  // 1. Protege a rota (de forma segura):
+  const { data, error: userError } = await supabase.auth.getUser();
+  if (userError || !data?.user) {
+    return redirect('/login?message=Você precisa estar logado para ver seu perfil.');
+  }
+  const user = data.user; // Agora 'user' é seguro de usar
 
   // 2. Busca o perfil existente:
-  // Busca na tabela 'perfis' pela linha que tem o ID do usuário logado.
   const { data: perfil, error } = await supabase
-   .select('id, nome_completo, chave_pix, tipo_chave_pix, banco_conta_corrente, preferencia_pagamento')
-    .select('*')
+    .from('perfis')
+    // CORREÇÃO 3: .select() com 'id' para o Firewall (RLS)
+    .select('id, nome_completo, chave_pix, tipo_chave_pix, banco_conta_corrente, preferencia_pagamento') 
     .eq('id', user.id) // O 'id' do perfil TEM que ser igual ao 'id' do usuário
-    .single(); // .single() pega só um resultado (ou dá erro se houver vários)
+    .single(); // .single() pega só um resultado
 
   if (error && error.code !== 'PGRST116') {
     // PGRST116 = "range not satisiable" (significa que não encontrou o perfil, o que é normal para um novo usuário)
