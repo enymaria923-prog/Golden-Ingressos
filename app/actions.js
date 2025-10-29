@@ -1,14 +1,10 @@
-// app/actions.js
-// CÓDIGO COMPLETO DA AÇÃO DO SERVIDOR COM CAMINHO CORRIGIDO
-
+// app/actions.js - VERSÃO CORRIGIDA PARA MÚLTIPLOS INGRESSOS
 'use server';
 
-// VOLTANDO PARA O CAMINHO COM UMA ÚNICA SUBIDA, QUE FUNCIONOU NA MAIORIA DAS VEZES
 import { createClient } from '../utils/supabase/server'; 
 import { revalidatePath } from 'next/cache'; 
 import { redirect } from 'next/navigation'; 
 
-// Função PRINCIPAL: Responsável por processar o formulário de novo evento
 export async function criarEvento(formData) {
   
   const supabase = createClient();
@@ -22,25 +18,41 @@ export async function criarEvento(formData) {
   }
   const user_id = userData.user.id;
 
-  // 2. EXTRAIR OS DADOS DO FORMULÁRIO (Incluindo a imagem)
+  // 2. EXTRAIR OS DADOS DO FORMULÁRIO
   const nome = formData.get('nome');
   const capaFile = formData.get('capa');  
   const categoria = formData.get('categoria');
   const data = formData.get('data');
   const hora = formData.get('hora');
   const local = formData.get('local');
-  const preco = formData.get('preco');
   const descricao = formData.get('descricao');
   
+  // 3. EXTRAIR MÚLTIPLOS INGRESSOS
+  const quantidadeIngressos = parseInt(formData.get('quantidade_ingressos')) || 1;
+  const ingressos = [];
+  
+  for (let i = 0; i < quantidadeIngressos; i++) {
+    const tipo = formData.get(`ingresso_tipo_${i}`);
+    const valor = formData.get(`ingresso_valor_${i}`);
+    
+    if (tipo && valor) {
+      ingressos.push({ tipo, valor });
+    }
+  }
+  
+  // Verificar se temos pelo menos um ingresso
+  if (ingressos.length === 0) {
+    return { error: 'É necessário adicionar pelo menos um tipo de ingresso.' };
+  }
+
   let imagem_url = null;
 
-  // 3. FAZER O UPLOAD DA IMAGEM PARA O SUPABASE STORAGE
+  // 4. FAZER O UPLOAD DA IMAGEM PARA O SUPABASE STORAGE
   if (capaFile && capaFile.size > 0) {
     try {
       const fileExtension = capaFile.name.split('.').pop();
       const fileName = `${user_id}_${Date.now()}.${fileExtension}`;
 
-      // Tenta fazer o upload para o bucket 'imagens_eventos'
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('imagens_eventos') 
         .upload(fileName, capaFile, {
@@ -53,7 +65,6 @@ export async function criarEvento(formData) {
         return { error: 'Falha ao fazer upload da imagem: ' + uploadError.message };
       }
 
-      // Se o upload foi um sucesso, obter o URL público
       const { data: publicUrlData } = supabase.storage
         .from('imagens_eventos')
         .getPublicUrl(fileName); 
@@ -66,8 +77,8 @@ export async function criarEvento(formData) {
     }
   }
   
-  // 4. INSERIR OS DADOS NA TABELA 'eventos'
-  const { error: insertError } = await supabase
+  // 5. INSERIR O EVENTO NA TABELA 'eventos'
+  const { data: eventoInserido, error: insertError } = await supabase
     .from('eventos')
     .insert([
       {
@@ -78,17 +89,36 @@ export async function criarEvento(formData) {
         data,
         hora,
         local,
-        preco,
         descricao,
+        preco: ingressos[0].valor, // Mantemos o primeiro preço para compatibilidade
       },
-    ]);
+    ])
+    .select()
+    .single();
 
   if (insertError) {
     console.error('Erro ao inserir evento:', insertError);
     return { error: 'Falha ao publicar o evento: ' + insertError.message };
   }
+
+  // 6. INSERIR OS MÚLTIPLOS INGRESSOS NA TABELA 'ingressos'
+  const ingressosParaInserir = ingressos.map(ingresso => ({
+    evento_id: eventoInserido.id,
+    tipo: ingresso.tipo,
+    valor: ingresso.valor,
+    user_id: user_id
+  }));
+
+  const { error: ingressosError } = await supabase
+    .from('ingressos')
+    .insert(ingressosParaInserir);
+
+  if (ingressosError) {
+    console.error('Erro ao inserir ingressos:', ingressosError);
+    // Não vamos falhar completamente se der erro nos ingressos, mas logamos
+  }
   
-  // 5. FINALIZAÇÃO: Recarrega a Home e redireciona para lá
+  // 7. FINALIZAÇÃO: Recarrega a Home e redireciona
   revalidatePath('/');  
   redirect('/');
 }
