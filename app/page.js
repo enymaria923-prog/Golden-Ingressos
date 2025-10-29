@@ -1,17 +1,15 @@
 // app/page.js
-// CÓDIGO COMPLETO E CORRIGIDO PARA ABRIR A HOME E CONSERTAR O BOTÃO DE COMPRA
+// HOME PAGE: CORRIGIDA PARA ABRIR O SITE E CONSERTAR O BOTÃO DE COMPRA
 
 import { createClient } from '../utils/supabase/server'; 
 import Link from 'next/link'; 
 
 // --- Componente do Cartão do Evento (CardEvento) ---
 function CardEvento({ evento }) {
-  // Converte o preço para formato BRL (se for um número)
   const precoFormatado = isNaN(parseFloat(evento.preco)) 
     ? evento.preco 
     : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parseFloat(evento.preco));
   
-  // O link para a página de detalhes (assumindo que a página é /evento/[id])
   const eventoDetalheUrl = `/evento/${evento.id}`; 
 
   return (
@@ -28,7 +26,6 @@ function CardEvento({ evento }) {
     onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
     onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
     >
-      {/* Imagem da Capa */}
       <div style={{ height: '180px', overflow: 'hidden' }}>
         <img 
           src={evento.imagem_url || 'https://placehold.co/300x180/5d34a4/ffffff?text=EVENTO'} 
@@ -37,7 +34,6 @@ function CardEvento({ evento }) {
         />
       </div>
       
-      {/* Detalhes */}
       <div style={{ padding: '15px' }}>
         <h3 style={{ margin: '0 0 10px 0', color: '#5d34a4', fontSize: '1.4em' }}>
           {evento.nome}
@@ -49,7 +45,7 @@ function CardEvento({ evento }) {
           Preço: {precoFormatado}
         </p>
 
-        {/* BOTÃO COMPRAR INGRESSO CORRIGIDO: Usa Link do Next.js */}
+        {/* BOTÃO COMPRAR INGRESSO CORRIGIDO */}
         <Link href={eventoDetalheUrl}>
           <button style={{
             backgroundColor: '#f1c40f',
@@ -74,10 +70,8 @@ function CardEvento({ evento }) {
 // --- Componente Principal da Home Page ---
 export default async function Index() {
   
-  // Tentativa de criar o cliente Supabase. Esta linha pode ter causado o erro se o caminho estivesse errado.
   const supabase = createClient(); 
   
-  // Busca dos eventos
   const { data: eventos, error } = await supabase
     .from('eventos')
     .select('*')
@@ -88,12 +82,11 @@ export default async function Index() {
     return (
       <div style={{ fontFamily: 'sans-serif', textAlign: 'center', padding: '50px' }}>
         <h1>Erro ao carregar eventos</h1>
-        <p>A Home Page não pôde se conectar ao banco de dados ou a importação falhou. Por favor, verifique o console.</p>
+        <p>A Home Page não pôde se conectar ao banco de dados. Verifique a importação do createClient e as credenciais.</p>
       </div>
     );
   }
   
-  // Estilos
   const containerStyle = {
     fontFamily: 'sans-serif',
     backgroundColor: '#f4f4f4',
@@ -129,7 +122,7 @@ export default async function Index() {
       {/* Botões de Ação */}
       <div style={{ textAlign: 'center', marginBottom: '40px' }}>
         
-        {/* BOTÃO PUBLICAR EVENTO: Usando A pura para evitar problemas de componente cliente/servidor */}
+        {/* BOTÃO PUBLICAR EVENTO: A puro */}
         <a href="/publicar-evento" style={{ textDecoration: 'none' }}>
             <button style={{ 
                 backgroundColor: '#f1c40f', 
@@ -172,3 +165,8 @@ export default async function Index() {
         </div>
       ) : (
         <p style={{ textAlign: 'center', fontSize: '1.2em', color: '#666' }}>Nenhum evento encontrado no momento. Seja o primeiro a publicar!</p>
+      )}
+
+    </div>
+  );
+}
