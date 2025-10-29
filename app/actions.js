@@ -1,7 +1,7 @@
 // app/actions.js
 'use server';
 
-import { createClient } from './utils/supabase/server';
+import { createClient } from '../utils/supabase/server';
 import { revalidatePath } from 'next/cache'; // Usado para forçar a Home a atualizar
 import { redirect } from 'next/navigation'; // Usado para redirecionar após o sucesso
 
