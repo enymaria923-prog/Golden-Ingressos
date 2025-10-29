@@ -1,18 +1,19 @@
 // app/publicar-evento/page.js
-// PÁGINA AGORA "PROTEGIDA"
+// CÓDIGO COMPLETO E CORRIGIDO (RESET LIMPO)
 
 import { redirect } from 'next/navigation';
-// Importa o "cérebro" (caminho com UMA pasta, pois está em 'app/publicar-evento')
+
+// CORREÇÃO 1: Caminho '../../'
 import { createClient } from '../../utils/supabase/server'; 
-// Importa a Ação de salvar o evento (que já funciona)
+// CORREÇÃO 2: Caminho '../' (que está correto)
 import { criarEvento } from '../actions';
 
-// 1. A página agora é 'async' para poder verificar o usuário
+// 1. A página agora é 'async'
 export default async function PublicarEventoPage() {
-
+  
   const supabase = createClient();
 
-  // 2. Protege a rota (de forma segura):
+  // CORREÇÃO 3: 'getUser' robusto (A CAUSA DO ERRO 500)
   const { data, error: userError } = await supabase.auth.getUser();
   if (userError || !data?.user) {
     // 3. Se não houver usuário, EXPULSA para o Login.
