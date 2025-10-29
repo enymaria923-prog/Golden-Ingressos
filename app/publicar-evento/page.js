@@ -1,15 +1,16 @@
-// app/publicar-evento/page.js (REVISÃO COMPLETA DO BOTÃO)
+// app/publicar-evento/page.js (CÓDIGO FINAL DE LIMPEZA DO JSX)
 
 import { createClient } from '../../utils/supabase/server'; 
 import { criarEvento } from '../actions';
+// Não precisamos mais do 'redirect' aqui, a Action cuida disso
 
 export default async function PublicarEventoPage() {
   
   const supabase = createClient();
-
   const { data, error: userError } = await supabase.auth.getUser();
   const user = data?.user;
 
+  // Proteção de Produtor
   if (userError || !user) {
     return (
       <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px', textAlign: 'center' }}>
@@ -31,13 +32,17 @@ export default async function PublicarEventoPage() {
         <h1 style={{ margin: '0' }}>Publicar Novo Evento</h1>
       </header>
 
-      {/* Formulário (O foco é garantir que o botão não esteja inativo) */}
+      {/* Container do Formulário */}
       <div style={{ maxWidth: '800px', margin: '40px auto', padding: '30px', backgroundColor: 'white', borderRadius: '8px' }}>
         
         <p>Logado como: {user.email}</p>
         
-        {/* CRÍTICO: O FORMULÁRIO COMEÇA AQUI */}
-        <form action={criarEvento} style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginTop: '20px' }}>
+        {/* INÍCIO DO FORMULÁRIO */}
+        <form 
+          // Action do Next.js
+          action={criarEvento} 
+          style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginTop: '20px' }}
+        >
           
           <label htmlFor="nome">Nome do Evento:</label>
           <input id="nome" name="nome" type="text" style={{ padding: '10px' }} required />
@@ -54,27 +59,41 @@ export default async function PublicarEventoPage() {
             <option value="Congresso">Congresso</option>
             <option value="Outro">Outro</option>
           </select>
+          
           <label htmlFor="data">Data:</label>
           <input id="data" name="data" type="date" style={{ padding: '10px' }} required />
+          
           <label htmlFor="hora">Hora:</label>
           <input id="hora" name="hora" type="time" style={{ padding: '10px' }} required />
+          
           <label htmlFor="local">Local (Endereço completo):</label>
           <input id="local" name="local" type="text" style={{ padding: '10px' }} required />
+          
           <label htmlFor="preco">Preço (Ex: 50,00 ou "Gratuito"):</label>
           <input id="preco" name="preco" type="text" style={{ padding: '10px' }} required />
+          
           <label htmlFor="descricao">Descrição do Evento:</label>
           <textarea id="descricao" name="descricao" rows="5" style={{ padding: '10px' }}></textarea>
 
-          {/* BOTÃO FINAL (GARANTIR QUE O TYPE É SUBMIT E NÃO TEM DISABLED) */}
+          {/* BOTÃO - Mantendo o style mais limpo */}
           <button 
             type="submit"
-            // Remover 'disabled' se estiver presente, e garantir que está dentro do <form>
-            style={{ backgroundColor: '#f1c40f', color: 'black', padding: '15px', fontWeight: 'bold', border: 'none', cursor: 'pointer', fontSize: '16px' }}
+            // Retiramos o z-index e position para limpar, confiando na correção do erro de sintaxe
+            style={{ 
+                backgroundColor: '#f1c40f', 
+                color: 'black', 
+                padding: '15px', 
+                fontWeight: 'bold', 
+                border: 'none', 
+                cursor: 'pointer', 
+                fontSize: '16px' 
+            }}
           >
             Publicar Evento
           </button>
-        {/* CRÍTICO: O FORMULÁRIO TERMINA AQUI */}
+
         </form>
+        {/* FIM DO FORMULÁRIO */}
       </div>
     </div>
   );
