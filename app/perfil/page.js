@@ -9,12 +9,12 @@ export default async function PerfilPage() {
   
   const supabase = createClient();
 
-  // 1. Protege a rota:
-  // Tenta buscar o usuário. Se não houver, manda-o para o Login.
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return redirect('/login?message=Você precisa estar logado para ver seu perfil.');
-  }
+// 1. Protege a rota (de forma segura):
+const { data, error: userError } = await supabase.auth.getUser();
+`if (userError
+return redirect('/login?message=Você precisa estar logado para ver seu perfil.');
+}
+const user = data.user; // Agora 'user' é seguro de usar
 
   // 2. Busca o perfil existente:
   // Busca na tabela 'perfis' pela linha que tem o ID do usuário logado.
