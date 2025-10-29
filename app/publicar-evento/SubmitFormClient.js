@@ -1,4 +1,4 @@
-// app/publicar-evento/SubmitFormClient.js - VERSÃO COM MÚLTIPLOS INGRESSOS
+// app/publicar-evento/SubmitFormClient.js - VERSÃO CORRIGIDA
 'use client';
 
 import { useState } from 'react';
@@ -134,11 +134,6 @@ export default function SubmitFormClient({ criarEvento, userEmail }) {
                             </button>
                         )}
                     </div>
-            </div>
-
-            <input type="hidden" name="quantidade_ingressos" value={ingressos.length} />
-            
-            <label htmlFor="descricao">Descrição do Evento:</label>
                 ))}
                 
                 <button 
