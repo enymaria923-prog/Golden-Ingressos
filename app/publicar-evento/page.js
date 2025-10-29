@@ -1,5 +1,5 @@
 // app/publicar-evento/page.js
-// PÁGINA DE PUBLICAÇÃO: BOTÃO DE FORÇA E CAMINHOS CORRIGIDOS
+// PÁGINA DE PUBLICAÇÃO: VERSÃO CORRIGIDA COM MÚLTIPLOS INGRESSOS
 
 import { createClient } from '../../utils/supabase/server';
 import { criarEvento } from '../actions'; 
@@ -43,6 +43,11 @@ export default async function PublicarEventoPage() {
       }}>
         
         <p>Logado como: {user.email}</p>
+        
+        {/* COMPONENTE COM MÚLTIPLOS INGRESSOS */}
         <SubmitFormClient criarEvento={criarEvento} userEmail={user.email} />
         
-       
+      </div>
+    </div>
+  );
+}
