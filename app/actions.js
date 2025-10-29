@@ -1,9 +1,10 @@
 // app/actions.js
-// AÇÃO DO SERVIDOR: LÓGICA DE UPLOAD E INSERÇÃO DE DADOS CORRIGIDA
+// CÓDIGO COMPLETO DA AÇÃO DO SERVIDOR COM CAMINHO CORRIGIDO
 
 'use server';
 
-import { createClient } from '../../utils/supabase/server';
+// VOLTANDO PARA O CAMINHO COM UMA ÚNICA SUBIDA, QUE FUNCIONOU NA MAIORIA DAS VEZES
+import { createClient } from '../utils/supabase/server'; 
 import { revalidatePath } from 'next/cache'; 
 import { redirect } from 'next/navigation'; 
 
@@ -39,6 +40,7 @@ export async function criarEvento(formData) {
       const fileExtension = capaFile.name.split('.').pop();
       const fileName = `${user_id}_${Date.now()}.${fileExtension}`;
 
+      // Tenta fazer o upload para o bucket 'imagens_eventos'
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('imagens_eventos') 
         .upload(fileName, capaFile, {
@@ -51,6 +53,7 @@ export async function criarEvento(formData) {
         return { error: 'Falha ao fazer upload da imagem: ' + uploadError.message };
       }
 
+      // Se o upload foi um sucesso, obter o URL público
       const { data: publicUrlData } = supabase.storage
         .from('imagens_eventos')
         .getPublicUrl(fileName); 
