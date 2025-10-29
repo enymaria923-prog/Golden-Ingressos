@@ -1,9 +1,9 @@
 // app/publicar-evento/page.js
-// CÓDIGO DE TESTE (Sem 'redirect')
+// CÓDIGO FINAL (Com campo de imagem e proteção de produtor)
 
 // import { redirect } from 'next/navigation'; // <-- REMOVEMOS O 'redirect'
 import { createClient } from '../../utils/supabase/server'; 
-import { criarEvento } from '../actions';
+import { criarEvento } from '../actions'; // Ação será modificada para lidar com a imagem
 
 export default async function PublicarEventoPage() {
   
@@ -13,17 +13,17 @@ export default async function PublicarEventoPage() {
   const { data, error: userError } = await supabase.auth.getUser();
   const user = data?.user; // 'user' será o usuário ou 'null'
 
-  // --- NOVA LÓGICA DE TESTE ---
-  // Se não houver usuário, MOSTRA UMA MENSAGEM DE ERRO
+  // --- LÓGICA DE PROTEÇÃO DE PRODUTOR ---
+  // Se não houver usuário, MOSTRA A MENSAGEM DE ERRO (nova e bonita)
   if (userError || !user) {
     return (
-     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px', textAlign: 'center' }}>
-<h1 style={{ color: '#5d34a4', marginTop: '50px' }}>Acesso de Produtor Requerido</h1>
-<p style={{ fontSize: '18px' }}>Para criar um evento, você precisa ter seu login de produtor.</p>
-<a href="/login" style={{ backgroundColor: '#f1c40f', color: 'black', padding: '15px 20px', textDecoration: 'none', fontWeight: 'bold', borderRadius: '5px', display: 'inline-block', marginTop: '20px' }}>
-Ir para a Página de Login
-</a>
-</div>
+      <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px', textAlign: 'center' }}>
+        <h1 style={{ color: '#5d34a4', marginTop: '50px' }}>Acesso de Produtor Requerido</h1>
+        <p style={{ fontSize: '18px' }}>Para criar um evento, você precisa ter seu login de produtor.</p>
+        <a href="/login" style={{ backgroundColor: '#f1c40f', color: 'black', padding: '15px 20px', textDecoration: 'none', fontWeight: 'bold', borderRadius: '5px', display: 'inline-block', marginTop: '20px' }}>
+          Ir para a Página de Login
+        </a>
+      </div>
     );
   }
   // Se houver usuário, a página continua a carregar:
@@ -37,7 +37,7 @@ Ir para a Página de Login
         <h1 style={{ margin: '0' }}>Publicar Novo Evento</h1>
       </header>
 
-      {/* Formulário (O código do formulário é o mesmo de antes) */}
+      {/* Formulário (Agora com o novo campo de imagem) */}
       <div style={{ maxWidth: '800px', margin: '40px auto', padding: '30px', backgroundColor: 'white', borderRadius: '8px' }}>
         
         <p>Logado como: {user.email}</p> {/* Prova de que o 'user' existe */}
@@ -47,7 +47,12 @@ Ir para a Página de Login
           <label htmlFor="nome">Nome do Evento:</label>
           <input id="nome" name="nome" type="text" style={{ padding: '10px' }} required />
 
-          {/* ... (O resto do formulário é idêntico) ... */}
+          {/* NOVO CAMPO DE IMAGEM INSERIDO AQUI */}
+          <label htmlFor="capa">Capa do Evento (Imagem):</label>
+          {/* CRÍTICO: O 'name' deve ser 'capa' e o 'type' deve ser 'file' */}
+          <input id="capa" name="capa" type="file" accept="image/*" style={{ padding: '10px' }} required />
+          {/* FIM DO NOVO CAMPO */}
+          
           <label htmlFor="categoria">Categoria:</label>
           <select id="categoria" name="categoria" style={{ padding: '10px' }} required>
             <option value="">Selecione...</option>
