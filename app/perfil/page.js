@@ -1,6 +1,6 @@
 // app/perfil/page.js
 
-import { createClient } from '../utils/supabase/server';
+import { createClient } from '../../utils/supabase/server';
 import { redirect } from 'next/navigation';
 // Vamos criar este arquivo no próximo passo:
 import { atualizarPerfil } from '../actions-perfil'; 
