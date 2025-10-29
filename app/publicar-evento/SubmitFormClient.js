@@ -1,16 +1,30 @@
-// app/publicar-evento/SubmitFormClient.js
+// app/publicar-evento/SubmitFormClient.js - VERSÃO COM MÚLTIPLOS INGRESSOS
 'use client';
 
-// Este componente é o formulário, forçando a interatividade no cliente.
+import { useState } from 'react';
+
 export default function SubmitFormClient({ criarEvento, userEmail }) {
-    
-    // O hook useFormStatus faz o botão ficar desabilitado enquanto a ação é processada.
-    // Isso é a MELHOR prática e é o que garante que o botão responda.
-    // Se o seu Next.js for mais antigo, pode dar erro; se der, APAGUE estas duas linhas:
-    // import { useFormStatus } from 'react-dom';
-    // const { pending } = useFormStatus();
-    
-    // Por enquanto, vamos manter o código o mais limpo possível.
+    const [ingressos, setIngressos] = useState([{ tipo: '', valor: '' }]);
+
+    // Adicionar novo campo de ingresso
+    const adicionarIngresso = () => {
+        setIngressos([...ingressos, { tipo: '', valor: '' }]);
+    };
+
+    // Remover campo de ingresso
+    const removerIngresso = (index) => {
+        if (ingressos.length > 1) {
+            const novosIngressos = ingressos.filter((_, i) => i !== index);
+            setIngressos(novosIngressos);
+        }
+    };
+
+    // Atualizar campo específico
+    const atualizarIngresso = (index, campo, valor) => {
+        const novosIngressos = [...ingressos];
+        novosIngressos[index][campo] = valor;
+        setIngressos(novosIngressos);
+    };
 
     return (
         <form 
@@ -54,16 +68,100 @@ export default function SubmitFormClient({ criarEvento, userEmail }) {
             <label htmlFor="local">Local (Endereço completo):</label>
             <input id="local" name="local" type="text" style={{ padding: '10px' }} required />
             
-            <label htmlFor="preco">Preço (Ex: 50,00 ou "Gratuito"):</label>
-            <input id="preco" name="preco" type="text" style={{ padding: '10px' }} required />
+            {/* SEÇÃO DE MÚLTIPLOS INGRESSOS */}
+            <div>
+                <label style={{ display: 'block', marginBottom: '15px', fontWeight: 'bold' }}>
+                    Tipos de Ingresso:
+                </label>
+                
+                {ingressos.map((ingresso, index) => (
+                    <div key={index} style={{ 
+                        display: 'flex', 
+                        gap: '10px', 
+                        alignItems: 'center', 
+                        marginBottom: '15px',
+                        padding: '15px',
+                        backgroundColor: '#f8f9fa',
+                        borderRadius: '5px'
+                    }}>
+                        <div style={{ flex: 1 }}>
+                            <label htmlFor={`tipo-${index}`} style={{ fontSize: '0.9em' }}>
+                                Tipo de Ingresso:
+                            </label>
+                            <input
+                                id={`tipo-${index}`}
+                                name={`ingresso_tipo_${index}`}
+                                type="text"
+                                placeholder="Ex: Inteira, Meia, Promocional"
+                                value={ingresso.tipo}
+                                onChange={(e) => atualizarIngresso(index, 'tipo', e.target.value)}
+                                style={{ padding: '10px', width: '100%' }}
+                                required
+                            />
+                        </div>
+                        
+                        <div style={{ flex: 1 }}>
+                            <label htmlFor={`valor-${index}`} style={{ fontSize: '0.9em' }}>
+                                Valor (R$):
+                            </label>
+                            <input
+                                id={`valor-${index}`}
+                                name={`ingresso_valor_${index}`}
+                                type="text"
+                                placeholder="Ex: 80,00 ou 40,00"
+                                value={ingresso.valor}
+                                onChange={(e) => atualizarIngresso(index, 'valor', e.target.value)}
+                                style={{ padding: '10px', width: '100%' }}
+                                required
+                            />
+                        </div>
+                        
+                        {ingressos.length > 1 && (
+                            <button
+                                type="button"
+                                onClick={() => removerIngresso(index)}
+                                style={{
+                                    backgroundColor: '#dc3545',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    padding: '10px 15px',
+                                    cursor: 'pointer',
+                                    marginTop: '20px'
+                                }}
+                            >
+                                ✕
+                            </button>
+                        )}
+                    </div>
+                ))}
+                
+                <button 
+                    type="button"
+                    onClick={adicionarIngresso}
+                    style={{
+                        backgroundColor: '#28a745',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '5px',
+                        padding: '12px 20px',
+                        cursor: 'pointer',
+                        fontWeight: 'bold',
+                        marginTop: '10px'
+                    }}
+                >
+                    + Adicionar outro tipo de ingresso
+                </button>
+            </div>
+
+            <input type="hidden" name="quantidade_ingressos" value={ingressos.length} />
             
             <label htmlFor="descricao">Descrição do Evento:</label>
             <textarea id="descricao" name="descricao" rows="5" style={{ padding: '10px' }}></textarea>
 
-            {/* BOTÃO FINAL (Mantemos a força de estilo) */}
+            {/* BOTÃO FINAL */}
             <button 
                 type="submit"
-                // disabled={pending} // Remover se der erro de pending
                 style={{ 
                     backgroundColor: '#f1c40f', 
                     color: 'black', 
@@ -73,14 +171,13 @@ export default function SubmitFormClient({ criarEvento, userEmail }) {
                     fontSize: '16px',
                     display: 'block', 
                     width: '100%',
-                    cursor: 'pointer', // Garantir que o ponteiro funcione
+                    cursor: 'pointer',
                     position: 'relative',
                     zIndex: 999 
                 }}
             >
                 Publicar Evento
             </button>
-
         </form>
     );
 }
