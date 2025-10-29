@@ -1,100 +1,165 @@
-// app/page.js - Página Inicial "Inteligente"
+// app/page.js (CÓDIGO COMPLETO E FINAL - Com Imagem e Layout Corrigido)
+import { createClient } from './utils/supabase/server';
+import Link from 'next/link';
 
-import { createClient } from '../utils/supabase/server';
-import { logout } from './actions-auth'; // Importa a ação de Logout
-
-export default async function HomePage() {
-  
-  // 1. CRIA O CLIENTE SUPABASE (igual a antes)
+export default async function Index() {
   const supabase = createClient();
 
-  // 2. TENTA BUSCAR O USUÁRIO LOGADO
-  const { data, error: userError } = await supabase.auth.getUser();
-const user = data?.user; // 'user' será o usuário ou 'null'
-
-  // 3. BUSCA OS EVENTOS (igual a antes, com a correção do 'select')
+  // 1. OBRIGATÓRIO: Obter a lista de eventos (agora com o novo campo 'imagem_url')
   const { data: eventos, error } = await supabase
     .from('eventos')
-    .select('id, nome, data, hora, local, preco, categoria')
-    .order('id', { ascending: false });
+    .select('*') // Seleciona todos os campos, incluindo 'imagem_url'
+    .order('data', { ascending: true });
 
-  if (error) {
-    console.error("Erro ao buscar eventos:", error);
-  }
+  // 2. OBRIGATÓRIO: Obter o usuário logado para a interface
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData.user;
+
+  // 3. Função para formatar a data
+  const formatarData = (dataStr) => {
+    try {
+      const dataObj = new Date(dataStr + 'T00:00:00'); // Adiciona T00:00:00 para evitar problemas de fuso horário
+      return dataObj.toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      });
+    } catch (e) {
+      return dataStr; // Retorna o original em caso de erro
+    }
+  };
 
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh' }}>
       
-      {/* CABEÇALHO ATUALIZADO */}
-      <header style={{ 
-        backgroundColor: '#5d34a4', color: 'white', padding: '20px', 
-        textAlign: 'center', display: 'flex', justifyContent: 'space-between', alignItems: 'center' 
-      }}>
-        
-        {/* Logo (clicável para a Home) */}
-        <a href="/" style={{ color: 'white', textDecoration: 'none' }}>
-          <h1 style={{ margin: '0', fontSize: '24px' }}>GOLDEN INGRESSOS</h1>
-        </a>
-
-        {/* Links de Ação (Login/Perfil/Publicar) */}
-        <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+      {/* Cabeçalho */}
+      <header style={{ backgroundColor: '#5d34a4', color: 'white', padding: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h1 style={{ margin: '0' }}>GOLDEN INGRESSOS</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           
-          <a href="/publicar-evento" style={{ backgroundColor: '#f1c40f', color: 'black', padding: '10px 15px', borderRadius: '5px', fontWeight: 'bold', textDecoration: 'none' }}>
-            Publicar Evento
-          </a>
-          
-          {/* A MÁGICA ACONTECE AQUI: */}
+          {/* Botão de Publicar Evento (Aparece se o usuário estiver logado) */}
           {user ? (
-            // Se o usuário ESTIVER logado:
-            <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-              <span style={{ fontSize: '14px' }}>Olá, {user.email}</span>
-              {/* Formulário de Logout (para segurança) */}
-              <form action={logout}>
-                <button type="submit" style={{ backgroundColor: 'transparent', color: 'white', border: '1px solid white', padding: '10px 15px', cursor: 'pointer', borderRadius: '5px' }}>
+            <Link href="/publicar-evento" style={{ 
+              backgroundColor: '#f1c40f', 
+              color: 'black', 
+              padding: '10px 15px', 
+              textDecoration: 'none', 
+              fontWeight: 'bold',
+              borderRadius: '5px'
+            }}>
+              Publicar Evento
+            </Link>
+          ) : (
+            <Link href="/login" style={{ 
+              backgroundColor: '#f1c40f', 
+              color: 'black', 
+              padding: '10px 15px', 
+              textDecoration: 'none', 
+              fontWeight: 'bold',
+              borderRadius: '5px'
+            }}>
+              Login / Produtor
+            </Link>
+          )}
+
+          {/* Nome e Botão de Sair (Aparece se o usuário estiver logado) */}
+          {user && (
+            <>
+              <span style={{ color: 'white' }}>Olá, {user.email}</span>
+              <form action="/auth/sign-out" method="post">
+                <button type="submit" style={{ 
+                  backgroundColor: '#c0392b', 
+                  color: 'white', 
+                  padding: '10px 15px', 
+                  border: 'none', 
+                  borderRadius: '5px', 
+                  cursor: 'pointer'
+                }}>
                   Sair
                 </button>
               </form>
-            </div>
-          ) : (
-            // Se o usuário NÃO ESTIVER logado:
-            <a href="/login" style={{ backgroundColor: 'white', color: '#5d34a4', padding: '10px 15px', borderRadius: '5px', fontWeight: 'bold', textDecoration: 'none' }}>
-              Login / Cadastrar
-            </a>
+            </>
           )}
         </div>
       </header>
 
-      {/* Conteúdo Principal (O RESTO DO CÓDIGO É IDÊNTICO) */}
-      <div style={{ width: '80%', margin: '20px auto', padding: '20px' }}>
-        <h2 style={{ color: '#5d34a4' }}>Eventos em Destaque</h2>
-        
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
-          
-          {(!eventos || eventos.length === 0) && (
-            <p>Ainda não há eventos publicados. Seja o primeiro!</p>
-          )}
+      {/* Conteúdo Principal (Lista de Eventos) */}
+      <main style={{ padding: '40px', maxWidth: '1200px', margin: '0 auto' }}>
+        <h2 style={{ color: '#5d34a4', borderBottom: '2px solid #5d34a4', paddingBottom: '10px', marginBottom: '30px' }}>
+          Eventos em Destaque
+        </h2>
 
-          {eventos && eventos.map(evento => (
-            <div key={evento.id} style={{ border: '1px solid #ddd', padding: '15px', borderRadius: '8px', backgroundColor: 'white', boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)' }}>
-              <span style={{ fontSize: '12px', color: '#5d34a4', fontWeight: 'bold' }}>{evento.categoria.toUpperCase()}</span>
-              <h3 style={{ color: '#333', marginTop: '5px' }}>{evento.nome}</h3>
-              <p>📅 Data: **{evento.data}** às **{evento.hora}**</p>
-              <p>📍 Local: **{evento.local}**</p>
-              <p>💰 Preço: **{evento.preco}**</p>
-              <a 
-                href={`/evento/${evento.id}`} 
-                style={{ 
-                  backgroundColor: '#f1c40f', color: 'black', padding: '10px 15px', 
-                  borderRadius: '5px', textDecoration: 'none', display: 'inline-block', 
-                  marginTop: '10px', fontWeight: 'bold'
-                }}
-              >
-                Comprar Ingresso
-              </a>
+        {/* Grade dos Eventos */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '30px' }}>
+          {error && <p style={{ color: 'red' }}>Erro ao carregar eventos.</p>}
+          {eventos && eventos.length === 0 && <p>Nenhum evento publicado ainda. Seja o primeiro!</p>}
+
+          {/* LOOP PELOS EVENTOS */}
+          {eventos && eventos.map((evento) => (
+            <div 
+              key={evento.id} 
+              style={{ 
+                backgroundColor: 'white', 
+                borderRadius: '10px', 
+                overflow: 'hidden', 
+                boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+                display: 'flex',
+                flexDirection: 'column'
+              }}
+            >
+              
+              {/* NOVO: Imagem do Evento (CRÍTICO: Esta parte exibe a URL salva) */}
+              {evento.imagem_url && (
+                <img 
+                  src={evento.imagem_url} 
+                  alt={`Capa do Evento: ${evento.nome}`} 
+                  style={{ width: '100%', height: '200px', objectFit: 'cover' }} 
+                />
+              )}
+              
+              {/* Conteúdo do Card */}
+              <div style={{ padding: '20px', flexGrow: 1 }}>
+                <p style={{ margin: '0 0 5px 0', fontSize: '0.8em', fontWeight: 'bold', color: '#f1c40f' }}>
+                  {evento.categoria ? evento.categoria.toUpperCase() : 'CATEGORIA INDEFINIDA'}
+                </p>
+                
+                <h3 style={{ color: '#2c3e50', margin: '0 0 15px 0', fontSize: '1.4em' }}>
+                  {evento.nome}
+                </h3>
+                
+                <p style={{ margin: '0 0 8px 0', fontSize: '0.9em' }}>
+                  🗓️ Data: **{formatarData(evento.data)}** às **{evento.hora}**
+                </p>
+                
+                <p style={{ margin: '0 0 8px 0', fontSize: '0.9em' }}>
+                  📍 Local: **{evento.local}**
+                </p>
+                
+                <p style={{ margin: '0 0 20px 0', fontSize: '1.1em', fontWeight: 'bold', color: '#27ae60' }}>
+                  💰 Preço: **{evento.preco}**
+                </p>
+
+                {/* Botão de Comprar Ingresso */}
+                <button 
+                  style={{ 
+                    backgroundColor: '#e67e22', 
+                    color: 'white', 
+                    padding: '10px 15px', 
+                    fontWeight: 'bold', 
+                    border: 'none', 
+                    borderRadius: '5px', 
+                    cursor: 'pointer',
+                    width: '100%'
+                  }}
+                  // FUTURO: Aqui a lógica levaria para a página de compra
+                >
+                  Comprar Ingresso
+                </button>
+              </div>
             </div>
           ))}
         </div>
-      </div>
+      </main>
     </div>
   );
 }
