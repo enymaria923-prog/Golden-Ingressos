@@ -1,20 +1,15 @@
-// app/publicar-evento/page.js
-// CÓDIGO FINAL (Com campo de imagem e proteção de produtor)
+// app/publicar-evento/page.js (REVISÃO COMPLETA DO BOTÃO)
 
-// import { redirect } from 'next/navigation'; // <-- REMOVEMOS O 'redirect'
 import { createClient } from '../../utils/supabase/server'; 
-import { criarEvento } from '../actions'; // Ação será modificada para lidar com a imagem
+import { criarEvento } from '../actions';
 
 export default async function PublicarEventoPage() {
   
   const supabase = createClient();
 
-  // 'getUser' robusto
   const { data, error: userError } = await supabase.auth.getUser();
-  const user = data?.user; // 'user' será o usuário ou 'null'
+  const user = data?.user;
 
-  // --- LÓGICA DE PROTEÇÃO DE PRODUTOR ---
-  // Se não houver usuário, MOSTRA A MENSAGEM DE ERRO (nova e bonita)
   if (userError || !user) {
     return (
       <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px', textAlign: 'center' }}>
@@ -26,7 +21,6 @@ export default async function PublicarEventoPage() {
       </div>
     );
   }
-  // Se houver usuário, a página continua a carregar:
 
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px' }}>
@@ -37,21 +31,19 @@ export default async function PublicarEventoPage() {
         <h1 style={{ margin: '0' }}>Publicar Novo Evento</h1>
       </header>
 
-      {/* Formulário (Agora com o novo campo de imagem) */}
+      {/* Formulário (O foco é garantir que o botão não esteja inativo) */}
       <div style={{ maxWidth: '800px', margin: '40px auto', padding: '30px', backgroundColor: 'white', borderRadius: '8px' }}>
         
-        <p>Logado como: {user.email}</p> {/* Prova de que o 'user' existe */}
+        <p>Logado como: {user.email}</p>
         
+        {/* CRÍTICO: O FORMULÁRIO COMEÇA AQUI */}
         <form action={criarEvento} style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginTop: '20px' }}>
           
           <label htmlFor="nome">Nome do Evento:</label>
           <input id="nome" name="nome" type="text" style={{ padding: '10px' }} required />
 
-          {/* NOVO CAMPO DE IMAGEM INSERIDO AQUI */}
           <label htmlFor="capa">Capa do Evento (Imagem):</label>
-          {/* CRÍTICO: O 'name' deve ser 'capa' e o 'type' deve ser 'file' */}
           <input id="capa" name="capa" type="file" accept="image/*" style={{ padding: '10px' }} required />
-          {/* FIM DO NOVO CAMPO */}
           
           <label htmlFor="categoria">Categoria:</label>
           <select id="categoria" name="categoria" style={{ padding: '10px' }} required>
@@ -73,12 +65,15 @@ export default async function PublicarEventoPage() {
           <label htmlFor="descricao">Descrição do Evento:</label>
           <textarea id="descricao" name="descricao" rows="5" style={{ padding: '10px' }}></textarea>
 
+          {/* BOTÃO FINAL (GARANTIR QUE O TYPE É SUBMIT E NÃO TEM DISABLED) */}
           <button 
             type="submit"
+            // Remover 'disabled' se estiver presente, e garantir que está dentro do <form>
             style={{ backgroundColor: '#f1c40f', color: 'black', padding: '15px', fontWeight: 'bold', border: 'none', cursor: 'pointer', fontSize: '16px' }}
           >
             Publicar Evento
           </button>
+        {/* CRÍTICO: O FORMULÁRIO TERMINA AQUI */}
         </form>
       </div>
     </div>
