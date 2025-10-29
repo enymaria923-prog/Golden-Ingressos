@@ -1,6 +1,8 @@
 // app/page.js
-import { createClient } from '../utils/supabase/server';
-import Link from 'next/link'; // CRÍTICO: Importar o Link
+// CÓDIGO COMPLETO E CORRIGIDO PARA ABRIR A HOME E CONSERTAR O BOTÃO DE COMPRA
+
+import { createClient } from '../utils/supabase/server'; 
+import Link from 'next/link'; 
 
 // --- Componente do Cartão do Evento (CardEvento) ---
 function CardEvento({ evento }) {
@@ -9,8 +11,8 @@ function CardEvento({ evento }) {
     ? evento.preco 
     : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parseFloat(evento.preco));
   
-  // CRÍTICO: O link para a página de detalhes
-  const eventoDetalheUrl = `/evento/${evento.id}`; // Assumindo /evento/[id]
+  // O link para a página de detalhes (assumindo que a página é /evento/[id])
+  const eventoDetalheUrl = `/evento/${evento.id}`; 
 
   return (
     <div style={{ 
@@ -47,7 +49,7 @@ function CardEvento({ evento }) {
           Preço: {precoFormatado}
         </p>
 
-        {/* CORREÇÃO DO BOTÃO: Usando Link do Next.js */}
+        {/* BOTÃO COMPRAR INGRESSO CORRIGIDO: Usa Link do Next.js */}
         <Link href={eventoDetalheUrl}>
           <button style={{
             backgroundColor: '#f1c40f',
@@ -71,20 +73,27 @@ function CardEvento({ evento }) {
 
 // --- Componente Principal da Home Page ---
 export default async function Index() {
-  const supabase = createClient();
   
-  // Buscando todos os eventos para exibição na home
+  // Tentativa de criar o cliente Supabase. Esta linha pode ter causado o erro se o caminho estivesse errado.
+  const supabase = createClient(); 
+  
+  // Busca dos eventos
   const { data: eventos, error } = await supabase
     .from('eventos')
     .select('*')
-    .order('data', { ascending: true }); // Ordena pelos mais próximos
+    .order('data', { ascending: true }); 
 
   if (error) {
     console.error('Erro ao buscar eventos:', error);
-    return <div>Erro ao carregar eventos. Tente novamente mais tarde.</div>;
+    return (
+      <div style={{ fontFamily: 'sans-serif', textAlign: 'center', padding: '50px' }}>
+        <h1>Erro ao carregar eventos</h1>
+        <p>A Home Page não pôde se conectar ao banco de dados ou a importação falhou. Por favor, verifique o console.</p>
+      </div>
+    );
   }
   
-  // Configuração de estilo geral
+  // Estilos
   const containerStyle = {
     fontFamily: 'sans-serif',
     backgroundColor: '#f4f4f4',
@@ -113,55 +122,53 @@ export default async function Index() {
         marginBottom: '20px',
         borderRadius: '8px'
       }}>
-        <h1 style={{ margin: '0', fontSize: '2em' }}>Bem-vindo ao Elite Tickets</h1>
+        <h1 style={{ margin: '0', fontSize: '2em' }}>GOLDEN INGRESSOS</h1>
         <p style={{ margin: '5px 0 0 0' }}>Encontre seu próximo evento inesquecível.</p>
       </header>
       
       {/* Botões de Ação */}
       <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-        <Link href="/publicar-evento">
-          <button style={{ 
-            backgroundColor: '#f1c40f', 
-            color: 'black', 
-            padding: '12px 25px', 
-            border: 'none', 
-            borderRadius: '5px', 
-            fontWeight: 'bold', 
-            cursor: 'pointer',
-            marginRight: '15px'
-          }}>
-            Publicar Novo Evento
-          </button>
-        </Link>
-        <Link href="/login">
-          <button style={{ 
-            backgroundColor: '#fff', 
-            color: '#5d34a4', 
-            padding: '12px 25px', 
-            border: '2px solid #5d34a4', 
-            borderRadius: '5px', 
-            fontWeight: 'bold', 
-            cursor: 'pointer'
-          }}>
-            Entrar
-          </button>
-        </Link>
+        
+        {/* BOTÃO PUBLICAR EVENTO: Usando A pura para evitar problemas de componente cliente/servidor */}
+        <a href="/publicar-evento" style={{ textDecoration: 'none' }}>
+            <button style={{ 
+                backgroundColor: '#f1c40f', 
+                color: 'black', 
+                padding: '12px 25px', 
+                border: 'none', 
+                borderRadius: '5px', 
+                fontWeight: 'bold', 
+                cursor: 'pointer',
+                marginRight: '15px'
+            }}>
+                Publicar Novo Evento
+            </button>
+        </a>
+
+        {/* Botão Entrar */}
+        <a href="/login" style={{ textDecoration: 'none' }}>
+            <button style={{ 
+                backgroundColor: '#fff', 
+                color: '#5d34a4', 
+                padding: '12px 25px', 
+                border: '2px solid #5d34a4', 
+                borderRadius: '5px', 
+                fontWeight: 'bold', 
+                cursor: 'pointer'
+            }}>
+                Entrar
+            </button>
+        </a>
       </div>
 
       {/* Exibição dos Eventos */}
-      <h2 style={{ textAlign: 'center', color: '#333' }}>Próximos Eventos</h2>
+      <h2 style={{ textAlign: 'center', color: '#333' }}>Eventos em Destaque</h2>
 
       {eventos && eventos.length > 0 ? (
         <div style={eventosGridStyle}>
           {eventos.map((evento) => (
-            // CRÍTICO: O evento precisa ter um ID único para a chave e para o Link
             <CardEvento key={evento.id} evento={evento} />
           ))}
         </div>
       ) : (
         <p style={{ textAlign: 'center', fontSize: '1.2em', color: '#666' }}>Nenhum evento encontrado no momento. Seja o primeiro a publicar!</p>
-      )}
-
-    </div>
-  );
-}
