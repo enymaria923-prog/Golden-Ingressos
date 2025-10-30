@@ -1,19 +1,21 @@
-// app/publicar-evento/SubmitFormClient.js - VERSÃO COM QUANTIDADE DE INGRESSOS
+// app/publicar-evento/SubmitFormClient.js - VERSÃO COM OPÇÃO DE CONTROLE
 'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function SubmitFormClient({ criarEvento, userEmail }) {
-    const [ingressos, setIngressos] = useState([{ tipo: '', valor: '', quantidade: '' }]);
+    const [ingressos, setIngressos] = useState([{ tipo: '', valor: '' }]);
     const [enviando, setEnviando] = useState(false);
     const [mensagem, setMensagem] = useState('');
     const [tipoMensagem, setTipoMensagem] = useState('');
+    const [controleQuantidade, setControleQuantidade] = useState('porTipo'); // 'porTipo' ou 'total'
+    const [quantidadeTotal, setQuantidadeTotal] = useState('');
     const router = useRouter();
 
     // Adicionar novo campo de ingresso
     const adicionarIngresso = () => {
-        setIngressos([...ingressos, { tipo: '', valor: '', quantidade: '' }]);
+        setIngressos([...ingressos, { tipo: '', valor: '' }]);
     };
 
     // Remover campo de ingresso
@@ -39,6 +41,12 @@ export default function SubmitFormClient({ criarEvento, userEmail }) {
 
         try {
             const formData = new FormData(e.target);
+            // Adicionar o modo de controle e a quantidade total ao formData
+            formData.append('controleQuantidade', controleQuantidade);
+            if (controleQuantidade === 'total') {
+                formData.append('quantidadeTotal', quantidadeTotal);
+            }
+            
             console.log('📤 Chamando função criarEvento...');
             
             // Chamar a Server Action
@@ -55,7 +63,8 @@ export default function SubmitFormClient({ criarEvento, userEmail }) {
                 
                 // Limpar formulário após sucesso
                 e.target.reset();
-                setIngressos([{ tipo: '', valor: '', quantidade: '' }]);
+                setIngressos([{ tipo: '', valor: '' }]);
+                setQuantidadeTotal('');
                 
                 // Redirecionar para home após 2 segundos
                 setTimeout(() => {
@@ -127,16 +136,62 @@ export default function SubmitFormClient({ criarEvento, userEmail }) {
             <label htmlFor="local">Local (Endereço completo):</label>
             <input id="local" name="local" type="text" style={{ padding: '10px' }} required />
             
-            {/* SEÇÃO DE MÚLTIPLOS INGRESSOS COM QUANTIDADE */}
+            {/* CONTROLE DE QUANTIDADE */}
             <div>
                 <label style={{ display: 'block', marginBottom: '15px', fontWeight: 'bold' }}>
-                    Tipos de Ingresso e Quantidades:
+                    Como deseja controlar os ingressos?
+                </label>
+                <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <input
+                            type="radio"
+                            value="porTipo"
+                            checked={controleQuantidade === 'porTipo'}
+                            onChange={(e) => setControleQuantidade(e.target.value)}
+                        />
+                        Controlar quantidade por tipo de ingresso
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <input
+                            type="radio"
+                            value="total"
+                            checked={controleQuantidade === 'total'}
+                            onChange={(e) => setControleQuantidade(e.target.value)}
+                        />
+                        Controlar quantidade total do evento
+                    </label>
+                </div>
+
+                {controleQuantidade === 'total' && (
+                    <div style={{ marginBottom: '20px' }}>
+                        <label htmlFor="quantidadeTotal" style={{ fontSize: '0.9em' }}>
+                            Quantidade Total de Ingressos:
+                        </label>
+                        <input
+                            id="quantidadeTotal"
+                            name="quantidadeTotal"
+                            type="number"
+                            placeholder="Ex: 100"
+                            min="1"
+                            value={quantidadeTotal}
+                            onChange={(e) => setQuantidadeTotal(e.target.value)}
+                            style={{ padding: '10px', width: '100%' }}
+                            required={controleQuantidade === 'total'}
+                        />
+                    </div>
+                )}
+            </div>
+            
+            {/* SEÇÃO DE MÚLTIPLOS INGRESSOS */}
+            <div>
+                <label style={{ display: 'block', marginBottom: '15px', fontWeight: 'bold' }}>
+                    Tipos de Ingresso{controleQuantidade === 'porTipo' ? ' e Quantidades' : ''}:
                 </label>
                 
                 {ingressos.map((ingresso, index) => (
                     <div key={index} style={{ 
                         display: 'grid',
-                        gridTemplateColumns: '1fr 1fr 1fr auto',
+                        gridTemplateColumns: controleQuantidade === 'porTipo' ? '1fr 1fr 1fr auto' : '1fr 1fr auto',
                         gap: '10px', 
                         alignItems: 'end', 
                         marginBottom: '15px',
@@ -176,22 +231,24 @@ export default function SubmitFormClient({ criarEvento, userEmail }) {
                             />
                         </div>
 
-                        <div>
-                            <label htmlFor={`quantidade-${index}`} style={{ fontSize: '0.9em' }}>
-                                Quantidade:
-                            </label>
-                            <input
-                                id={`quantidade-${index}`}
-                                name={`ingresso_quantidade_${index}`}
-                                type="number"
-                                placeholder="Ex: 100"
-                                min="1"
-                                value={ingresso.quantidade}
-                                onChange={(e) => atualizarIngresso(index, 'quantidade', e.target.value)}
-                                style={{ padding: '10px', width: '100%' }}
-                                required
-                            />
-                        </div>
+                        {controleQuantidade === 'porTipo' && (
+                            <div>
+                                <label htmlFor={`quantidade-${index}`} style={{ fontSize: '0.9em' }}>
+                                    Quantidade:
+                                </label>
+                                <input
+                                    id={`quantidade-${index}`}
+                                    name={`ingresso_quantidade_${index}`}
+                                    type="number"
+                                    placeholder="Ex: 100"
+                                    min="1"
+                                    value={ingresso.quantidade}
+                                    onChange={(e) => atualizarIngresso(index, 'quantidade', e.target.value)}
+                                    style={{ padding: '10px', width: '100%' }}
+                                    required={controleQuantidade === 'porTipo'}
+                                />
+                            </div>
+                        )}
                         
                         {ingressos.length > 1 && (
                             <button
