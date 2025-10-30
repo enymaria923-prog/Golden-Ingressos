@@ -5,6 +5,7 @@ import { useState } from 'react';
 
 export default function SubmitFormClient({ criarEvento, userEmail }) {
     const [ingressos, setIngressos] = useState([{ tipo: '', valor: '' }]);
+    const [enviando, setEnviando] = useState(false);
 
     // Adicionar novo campo de ingresso
     const adicionarIngresso = () => {
@@ -26,9 +27,35 @@ export default function SubmitFormClient({ criarEvento, userEmail }) {
         setIngressos(novosIngressos);
     };
 
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        console.log('🎯 FORMULÁRIO ENVIADO - Iniciando processo...');
+        setEnviando(true);
+
+        try {
+            const formData = new FormData(e.target);
+            console.log('📤 Chamando função criarEvento...');
+            
+            // Chamar a Server Action
+            const resultado = await criarEvento(formData);
+            
+            if (resultado?.error) {
+                console.error('❌ Erro da Server Action:', resultado.error);
+                alert('Erro: ' + resultado.error);
+            } else {
+                console.log('✅ Server Action concluída com sucesso!');
+            }
+        } catch (error) {
+            console.error('💥 Erro ao enviar formulário:', error);
+            alert('Erro ao publicar evento: ' + error.message);
+        } finally {
+            setEnviando(false);
+        }
+    };
+
     return (
         <form 
-            action={criarEvento} 
+            onSubmit={handleSubmit}
             style={{ 
                 maxWidth: '800px', 
                 margin: '40px auto', 
@@ -159,11 +186,12 @@ export default function SubmitFormClient({ criarEvento, userEmail }) {
             <label htmlFor="descricao">Descrição do Evento:</label>
             <textarea id="descricao" name="descricao" rows="5" style={{ padding: '10px' }}></textarea>
 
-            {/* BOTÃO FINAL */}
+            {/* BOTÃO FINAL - AGORA COM onSubmit */}
             <button 
                 type="submit"
+                disabled={enviando}
                 style={{ 
-                    backgroundColor: '#f1c40f', 
+                    backgroundColor: enviando ? '#cccccc' : '#f1c40f', 
                     color: 'black', 
                     padding: '15px', 
                     fontWeight: 'bold', 
@@ -171,12 +199,10 @@ export default function SubmitFormClient({ criarEvento, userEmail }) {
                     fontSize: '16px',
                     display: 'block', 
                     width: '100%',
-                    cursor: 'pointer',
-                    position: 'relative',
-                    zIndex: 999 
+                    cursor: enviando ? 'not-allowed' : 'pointer'
                 }}
             >
-                Publicar Evento
+                {enviando ? 'Publicando...' : 'Publicar Evento'}
             </button>
         </form>
     );
