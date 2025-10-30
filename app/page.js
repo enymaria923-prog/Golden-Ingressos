@@ -1,5 +1,6 @@
 import { createClient } from '../utils/supabase/server.js';
 import Link from 'next/link';
+import { logout } from './actions-auth';
 
 // Componente SIMPLES do Cartão
 function CardEvento({ evento }) {
@@ -63,7 +64,7 @@ function UserMenu({ user }) {
         <Link href="/favoritos" style={{ display: 'block', padding: '8px 0', color: '#333', textDecoration: 'none' }}>
           Favoritos
         </Link>
-        <form action="/auth/logout" method="POST" style={{ marginTop: '10px', borderTop: '1px solid #eee', paddingTop: '10px' }}>
+        <form action={logout} style={{ marginTop: '10px', borderTop: '1px solid #eee', paddingTop: '10px' }}>
           <button 
             type="submit"
             style={{ 
