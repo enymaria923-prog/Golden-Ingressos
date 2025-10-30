@@ -1,11 +1,15 @@
-// app/publicar-evento/SubmitFormClient.js - VERSÃO CORRIGIDA
+// app/publicar-evento/SubmitFormClient.js - VERSÃO COM MENSAGEM DE SUCESSO
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function SubmitFormClient({ criarEvento, userEmail }) {
     const [ingressos, setIngressos] = useState([{ tipo: '', valor: '' }]);
     const [enviando, setEnviando] = useState(false);
+    const [mensagem, setMensagem] = useState('');
+    const [tipoMensagem, setTipoMensagem] = useState(''); // 'sucesso' ou 'erro'
+    const router = useRouter();
 
     // Adicionar novo campo de ingresso
     const adicionarIngresso = () => {
@@ -31,6 +35,7 @@ export default function SubmitFormClient({ criarEvento, userEmail }) {
         e.preventDefault();
         console.log('🎯 FORMULÁRIO ENVIADO - Iniciando processo...');
         setEnviando(true);
+        setMensagem('');
 
         try {
             const formData = new FormData(e.target);
@@ -41,13 +46,26 @@ export default function SubmitFormClient({ criarEvento, userEmail }) {
             
             if (resultado?.error) {
                 console.error('❌ Erro da Server Action:', resultado.error);
-                alert('Erro: ' + resultado.error);
-            } else {
-                console.log('✅ Server Action concluída com sucesso!');
+                setMensagem('❌ ' + resultado.error);
+                setTipoMensagem('erro');
+            } else if (resultado?.success) {
+                console.log('✅ Evento publicado com sucesso!');
+                setMensagem('✅ ' + resultado.message);
+                setTipoMensagem('sucesso');
+                
+                // Limpar formulário após sucesso
+                e.target.reset();
+                setIngressos([{ tipo: '', valor: '' }]);
+                
+                // Redirecionar para home após 2 segundos
+                setTimeout(() => {
+                    router.push('/');
+                }, 2000);
             }
         } catch (error) {
             console.error('💥 Erro ao enviar formulário:', error);
-            alert('Erro ao publicar evento: ' + error.message);
+            setMensagem('💥 Erro ao publicar evento: ' + error.message);
+            setTipoMensagem('erro');
         } finally {
             setEnviando(false);
         }
@@ -68,6 +86,20 @@ export default function SubmitFormClient({ criarEvento, userEmail }) {
                 marginTop: '20px' 
             }}
         >
+            {/* MENSAGEM DE STATUS */}
+            {mensagem && (
+                <div style={{
+                    padding: '15px',
+                    borderRadius: '5px',
+                    backgroundColor: tipoMensagem === 'sucesso' ? '#d4edda' : '#f8d7da',
+                    color: tipoMensagem === 'sucesso' ? '#155724' : '#721c24',
+                    border: `1px solid ${tipoMensagem === 'sucesso' ? '#c3e6cb' : '#f5c6cb'}`,
+                    fontWeight: 'bold'
+                }}>
+                    {mensagem}
+                </div>
+            )}
+
             <p style={{ margin: '0' }}>Logado como: {userEmail}</p>
 
             <label htmlFor="nome">Nome do Evento:</label>
@@ -186,7 +218,7 @@ export default function SubmitFormClient({ criarEvento, userEmail }) {
             <label htmlFor="descricao">Descrição do Evento:</label>
             <textarea id="descricao" name="descricao" rows="5" style={{ padding: '10px' }}></textarea>
 
-            {/* BOTÃO FINAL - AGORA COM onSubmit */}
+            {/* BOTÃO FINAL */}
             <button 
                 type="submit"
                 disabled={enviando}
