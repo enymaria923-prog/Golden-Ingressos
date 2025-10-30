@@ -1,19 +1,19 @@
-// app/publicar-evento/SubmitFormClient.js - VERSÃO COM MENSAGEM DE SUCESSO
+// app/publicar-evento/SubmitFormClient.js - VERSÃO COM QUANTIDADE DE INGRESSOS
 'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function SubmitFormClient({ criarEvento, userEmail }) {
-    const [ingressos, setIngressos] = useState([{ tipo: '', valor: '' }]);
+    const [ingressos, setIngressos] = useState([{ tipo: '', valor: '', quantidade: '' }]);
     const [enviando, setEnviando] = useState(false);
     const [mensagem, setMensagem] = useState('');
-    const [tipoMensagem, setTipoMensagem] = useState(''); // 'sucesso' ou 'erro'
+    const [tipoMensagem, setTipoMensagem] = useState('');
     const router = useRouter();
 
     // Adicionar novo campo de ingresso
     const adicionarIngresso = () => {
-        setIngressos([...ingressos, { tipo: '', valor: '' }]);
+        setIngressos([...ingressos, { tipo: '', valor: '', quantidade: '' }]);
     };
 
     // Remover campo de ingresso
@@ -55,7 +55,7 @@ export default function SubmitFormClient({ criarEvento, userEmail }) {
                 
                 // Limpar formulário após sucesso
                 e.target.reset();
-                setIngressos([{ tipo: '', valor: '' }]);
+                setIngressos([{ tipo: '', valor: '', quantidade: '' }]);
                 
                 // Redirecionar para home após 2 segundos
                 setTimeout(() => {
@@ -127,31 +127,32 @@ export default function SubmitFormClient({ criarEvento, userEmail }) {
             <label htmlFor="local">Local (Endereço completo):</label>
             <input id="local" name="local" type="text" style={{ padding: '10px' }} required />
             
-            {/* SEÇÃO DE MÚLTIPLOS INGRESSOS */}
+            {/* SEÇÃO DE MÚLTIPLOS INGRESSOS COM QUANTIDADE */}
             <div>
                 <label style={{ display: 'block', marginBottom: '15px', fontWeight: 'bold' }}>
-                    Tipos de Ingresso:
+                    Tipos de Ingresso e Quantidades:
                 </label>
                 
                 {ingressos.map((ingresso, index) => (
                     <div key={index} style={{ 
-                        display: 'flex', 
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 1fr 1fr auto',
                         gap: '10px', 
-                        alignItems: 'center', 
+                        alignItems: 'end', 
                         marginBottom: '15px',
                         padding: '15px',
                         backgroundColor: '#f8f9fa',
                         borderRadius: '5px'
                     }}>
-                        <div style={{ flex: 1 }}>
+                        <div>
                             <label htmlFor={`tipo-${index}`} style={{ fontSize: '0.9em' }}>
-                                Tipo de Ingresso:
+                                Tipo:
                             </label>
                             <input
                                 id={`tipo-${index}`}
                                 name={`ingresso_tipo_${index}`}
                                 type="text"
-                                placeholder="Ex: Inteira, Meia, Promocional"
+                                placeholder="Ex: Inteira"
                                 value={ingresso.tipo}
                                 onChange={(e) => atualizarIngresso(index, 'tipo', e.target.value)}
                                 style={{ padding: '10px', width: '100%' }}
@@ -159,7 +160,7 @@ export default function SubmitFormClient({ criarEvento, userEmail }) {
                             />
                         </div>
                         
-                        <div style={{ flex: 1 }}>
+                        <div>
                             <label htmlFor={`valor-${index}`} style={{ fontSize: '0.9em' }}>
                                 Valor (R$):
                             </label>
@@ -167,9 +168,26 @@ export default function SubmitFormClient({ criarEvento, userEmail }) {
                                 id={`valor-${index}`}
                                 name={`ingresso_valor_${index}`}
                                 type="text"
-                                placeholder="Ex: 80,00 ou 40,00"
+                                placeholder="Ex: 80,00"
                                 value={ingresso.valor}
                                 onChange={(e) => atualizarIngresso(index, 'valor', e.target.value)}
+                                style={{ padding: '10px', width: '100%' }}
+                                required
+                            />
+                        </div>
+
+                        <div>
+                            <label htmlFor={`quantidade-${index}`} style={{ fontSize: '0.9em' }}>
+                                Quantidade:
+                            </label>
+                            <input
+                                id={`quantidade-${index}`}
+                                name={`ingresso_quantidade_${index}`}
+                                type="number"
+                                placeholder="Ex: 100"
+                                min="1"
+                                value={ingresso.quantidade}
+                                onChange={(e) => atualizarIngresso(index, 'quantidade', e.target.value)}
                                 style={{ padding: '10px', width: '100%' }}
                                 required
                             />
@@ -186,7 +204,7 @@ export default function SubmitFormClient({ criarEvento, userEmail }) {
                                     borderRadius: '4px',
                                     padding: '10px 15px',
                                     cursor: 'pointer',
-                                    marginTop: '20px'
+                                    height: 'fit-content'
                                 }}
                             >
                                 ✕
