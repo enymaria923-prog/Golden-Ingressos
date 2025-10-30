@@ -1,4 +1,4 @@
-// app/actions.js - VERSÃO COM CONTROLE DE QUANTIDADE DE INGRESSOS
+// app/actions.js - VERSÃO COM DOIS MODOS DE CONTROLE
 'use server';
 
 import { createClient } from '../utils/supabase/server'; 
@@ -25,8 +25,10 @@ export async function criarEvento(formData) {
   const hora = formData.get('hora');
   const local = formData.get('local');
   const descricao = formData.get('descricao');
+  const controleQuantidade = formData.get('controleQuantidade');
+  const quantidadeTotal = formData.get('quantidadeTotal');
   
-  // 3. EXTRAIR INGRESSOS COM QUANTIDADE
+  // 3. EXTRAIR INGRESSOS
   const quantidadeIngressos = parseInt(formData.get('quantidade_ingressos')) || 1;
   const ingressos = [];
   let totalIngressosEvento = 0;
@@ -34,16 +36,35 @@ export async function criarEvento(formData) {
   for (let i = 0; i < quantidadeIngressos; i++) {
     const tipo = formData.get(`ingresso_tipo_${i}`);
     const valor = formData.get(`ingresso_valor_${i}`);
-    const quantidade = parseInt(formData.get(`ingresso_quantidade_${i}`)) || 0;
+    let quantidade = 0;
+
+    if (controleQuantidade === 'porTipo') {
+      quantidade = parseInt(formData.get(`ingresso_quantidade_${i}`)) || 0;
+    } else if (controleQuantidade === 'total') {
+      // No modo total, a quantidade por tipo é ilimitada (até o total), então não usamos o campo de quantidade por tipo.
+      // Vamos definir uma quantidade muito alta para cada tipo, mas o controle será pelo total.
+      // Na prática, não armazenamos a quantidade por tipo, mas sim o total do evento.
+      quantidade = 999999; // Simboliza ilimitado por tipo, mas o total é controlado.
+    }
     
-    if (tipo && valor && quantidade > 0) {
+    if (tipo && valor) {
       ingressos.push({ tipo, valor, quantidade });
-      totalIngressosEvento += quantidade;
+      if (controleQuantidade === 'porTipo') {
+        totalIngressosEvento += quantidade;
+      }
     }
   }
   
   if (ingressos.length === 0) {
-    return { error: 'Adicione pelo menos um tipo de ingresso com quantidade válida.' };
+    return { error: 'Adicione pelo menos um tipo de ingresso.' };
+  }
+
+  // No modo total, usamos a quantidadeTotal fornecida
+  if (controleQuantidade === 'total') {
+    totalIngressosEvento = parseInt(quantidadeTotal) || 0;
+    if (totalIngressosEvento <= 0) {
+      return { error: 'A quantidade total deve ser maior que zero.' };
+    }
   }
 
   // 4. UPLOAD DE IMAGEM (OPCIONAL)
@@ -69,7 +90,7 @@ export async function criarEvento(formData) {
     }
   }
 
-  // 5. INSERIR EVENTO COM TOTAL DE INGRESSOS
+  // 5. INSERIR EVENTO
   const eventoData = {
     nome,
     imagem_url: imagem_url,
@@ -81,7 +102,8 @@ export async function criarEvento(formData) {
     descricao,
     preco: ingressos[0].valor,
     total_ingressos: totalIngressosEvento,
-    ingressos_vendidos: 0
+    ingressos_vendidos: 0,
+    controle_quantidade: controleQuantidade // Salvar o modo de controle
   };
 
   const { data: eventoInserido, error: insertError } = await supabase
@@ -95,7 +117,7 @@ export async function criarEvento(formData) {
     return { error: 'Falha ao publicar: ' + insertError.message };
   }
 
-  // 6. INSERIR INGRESSOS COM QUANTIDADE
+  // 6. INSERIR INGRESSOS
   const ingressosParaInserir = ingressos.map(ingresso => ({
     evento_id: eventoInserido.id,
     tipo: ingresso.tipo,
