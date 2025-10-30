@@ -1,4 +1,4 @@
-// app/evento/[id]/page.js - VERSÃO COM CONTROLE DE QUANTIDADE
+// app/evento/[id]/page.js - VERSÃO COM DOIS MODOS DE CONTROLE
 import { createClient } from '../../../utils/supabase/server';
 import Link from 'next/link';
 
@@ -6,7 +6,6 @@ export default async function EventoDetalhe(props) {
   const supabase = createClient();
   
   try {
-    // CORREÇÃO: Acessar params corretamente no Next.js 14
     const { id } = await props.params;
     console.log('🔍 Buscando evento com ID:', id);
 
@@ -18,45 +17,13 @@ export default async function EventoDetalhe(props) {
     const { data: evento, error } = await supabase
       .from('eventos')
       .select('*')
-      .eq('id', parseInt(id)) // Garantir que é número
+      .eq('id', parseInt(id))
       .single();
 
-    // SE NÃO ENCONTRAR O EVENTO
     if (error || !evento) {
       console.error('❌ Evento não encontrado:', error);
       return (
-        <div style={{ 
-          fontFamily: 'sans-serif', 
-          padding: '50px 20px', 
-          textAlign: 'center',
-          backgroundColor: '#f4f4f4',
-          minHeight: '100vh'
-        }}>
-          <div style={{ 
-            backgroundColor: 'white', 
-            padding: '40px', 
-            borderRadius: '8px',
-            maxWidth: '500px',
-            margin: '0 auto',
-            boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
-          }}>
-            <h1 style={{ color: '#5d34a4', marginBottom: '20px' }}>Evento Não Encontrado</h1>
-            <p style={{ marginBottom: '30px', color: '#666' }}>
-              O evento que você está procurando não existe ou foi removido.
-            </p>
-            <Link href="/" style={{
-              backgroundColor: '#f1c40f',
-              color: 'black',
-              padding: '12px 25px',
-              textDecoration: 'none',
-              borderRadius: '5px',
-              fontWeight: 'bold',
-              display: 'inline-block'
-            }}>
-              Voltar para a Home
-            </Link>
-          </div>
-        </div>
+        // ... (mesmo código de erro anterior)
       );
     }
 
@@ -68,7 +35,6 @@ export default async function EventoDetalhe(props) {
 
     console.log('✅ Evento encontrado:', evento.nome);
 
-    // FORMATAR DATA
     const dataFormatada = new Date(evento.data).toLocaleDateString('pt-BR');
     
     return (
@@ -93,7 +59,6 @@ export default async function EventoDetalhe(props) {
           <h1 style={{ margin: 0, textAlign: 'center' }}>Detalhes do Evento</h1>
         </header>
 
-        {/* CONTEÚDO PRINCIPAL */}
         <div style={{ 
           display: 'flex', 
           flexWrap: 'wrap', 
@@ -102,7 +67,6 @@ export default async function EventoDetalhe(props) {
           margin: '0 auto' 
         }}>
           
-          {/* IMAGEM DO EVENTO */}
           <div style={{ flex: '1 1 400px' }}>
             <img 
               src={evento.imagem_url} 
@@ -115,7 +79,6 @@ export default async function EventoDetalhe(props) {
             />
           </div>
 
-          {/* DETALHES DO EVENTO */}
           <div style={{ 
             flex: '1 1 400px', 
             backgroundColor: 'white', 
@@ -156,57 +119,84 @@ export default async function EventoDetalhe(props) {
               </div>
             </div>
 
-            {/* TIPOS DE INGRESSOS COM QUANTIDADE */}
+            {/* TIPOS DE INGRESSOS - MOSTRAR DE ACORDO COM O MODO */}
             <div style={{ marginBottom: '30px' }}>
               <h3 style={{ color: '#333', marginBottom: '15px' }}>Tipos de Ingresso Disponíveis</h3>
               {ingressos && ingressos.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {ingressos.map((ingresso, index) => {
-                    const disponiveis = (ingresso.quantidade || 0) - (ingresso.vendidos || 0);
-                    const esgotado = disponiveis <= 0;
-                    
-                    return (
-                      <div key={index} style={{
-                        display: 'grid',
-                        gridTemplateColumns: '1fr 1fr 1fr',
-                        gap: '15px',
-                        alignItems: 'center',
-                        padding: '15px',
-                        backgroundColor: esgotado ? '#fff3cd' : '#f8f9fa',
-                        borderRadius: '5px',
-                        border: `1px solid ${esgotado ? '#ffeaa7' : '#e9ecef'}`
-                      }}>
-                        <div>
-                          <strong style={{ display: 'block', marginBottom: '5px' }}>{ingresso.tipo}</strong>
+                    // Modo por tipo: mostra quantidade por tipo
+                    if (evento.controle_quantidade === 'porTipo') {
+                      const disponiveis = (ingresso.quantidade || 0) - (ingresso.vendidos || 0);
+                      const esgotado = disponiveis <= 0;
+                      
+                      return (
+                        <div key={index} style={{
+                          display: 'grid',
+                          gridTemplateColumns: '1fr 1fr 1fr',
+                          gap: '15px',
+                          alignItems: 'center',
+                          padding: '15px',
+                          backgroundColor: esgotado ? '#fff3cd' : '#f8f9fa',
+                          borderRadius: '5px',
+                          border: `1px solid ${esgotado ? '#ffeaa7' : '#e9ecef'}`
+                        }}>
+                          <div>
+                            <strong style={{ display: 'block', marginBottom: '5px' }}>{ingresso.tipo}</strong>
+                            <span style={{ 
+                              backgroundColor: esgotado ? '#dc3545' : '#f1c40f', 
+                              color: 'white', 
+                              padding: '5px 10px', 
+                              borderRadius: '4px',
+                              fontWeight: 'bold',
+                              fontSize: '0.9em'
+                            }}>
+                              R$ {ingresso.valor}
+                            </span>
+                          </div>
+                          <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: '0.9em', color: '#666' }}>Disponíveis</div>
+                            <div style={{ 
+                              fontWeight: 'bold', 
+                              color: esgotado ? '#dc3545' : '#28a745',
+                              fontSize: esgotado ? '0.9em' : '1em'
+                            }}>
+                              {esgotado ? 'ESGOTADO' : disponiveis}
+                            </div>
+                          </div>
+                          <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: '0.9em', color: '#666' }}>Vendidos</div>
+                            <div style={{ fontWeight: 'bold', color: '#6c757d' }}>
+                              {ingresso.vendidos || 0}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    } else {
+                      // Modo total: não mostra quantidade por tipo, apenas o preço
+                      return (
+                        <div key={index} style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          padding: '15px',
+                          backgroundColor: '#f8f9fa',
+                          borderRadius: '5px',
+                          border: '1px solid #e9ecef'
+                        }}>
+                          <span style={{ fontWeight: 'bold' }}>{ingresso.tipo}</span>
                           <span style={{ 
-                            backgroundColor: esgotado ? '#dc3545' : '#f1c40f', 
-                            color: 'white', 
+                            backgroundColor: '#f1c40f', 
+                            color: 'black', 
                             padding: '5px 10px', 
                             borderRadius: '4px',
-                            fontWeight: 'bold',
-                            fontSize: '0.9em'
+                            fontWeight: 'bold'
                           }}>
                             R$ {ingresso.valor}
                           </span>
                         </div>
-                        <div style={{ textAlign: 'center' }}>
-                          <div style={{ fontSize: '0.9em', color: '#666' }}>Disponíveis</div>
-                          <div style={{ 
-                            fontWeight: 'bold', 
-                            color: esgotado ? '#dc3545' : '#28a745',
-                            fontSize: esgotado ? '0.9em' : '1em'
-                          }}>
-                            {esgotado ? 'ESGOTADO' : disponiveis}
-                          </div>
-                        </div>
-                        <div style={{ textAlign: 'center' }}>
-                          <div style={{ fontSize: '0.9em', color: '#666' }}>Vendidos</div>
-                          <div style={{ fontWeight: 'bold', color: '#6c757d' }}>
-                            {ingresso.vendidos || 0}
-                          </div>
-                        </div>
-                      </div>
-                    );
+                      );
+                    }
                   })}
                 </div>
               ) : (
@@ -281,38 +271,7 @@ export default async function EventoDetalhe(props) {
   } catch (error) {
     console.error('💥 Erro crítico:', error);
     return (
-      <div style={{ 
-        fontFamily: 'sans-serif', 
-        padding: '50px 20px', 
-        textAlign: 'center',
-        backgroundColor: '#f4f4f4',
-        minHeight: '100vh'
-      }}>
-        <div style={{ 
-          backgroundColor: 'white', 
-          padding: '40px', 
-          borderRadius: '8px',
-          maxWidth: '500px',
-          margin: '0 auto',
-          boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
-        }}>
-          <h1 style={{ color: '#5d34a4', marginBottom: '20px' }}>Erro ao Carregar</h1>
-          <p style={{ marginBottom: '30px', color: '#666' }}>
-            Ocorreu um erro ao carregar os detalhes do evento.
-          </p>
-          <Link href="/" style={{
-            backgroundColor: '#f1c40f',
-            color: 'black',
-            padding: '12px 25px',
-            textDecoration: 'none',
-            borderRadius: '5px',
-            fontWeight: 'bold',
-            display: 'inline-block'
-          }}>
-            Voltar para a Home
-          </Link>
-        </div>
-      </div>
+      // ... (mesmo código de erro anterior)
     );
   }
 }
