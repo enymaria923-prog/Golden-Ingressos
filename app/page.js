@@ -21,18 +21,12 @@ function CardEvento({ evento }) {
   );
 }
 
-// Componente do Menu do Usuário Logado - AGORA COM CLIENTE
-'use client';
-import { useState } from 'react';
-
+// Componente simples do Menu do Usuário (sem estado por enquanto)
 function UserMenu({ user }) {
-  const [isOpen, setIsOpen] = useState(false);
-
   return (
-    <div style={{ position: 'relative', display: 'inline-block' }}>
-      <button 
-        onClick={() => setIsOpen(!isOpen)}
-        style={{ 
+    <div style={{ display: 'inline-block' }}>
+      <Link href="/perfil">
+        <button style={{ 
           backgroundColor: '#fff', 
           color: '#5d34a4', 
           padding: '12px 25px', 
@@ -43,62 +37,15 @@ function UserMenu({ user }) {
           display: 'flex',
           alignItems: 'center',
           gap: '8px'
-        }}
-      >
-        👤 Minha Conta
-      </button>
-      
-      {/* Menu dropdown - só aparece quando isOpen for true */}
-      {isOpen && (
-        <div style={{
-          position: 'absolute',
-          top: '100%',
-          right: 0,
-          backgroundColor: 'white',
-          border: '1px solid #ddd',
-          borderRadius: '5px',
-          boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
-          padding: '10px',
-          minWidth: '150px',
-          marginTop: '5px',
-          zIndex: 1000
         }}>
-          <p style={{ margin: '0 0 10px 0', fontWeight: 'bold', color: '#5d34a4', fontSize: '14px' }}>
-            Olá, {user.email?.split('@')[0]}
-          </p>
-          <Link href="/perfil" style={{ display: 'block', padding: '8px 0', color: '#333', textDecoration: 'none', fontSize: '14px' }}>
-            Meu Perfil
-          </Link>
-          <Link href="/meus-ingressos" style={{ display: 'block', padding: '8px 0', color: '#333', textDecoration: 'none', fontSize: '14px' }}>
-            Meus Ingressos
-          </Link>
-          <Link href="/favoritos" style={{ display: 'block', padding: '8px 0', color: '#333', textDecoration: 'none', fontSize: '14px' }}>
-            Favoritos
-          </Link>
-          <form action={logout} style={{ marginTop: '10px', borderTop: '1px solid #eee', paddingTop: '10px' }}>
-            <button 
-              type="submit"
-              style={{ 
-                backgroundColor: 'transparent', 
-                color: '#ff4444', 
-                border: 'none', 
-                cursor: 'pointer',
-                width: '100%',
-                textAlign: 'left',
-                padding: '8px 0',
-                fontSize: '14px'
-              }}
-            >
-              Sair
-            </button>
-          </form>
-        </div>
-      )}
+          👤 Minha Conta
+        </button>
+      </Link>
     </div>
   );
 }
 
-// Componente principal (servidor)
+// Componente principal
 export default async function Index() {
   const supabase = createClient();
   
@@ -130,7 +77,7 @@ export default async function Index() {
           </button>
         </Link>
         
-        {/* Botão condicional - mostra "Entrar" ou menu do usuário */}
+        {/* Botão condicional - mostra "Entrar" ou "Minha Conta" */}
         {user ? (
           <UserMenu user={user} />
         ) : (
