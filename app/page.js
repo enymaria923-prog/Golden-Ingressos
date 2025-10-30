@@ -1,6 +1,6 @@
 import { createClient } from '../utils/supabase/server.js';
 import Link from 'next/link';
-import { logout } from './actions-auth';
+import UserDropdown from './components/UserDropdown';
 
 // Componente SIMPLES do Cartão
 function CardEvento({ evento }) {
@@ -17,30 +17,6 @@ function CardEvento({ evento }) {
           </button>
         </Link>
       </div>
-    </div>
-  );
-}
-
-// Componente simples do Menu do Usuário (sem estado por enquanto)
-function UserMenu({ user }) {
-  return (
-    <div style={{ display: 'inline-block' }}>
-      <Link href="/perfil">
-        <button style={{ 
-          backgroundColor: '#fff', 
-          color: '#5d34a4', 
-          padding: '12px 25px', 
-          border: '2px solid #5d34a4', 
-          borderRadius: '5px', 
-          fontWeight: 'bold', 
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px'
-        }}>
-          👤 Minha Conta
-        </button>
-      </Link>
     </div>
   );
 }
@@ -77,9 +53,9 @@ export default async function Index() {
           </button>
         </Link>
         
-        {/* Botão condicional - mostra "Entrar" ou "Minha Conta" */}
+        {/* Botão condicional - mostra "Entrar" ou menu do usuário */}
         {user ? (
-          <UserMenu user={user} />
+          <UserDropdown user={user} />
         ) : (
           <Link href="/login">
             <button style={{ backgroundColor: '#fff', color: '#5d34a4', padding: '12px 25px', border: '2px solid #5d34a4', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>
