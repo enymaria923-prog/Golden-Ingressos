@@ -1,4 +1,4 @@
-// app/evento/[id]/page.js - VERSÃO CORRIGIDA
+// app/evento/[id]/page.js - VERSÃO COM CONTROLE DE QUANTIDADE
 import { createClient } from '../../../utils/supabase/server';
 import Link from 'next/link';
 
@@ -156,33 +156,58 @@ export default async function EventoDetalhe(props) {
               </div>
             </div>
 
-            {/* TIPOS DE INGRESSOS */}
+            {/* TIPOS DE INGRESSOS COM QUANTIDADE */}
             <div style={{ marginBottom: '30px' }}>
               <h3 style={{ color: '#333', marginBottom: '15px' }}>Tipos de Ingresso Disponíveis</h3>
               {ingressos && ingressos.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {ingressos.map((ingresso, index) => (
-                    <div key={index} style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      padding: '15px',
-                      backgroundColor: '#f8f9fa',
-                      borderRadius: '5px',
-                      border: '1px solid #e9ecef'
-                    }}>
-                      <span style={{ fontWeight: 'bold' }}>{ingresso.tipo}</span>
-                      <span style={{ 
-                        backgroundColor: '#f1c40f', 
-                        color: 'black', 
-                        padding: '5px 10px', 
-                        borderRadius: '4px',
-                        fontWeight: 'bold'
+                  {ingressos.map((ingresso, index) => {
+                    const disponiveis = (ingresso.quantidade || 0) - (ingresso.vendidos || 0);
+                    const esgotado = disponiveis <= 0;
+                    
+                    return (
+                      <div key={index} style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 1fr 1fr',
+                        gap: '15px',
+                        alignItems: 'center',
+                        padding: '15px',
+                        backgroundColor: esgotado ? '#fff3cd' : '#f8f9fa',
+                        borderRadius: '5px',
+                        border: `1px solid ${esgotado ? '#ffeaa7' : '#e9ecef'}`
                       }}>
-                        R$ {ingresso.valor}
-                      </span>
-                    </div>
-                  ))}
+                        <div>
+                          <strong style={{ display: 'block', marginBottom: '5px' }}>{ingresso.tipo}</strong>
+                          <span style={{ 
+                            backgroundColor: esgotado ? '#dc3545' : '#f1c40f', 
+                            color: 'white', 
+                            padding: '5px 10px', 
+                            borderRadius: '4px',
+                            fontWeight: 'bold',
+                            fontSize: '0.9em'
+                          }}>
+                            R$ {ingresso.valor}
+                          </span>
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: '0.9em', color: '#666' }}>Disponíveis</div>
+                          <div style={{ 
+                            fontWeight: 'bold', 
+                            color: esgotado ? '#dc3545' : '#28a745',
+                            fontSize: esgotado ? '0.9em' : '1em'
+                          }}>
+                            {esgotado ? 'ESGOTADO' : disponiveis}
+                          </div>
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: '0.9em', color: '#666' }}>Vendidos</div>
+                          <div style={{ fontWeight: 'bold', color: '#6c757d' }}>
+                            {ingresso.vendidos || 0}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
                 <p style={{ color: '#666', fontStyle: 'italic' }}>
@@ -192,17 +217,20 @@ export default async function EventoDetalhe(props) {
             </div>
 
             {/* BOTÃO DE COMPRA (SIMULAÇÃO) */}
-            <button style={{
-              backgroundColor: '#f1c40f',
-              color: 'black',
-              padding: '15px 30px',
-              border: 'none',
-              borderRadius: '5px',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              fontSize: '16px',
-              width: '100%'
-            }}>
+            <button 
+              style={{
+                backgroundColor: '#f1c40f',
+                color: 'black',
+                padding: '15px 30px',
+                border: 'none',
+                borderRadius: '5px',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                fontSize: '16px',
+                width: '100%'
+              }}
+              onClick={() => alert('Funcionalidade de compra em desenvolvimento!')}
+            >
               Comprar Ingresso
             </button>
 
@@ -215,6 +243,37 @@ export default async function EventoDetalhe(props) {
             }}>
               * Funcionalidade de compra em desenvolvimento
             </p>
+
+            {/* RESUMO DO EVENTO */}
+            <div style={{
+              marginTop: '20px',
+              padding: '15px',
+              backgroundColor: '#e9ecef',
+              borderRadius: '5px',
+              textAlign: 'center'
+            }}>
+              <strong>Resumo do Evento:</strong>
+              <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: '10px' }}>
+                <div>
+                  <div style={{ fontSize: '0.9em', color: '#666' }}>Total de Ingressos</div>
+                  <div style={{ fontWeight: 'bold', color: '#5d34a4' }}>
+                    {evento.total_ingressos || 0}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.9em', color: '#666' }}>Ingressos Vendidos</div>
+                  <div style={{ fontWeight: 'bold', color: '#28a745' }}>
+                    {evento.ingressos_vendidos || 0}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.9em', color: '#666' }}>Disponíveis</div>
+                  <div style={{ fontWeight: 'bold', color: '#f1c40f' }}>
+                    {(evento.total_ingressos || 0) - (evento.ingressos_vendidos || 0)}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
