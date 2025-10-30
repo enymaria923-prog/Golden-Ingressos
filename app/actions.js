@@ -1,4 +1,4 @@
-// app/actions.js - VERSÃO CORRIGIDA SEM ERRO DE REDIRECT
+// app/actions.js - VERSÃO COM CONTROLE DE QUANTIDADE DE INGRESSOS
 'use server';
 
 import { createClient } from '../utils/supabase/server'; 
@@ -26,20 +26,24 @@ export async function criarEvento(formData) {
   const local = formData.get('local');
   const descricao = formData.get('descricao');
   
-  // 3. EXTRAIR INGRESSOS
+  // 3. EXTRAIR INGRESSOS COM QUANTIDADE
   const quantidadeIngressos = parseInt(formData.get('quantidade_ingressos')) || 1;
   const ingressos = [];
+  let totalIngressosEvento = 0;
   
   for (let i = 0; i < quantidadeIngressos; i++) {
     const tipo = formData.get(`ingresso_tipo_${i}`);
     const valor = formData.get(`ingresso_valor_${i}`);
-    if (tipo && valor) {
-      ingressos.push({ tipo, valor });
+    const quantidade = parseInt(formData.get(`ingresso_quantidade_${i}`)) || 0;
+    
+    if (tipo && valor && quantidade > 0) {
+      ingressos.push({ tipo, valor, quantidade });
+      totalIngressosEvento += quantidade;
     }
   }
   
   if (ingressos.length === 0) {
-    return { error: 'Adicione pelo menos um tipo de ingresso.' };
+    return { error: 'Adicione pelo menos um tipo de ingresso com quantidade válida.' };
   }
 
   // 4. UPLOAD DE IMAGEM (OPCIONAL)
@@ -65,7 +69,7 @@ export async function criarEvento(formData) {
     }
   }
 
-  // 5. INSERIR EVENTO
+  // 5. INSERIR EVENTO COM TOTAL DE INGRESSOS
   const eventoData = {
     nome,
     imagem_url: imagem_url,
@@ -76,6 +80,8 @@ export async function criarEvento(formData) {
     local,
     descricao,
     preco: ingressos[0].valor,
+    total_ingressos: totalIngressosEvento,
+    ingressos_vendidos: 0
   };
 
   const { data: eventoInserido, error: insertError } = await supabase
@@ -89,19 +95,26 @@ export async function criarEvento(formData) {
     return { error: 'Falha ao publicar: ' + insertError.message };
   }
 
-  // 6. INSERIR INGRESSOS
+  // 6. INSERIR INGRESSOS COM QUANTIDADE
   const ingressosParaInserir = ingressos.map(ingresso => ({
     evento_id: eventoInserido.id,
     tipo: ingresso.tipo,
     valor: ingresso.valor,
+    quantidade: ingresso.quantidade,
+    vendidos: 0,
     user_id: user_id
   }));
 
-  await supabase
+  const { error: ingressosError } = await supabase
     .from('ingressos')
     .insert(ingressosParaInserir);
 
-  // 7. SUCESSO - Retornar sucesso em vez de redirect
+  if (ingressosError) {
+    console.error('Erro ao inserir ingressos:', ingressosError);
+    // Continua mesmo com erro nos ingressos
+  }
+
+  // 7. SUCESSO
   revalidatePath('/');
   return { success: true, message: 'Evento publicado com sucesso!' };
 }
