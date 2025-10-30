@@ -2,23 +2,225 @@
 import { createClient } from '../../../utils/supabase/server';
 import Link from 'next/link';
 
-export default async function EventoDetalhe({ params }) {
+export default async function EventoDetalhe(props) {
   const supabase = createClient();
   
-  // EXTRAIR O ID CORRETAMENTE - isso é crucial!
-  const { id } = await params;
-  console.log('🔍 Buscando evento com ID:', id);
+  try {
+    // CORREÇÃO: Acessar params corretamente no Next.js 14
+    const { id } = await props.params;
+    console.log('🔍 Buscando evento com ID:', id);
 
-  // BUSCAR EVENTO NO BANCO
-  const { data: evento, error } = await supabase
-    .from('eventos')
-    .select('*')
-    .eq('id', id)
-    .single();
+    if (!id) {
+      throw new Error('ID não fornecido');
+    }
 
-  // SE NÃO ENCONTRAR O EVENTO
-  if (error || !evento) {
-    console.error('❌ Evento não encontrado:', error);
+    // BUSCAR EVENTO NO BANCO
+    const { data: evento, error } = await supabase
+      .from('eventos')
+      .select('*')
+      .eq('id', parseInt(id)) // Garantir que é número
+      .single();
+
+    // SE NÃO ENCONTRAR O EVENTO
+    if (error || !evento) {
+      console.error('❌ Evento não encontrado:', error);
+      return (
+        <div style={{ 
+          fontFamily: 'sans-serif', 
+          padding: '50px 20px', 
+          textAlign: 'center',
+          backgroundColor: '#f4f4f4',
+          minHeight: '100vh'
+        }}>
+          <div style={{ 
+            backgroundColor: 'white', 
+            padding: '40px', 
+            borderRadius: '8px',
+            maxWidth: '500px',
+            margin: '0 auto',
+            boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
+          }}>
+            <h1 style={{ color: '#5d34a4', marginBottom: '20px' }}>Evento Não Encontrado</h1>
+            <p style={{ marginBottom: '30px', color: '#666' }}>
+              O evento que você está procurando não existe ou foi removido.
+            </p>
+            <Link href="/" style={{
+              backgroundColor: '#f1c40f',
+              color: 'black',
+              padding: '12px 25px',
+              textDecoration: 'none',
+              borderRadius: '5px',
+              fontWeight: 'bold',
+              display: 'inline-block'
+            }}>
+              Voltar para a Home
+            </Link>
+          </div>
+        </div>
+      );
+    }
+
+    // BUSCAR OS INGRESSOS DESTE EVENTO
+    const { data: ingressos } = await supabase
+      .from('ingressos')
+      .select('*')
+      .eq('evento_id', parseInt(id));
+
+    console.log('✅ Evento encontrado:', evento.nome);
+
+    // FORMATAR DATA
+    const dataFormatada = new Date(evento.data).toLocaleDateString('pt-BR');
+    
+    return (
+      <div style={{ 
+        fontFamily: 'sans-serif', 
+        backgroundColor: '#f4f4f4',
+        minHeight: '100vh',
+        padding: '20px'
+      }}>
+        
+        {/* CABEÇALHO */}
+        <header style={{ 
+          backgroundColor: '#5d34a4', 
+          color: 'white', 
+          padding: '20px', 
+          borderRadius: '8px',
+          marginBottom: '20px'
+        }}>
+          <Link href="/" style={{ color: 'white', textDecoration: 'none', display: 'inline-block', marginBottom: '10px' }}>
+            &larr; Voltar para a Home
+          </Link>
+          <h1 style={{ margin: 0, textAlign: 'center' }}>Detalhes do Evento</h1>
+        </header>
+
+        {/* CONTEÚDO PRINCIPAL */}
+        <div style={{ 
+          display: 'flex', 
+          flexWrap: 'wrap', 
+          gap: '30px', 
+          maxWidth: '1200px', 
+          margin: '0 auto' 
+        }}>
+          
+          {/* IMAGEM DO EVENTO */}
+          <div style={{ flex: '1 1 400px' }}>
+            <img 
+              src={evento.imagem_url} 
+              alt={evento.nome}
+              style={{ 
+                width: '100%', 
+                borderRadius: '8px',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
+              }}
+            />
+          </div>
+
+          {/* DETALHES DO EVENTO */}
+          <div style={{ 
+            flex: '1 1 400px', 
+            backgroundColor: 'white', 
+            padding: '30px', 
+            borderRadius: '8px',
+            boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
+          }}>
+            <h1 style={{ color: '#5d34a4', marginTop: 0 }}>{evento.nome}</h1>
+            
+            <div style={{ marginBottom: '25px' }}>
+              <h3 style={{ color: '#333', marginBottom: '10px' }}>Descrição do Evento</h3>
+              <p style={{ color: '#666', lineHeight: '1.6' }}>
+                {evento.descricao || 'Este evento não possui descrição.'}
+              </p>
+            </div>
+
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+              gap: '15px',
+              marginBottom: '25px'
+            }}>
+              <div>
+                <strong>Categoria:</strong>
+                <p style={{ margin: '5px 0', color: '#666' }}>{evento.categoria}</p>
+              </div>
+              <div>
+                <strong>Data:</strong>
+                <p style={{ margin: '5px 0', color: '#666' }}>{dataFormatada}</p>
+              </div>
+              <div>
+                <strong>Hora:</strong>
+                <p style={{ margin: '5px 0', color: '#666' }}>{evento.hora}</p>
+              </div>
+              <div>
+                <strong>Local:</strong>
+                <p style={{ margin: '5px 0', color: '#666' }}>{evento.local}</p>
+              </div>
+            </div>
+
+            {/* TIPOS DE INGRESSOS */}
+            <div style={{ marginBottom: '30px' }}>
+              <h3 style={{ color: '#333', marginBottom: '15px' }}>Tipos de Ingresso Disponíveis</h3>
+              {ingressos && ingressos.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {ingressos.map((ingresso, index) => (
+                    <div key={index} style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '15px',
+                      backgroundColor: '#f8f9fa',
+                      borderRadius: '5px',
+                      border: '1px solid #e9ecef'
+                    }}>
+                      <span style={{ fontWeight: 'bold' }}>{ingresso.tipo}</span>
+                      <span style={{ 
+                        backgroundColor: '#f1c40f', 
+                        color: 'black', 
+                        padding: '5px 10px', 
+                        borderRadius: '4px',
+                        fontWeight: 'bold'
+                      }}>
+                        R$ {ingresso.valor}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p style={{ color: '#666', fontStyle: 'italic' }}>
+                  Nenhum ingresso disponível no momento.
+                </p>
+              )}
+            </div>
+
+            {/* BOTÃO DE COMPRA (SIMULAÇÃO) */}
+            <button style={{
+              backgroundColor: '#f1c40f',
+              color: 'black',
+              padding: '15px 30px',
+              border: 'none',
+              borderRadius: '5px',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              fontSize: '16px',
+              width: '100%'
+            }}>
+              Comprar Ingresso
+            </button>
+
+            <p style={{ 
+              textAlign: 'center', 
+              marginTop: '10px', 
+              color: '#666', 
+              fontSize: '0.9em',
+              fontStyle: 'italic'
+            }}>
+              * Funcionalidade de compra em desenvolvimento
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  } catch (error) {
+    console.error('💥 Erro crítico:', error);
     return (
       <div style={{ 
         fontFamily: 'sans-serif', 
@@ -35,9 +237,9 @@ export default async function EventoDetalhe({ params }) {
           margin: '0 auto',
           boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
         }}>
-          <h1 style={{ color: '#5d34a4', marginBottom: '20px' }}>Evento Não Encontrado</h1>
+          <h1 style={{ color: '#5d34a4', marginBottom: '20px' }}>Erro ao Carregar</h1>
           <p style={{ marginBottom: '30px', color: '#666' }}>
-            O evento que você está procurando não existe ou foi removido.
+            Ocorreu um erro ao carregar os detalhes do evento.
           </p>
           <Link href="/" style={{
             backgroundColor: '#f1c40f',
@@ -54,173 +256,4 @@ export default async function EventoDetalhe({ params }) {
       </div>
     );
   }
-
-  // BUSCAR OS INGRESSOS DESTE EVENTO
-  const { data: ingressos, error: ingressosError } = await supabase
-    .from('ingressos')
-    .select('*')
-    .eq('evento_id', id);
-
-  console.log('✅ Evento encontrado:', evento.nome);
-  console.log('🎫 Ingressos encontrados:', ingressos?.length);
-
-  // FORMATAR DATA E PREÇO
-  const dataFormatada = new Date(evento.data).toLocaleDateString('pt-BR');
-  
-  return (
-    <div style={{ 
-      fontFamily: 'sans-serif', 
-      backgroundColor: '#f4f4f4',
-      minHeight: '100vh',
-      padding: '20px'
-    }}>
-      
-      {/* CABEÇALHO */}
-      <header style={{ 
-        backgroundColor: '#5d34a4', 
-        color: 'white', 
-        padding: '20px', 
-        borderRadius: '8px',
-        marginBottom: '20px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center'
-      }}>
-        <Link href="/" style={{ color: 'white', textDecoration: 'none' }}>
-          &larr; Voltar para a Home
-        </Link>
-        <h1 style={{ margin: 0, textAlign: 'center', flex: 1 }}>Detalhes do Evento</h1>
-        <div style={{ width: '100px' }}></div> {/* Espaçamento */}
-      </header>
-
-      {/* CONTEÚDO PRINCIPAL */}
-      <div style={{ 
-        display: 'flex', 
-        flexWrap: 'wrap', 
-        gap: '30px', 
-        maxWidth: '1200px', 
-        margin: '0 auto' 
-      }}>
-        
-        {/* IMAGEM DO EVENTO */}
-        <div style={{ flex: '1 1 400px' }}>
-          <img 
-            src={evento.imagem_url} 
-            alt={evento.nome}
-            style={{ 
-              width: '100%', 
-              borderRadius: '8px',
-              boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
-            }}
-          />
-        </div>
-
-        {/* DETALHES DO EVENTO */}
-        <div style={{ 
-          flex: '1 1 400px', 
-          backgroundColor: 'white', 
-          padding: '30px', 
-          borderRadius: '8px',
-          boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
-        }}>
-          <h1 style={{ color: '#5d34a4', marginTop: 0 }}>{evento.nome}</h1>
-          
-          <div style={{ marginBottom: '25px' }}>
-            <h3 style={{ color: '#333', marginBottom: '10px' }}>Descrição do Evento</h3>
-            <p style={{ color: '#666', lineHeight: '1.6' }}>
-              {evento.descricao || 'Este evento não possui descrição.'}
-            </p>
-          </div>
-
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-            gap: '15px',
-            marginBottom: '25px'
-          }}>
-            <div>
-              <strong>Categoria:</strong>
-              <p style={{ margin: '5px 0', color: '#666' }}>{evento.categoria}</p>
-            </div>
-            <div>
-              <strong>Data:</strong>
-              <p style={{ margin: '5px 0', color: '#666' }}>{dataFormatada}</p>
-            </div>
-            <div>
-              <strong>Hora:</strong>
-              <p style={{ margin: '5px 0', color: '#666' }}>{evento.hora}</p>
-            </div>
-            <div>
-              <strong>Local:</strong>
-              <p style={{ margin: '5px 0', color: '#666' }}>{evento.local}</p>
-            </div>
-          </div>
-
-          {/* TIPOS DE INGRESSOS */}
-          <div style={{ marginBottom: '30px' }}>
-            <h3 style={{ color: '#333', marginBottom: '15px' }}>Tipos de Ingresso Disponíveis</h3>
-            {ingressos && ingressos.length > 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {ingressos.map((ingresso, index) => (
-                  <div key={index} style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '15px',
-                    backgroundColor: '#f8f9fa',
-                    borderRadius: '5px',
-                    border: '1px solid #e9ecef'
-                  }}>
-                    <span style={{ fontWeight: 'bold' }}>{ingresso.tipo}</span>
-                    <span style={{ 
-                      backgroundColor: '#f1c40f', 
-                      color: 'black', 
-                      padding: '5px 10px', 
-                      borderRadius: '4px',
-                      fontWeight: 'bold'
-                    }}>
-                      R$ {ingresso.valor}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p style={{ color: '#666', fontStyle: 'italic' }}>
-                Nenhum ingresso disponível no momento.
-              </p>
-            )}
-          </div>
-
-          {/* BOTÃO DE COMPRA (SIMULAÇÃO) */}
-          <button style={{
-            backgroundColor: '#f1c40f',
-            color: 'black',
-            padding: '15px 30px',
-            border: 'none',
-            borderRadius: '5px',
-            fontWeight: 'bold',
-            cursor: 'pointer',
-            fontSize: '16px',
-            width: '100%',
-            transition: 'background-color 0.3s'
-          }}
-          onMouseEnter={(e) => e.target.style.backgroundColor = '#e6b80b'}
-          onMouseLeave={(e) => e.target.style.backgroundColor = '#f1c40f'}
-          >
-            Comprar Ingresso
-          </button>
-
-          <p style={{ 
-            textAlign: 'center', 
-            marginTop: '10px', 
-            color: '#666', 
-            fontSize: '0.9em',
-            fontStyle: 'italic'
-          }}>
-            * Funcionalidade de compra em desenvolvimento
-          </p>
-        </div>
-      </div>
-    </div>
-  );
 }
