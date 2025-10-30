@@ -1,75 +1,225 @@
-"use client";
+// app/evento/[id]/page.js - VERSÃO CORRIGIDA
+import { createClient } from '../../../utils/supabase/server';
+import Link from 'next/link';
 
-const DADOS_EVENTOS = [
-  { id: 1, nome: "Show do DJ Golden Beats", data: "20/12/2025", hora: "22:00", local: "Arena de Festas", preco: "R$ 80,00", categoria: "Música", descricao: "Prepare-se para a maior festa eletrônica do ano com o DJ Golden Beats. Luzes, som e muita energia!" },
-  { id: 2, nome: "Feira de Negócios e Inovação", data: "15/01/2026", hora: "09:00", local: "Centro de Convenções", preco: "R$ 150,00", categoria: "Negócios", descricao: "Conecte-se com os líderes do mercado e descubra as últimas tendências em tecnologia e inovação." },
-  { id: 3, nome: "Festival Gastronômico de Verão", data: "05/02/2026", hora: "18:00", local: "Praia Central", preco: "R$ 30,00 (Entrada)", categoria: "Gastronomia", descricao: "Os melhores chefs da cidade reunidos em um só lugar. Venha provar sabores incríveis!" },
-];
+export default async function EventoDetalhe({ params }) {
+  const supabase = createClient();
+  
+  // EXTRAIR O ID CORRETAMENTE - isso é crucial!
+  const { id } = await params;
+  console.log('🔍 Buscando evento com ID:', id);
 
-function buscarEventoPorId(id) {
-  const idNumerico = parseInt(id, 10);
-  return DADOS_EVENTOS.find(evento => evento.id === idNumerico);
-}
+  // BUSCAR EVENTO NO BANCO
+  const { data: evento, error } = await supabase
+    .from('eventos')
+    .select('*')
+    .eq('id', id)
+    .single();
 
-export default function PaginaEvento({ params }) {
-  const evento = buscarEventoPorId(params.id);
-
-  if (!evento) {
+  // SE NÃO ENCONTRAR O EVENTO
+  if (error || !evento) {
+    console.error('❌ Evento não encontrado:', error);
     return (
-      <div style={{ fontFamily: 'sans-serif', textAlign: 'center', marginTop: '50px' }}>
-        <h1>Evento não encontrado</h1>
-        <a href="/">Voltar para a Home</a>
+      <div style={{ 
+        fontFamily: 'sans-serif', 
+        padding: '50px 20px', 
+        textAlign: 'center',
+        backgroundColor: '#f4f4f4',
+        minHeight: '100vh'
+      }}>
+        <div style={{ 
+          backgroundColor: 'white', 
+          padding: '40px', 
+          borderRadius: '8px',
+          maxWidth: '500px',
+          margin: '0 auto',
+          boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
+        }}>
+          <h1 style={{ color: '#5d34a4', marginBottom: '20px' }}>Evento Não Encontrado</h1>
+          <p style={{ marginBottom: '30px', color: '#666' }}>
+            O evento que você está procurando não existe ou foi removido.
+          </p>
+          <Link href="/" style={{
+            backgroundColor: '#f1c40f',
+            color: 'black',
+            padding: '12px 25px',
+            textDecoration: 'none',
+            borderRadius: '5px',
+            fontWeight: 'bold',
+            display: 'inline-block'
+          }}>
+            Voltar para a Home
+          </Link>
+        </div>
       </div>
     );
   }
 
+  // BUSCAR OS INGRESSOS DESTE EVENTO
+  const { data: ingressos, error: ingressosError } = await supabase
+    .from('ingressos')
+    .select('*')
+    .eq('evento_id', id);
+
+  console.log('✅ Evento encontrado:', evento.nome);
+  console.log('🎫 Ingressos encontrados:', ingressos?.length);
+
+  // FORMATAR DATA E PREÇO
+  const dataFormatada = new Date(evento.data).toLocaleDateString('pt-BR');
+  
   return (
-    <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh' }}>
-      <header style={{ backgroundColor: '#5d34a4', color: 'white', padding: '20px', textAlign: 'center' }}>
-        <a href="/" style={{ color: 'white', textDecoration: 'none', float: 'left' }}>
-          &larr; Voltar (Golden Ingressos)
-        </a>
-        <h1 style={{ margin: '0', paddingTop: '10px' }}>{evento.nome}</h1>
+    <div style={{ 
+      fontFamily: 'sans-serif', 
+      backgroundColor: '#f4f4f4',
+      minHeight: '100vh',
+      padding: '20px'
+    }}>
+      
+      {/* CABEÇALHO */}
+      <header style={{ 
+        backgroundColor: '#5d34a4', 
+        color: 'white', 
+        padding: '20px', 
+        borderRadius: '8px',
+        marginBottom: '20px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
+        <Link href="/" style={{ color: 'white', textDecoration: 'none' }}>
+          &larr; Voltar para a Home
+        </Link>
+        <h1 style={{ margin: 0, textAlign: 'center', flex: 1 }}>Detalhes do Evento</h1>
+        <div style={{ width: '100px' }}></div> {/* Espaçamento */}
       </header>
 
-      <div style={{ width: '70%', margin: '20px auto', padding: '20px', backgroundColor: 'white', borderRadius: '8px' }}>
-        <h2 style={{ color: '#5d34a4' }}>Detalhes do Evento</h2>
-        <p><strong>Descrição:</strong> {evento.descricao}</p>
-        <p><strong>Categoria:</strong> {evento.categoria}</p>
-        <p><strong>Data:</strong> {evento.data} às {evento.hora}</p>
-        <p><strong>Local:</strong> {evento.local}</p>
-        <p><strong>Preço:</strong> {evento.preco}</p>
+      {/* CONTEÚDO PRINCIPAL */}
+      <div style={{ 
+        display: 'flex', 
+        flexWrap: 'wrap', 
+        gap: '30px', 
+        maxWidth: '1200px', 
+        margin: '0 auto' 
+      }}>
         
-        <hr style={{ margin: '20px 0' }} />
-        
-        <h2 style={{ color: '#f1c40f' }}>Comprar Ingressos</h2>
-        <p>Selecione a quantidade de ingressos (Simulação):</p>
-        <input 
-          type="number" 
-          defaultValue="1" 
-          min="1" 
-          max="10" 
-          style={{ padding: '10px', fontSize: '16px', width: '100px' }} 
-        />
-        <button 
-          style={{ 
-            backgroundColor: '#f1c40f', 
-            color: 'black', 
-            padding: '10px 20px', 
-            borderRadius: '5px', 
-            textDecoration: 'none', 
-            display: 'inline-block', 
-            marginTop: '10px',
-            fontWeight: 'bold',
-            fontSize: '18px',
-            marginLeft: '10px',
+        {/* IMAGEM DO EVENTO */}
+        <div style={{ flex: '1 1 400px' }}>
+          <img 
+            src={evento.imagem_url} 
+            alt={evento.nome}
+            style={{ 
+              width: '100%', 
+              borderRadius: '8px',
+              boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
+            }}
+          />
+        </div>
+
+        {/* DETALHES DO EVENTO */}
+        <div style={{ 
+          flex: '1 1 400px', 
+          backgroundColor: 'white', 
+          padding: '30px', 
+          borderRadius: '8px',
+          boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
+        }}>
+          <h1 style={{ color: '#5d34a4', marginTop: 0 }}>{evento.nome}</h1>
+          
+          <div style={{ marginBottom: '25px' }}>
+            <h3 style={{ color: '#333', marginBottom: '10px' }}>Descrição do Evento</h3>
+            <p style={{ color: '#666', lineHeight: '1.6' }}>
+              {evento.descricao || 'Este evento não possui descrição.'}
+            </p>
+          </div>
+
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+            gap: '15px',
+            marginBottom: '25px'
+          }}>
+            <div>
+              <strong>Categoria:</strong>
+              <p style={{ margin: '5px 0', color: '#666' }}>{evento.categoria}</p>
+            </div>
+            <div>
+              <strong>Data:</strong>
+              <p style={{ margin: '5px 0', color: '#666' }}>{dataFormatada}</p>
+            </div>
+            <div>
+              <strong>Hora:</strong>
+              <p style={{ margin: '5px 0', color: '#666' }}>{evento.hora}</p>
+            </div>
+            <div>
+              <strong>Local:</strong>
+              <p style={{ margin: '5px 0', color: '#666' }}>{evento.local}</p>
+            </div>
+          </div>
+
+          {/* TIPOS DE INGRESSOS */}
+          <div style={{ marginBottom: '30px' }}>
+            <h3 style={{ color: '#333', marginBottom: '15px' }}>Tipos de Ingresso Disponíveis</h3>
+            {ingressos && ingressos.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {ingressos.map((ingresso, index) => (
+                  <div key={index} style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '15px',
+                    backgroundColor: '#f8f9fa',
+                    borderRadius: '5px',
+                    border: '1px solid #e9ecef'
+                  }}>
+                    <span style={{ fontWeight: 'bold' }}>{ingresso.tipo}</span>
+                    <span style={{ 
+                      backgroundColor: '#f1c40f', 
+                      color: 'black', 
+                      padding: '5px 10px', 
+                      borderRadius: '4px',
+                      fontWeight: 'bold'
+                    }}>
+                      R$ {ingresso.valor}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p style={{ color: '#666', fontStyle: 'italic' }}>
+                Nenhum ingresso disponível no momento.
+              </p>
+            )}
+          </div>
+
+          {/* BOTÃO DE COMPRA (SIMULAÇÃO) */}
+          <button style={{
+            backgroundColor: '#f1c40f',
+            color: 'black',
+            padding: '15px 30px',
             border: 'none',
-            cursor: 'pointer'
+            borderRadius: '5px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            fontSize: '16px',
+            width: '100%',
+            transition: 'background-color 0.3s'
           }}
-          onClick={() => alert(`Simulação de compra para "${evento.nome}"! Em um site real, isso iria para o checkout de pagamento.`)}
-        >
-          Confirmar Compra (Simulado)
-        </button>
+          onMouseEnter={(e) => e.target.style.backgroundColor = '#e6b80b'}
+          onMouseLeave={(e) => e.target.style.backgroundColor = '#f1c40f'}
+          >
+            Comprar Ingresso
+          </button>
+
+          <p style={{ 
+            textAlign: 'center', 
+            marginTop: '10px', 
+            color: '#666', 
+            fontSize: '0.9em',
+            fontStyle: 'italic'
+          }}>
+            * Funcionalidade de compra em desenvolvimento
+          </p>
+        </div>
       </div>
     </div>
   );
