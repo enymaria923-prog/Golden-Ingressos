@@ -1,4 +1,4 @@
-// app/evento/[id]/page.js - VERSÃO COM DOIS MODOS DE CONTROLE
+// app/evento/[id]/page.js - VERSÃO COM CONTROLE FLEXÍVEL
 import { createClient } from '../../../utils/supabase/server';
 import Link from 'next/link';
 
@@ -23,7 +23,38 @@ export default async function EventoDetalhe(props) {
     if (error || !evento) {
       console.error('❌ Evento não encontrado:', error);
       return (
-        // ... (mesmo código de erro anterior)
+        <div style={{ 
+          fontFamily: 'sans-serif', 
+          padding: '50px 20px', 
+          textAlign: 'center',
+          backgroundColor: '#f4f4f4',
+          minHeight: '100vh'
+        }}>
+          <div style={{ 
+            backgroundColor: 'white', 
+            padding: '40px', 
+            borderRadius: '8px',
+            maxWidth: '500px',
+            margin: '0 auto',
+            boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
+          }}>
+            <h1 style={{ color: '#5d34a4', marginBottom: '20px' }}>Evento Não Encontrado</h1>
+            <p style={{ marginBottom: '30px', color: '#666' }}>
+              O evento que você está procurando não existe ou foi removido.
+            </p>
+            <Link href="/" style={{
+              backgroundColor: '#f1c40f',
+              color: 'black',
+              padding: '12px 25px',
+              textDecoration: 'none',
+              borderRadius: '5px',
+              fontWeight: 'bold',
+              display: 'inline-block'
+            }}>
+              Voltar para a Home
+            </Link>
+          </div>
+        </div>
       );
     }
 
@@ -34,6 +65,7 @@ export default async function EventoDetalhe(props) {
       .eq('evento_id', parseInt(id));
 
     console.log('✅ Evento encontrado:', evento.nome);
+    console.log('📊 Modo de quantidade:', evento.modo_quantidade);
 
     const dataFormatada = new Date(evento.data).toLocaleDateString('pt-BR');
     
@@ -88,6 +120,20 @@ export default async function EventoDetalhe(props) {
           }}>
             <h1 style={{ color: '#5d34a4', marginTop: 0 }}>{evento.nome}</h1>
             
+            {/* INDICADOR DO MODO DE QUANTIDADE */}
+            <div style={{
+              padding: '8px 15px',
+              backgroundColor: evento.modo_quantidade === 'total' ? '#d4edda' : '#fff3cd',
+              color: evento.modo_quantidade === 'total' ? '#155724' : '#856404',
+              borderRadius: '20px',
+              fontSize: '0.9em',
+              fontWeight: 'bold',
+              display: 'inline-block',
+              marginBottom: '20px'
+            }}>
+              {evento.modo_quantidade === 'total' ? '🎫 Quantidade Total' : '📊 Quantidade por Tipo'}
+            </div>
+            
             <div style={{ marginBottom: '25px' }}>
               <h3 style={{ color: '#333', marginBottom: '10px' }}>Descrição do Evento</h3>
               <p style={{ color: '#666', lineHeight: '1.6' }}>
@@ -119,14 +165,14 @@ export default async function EventoDetalhe(props) {
               </div>
             </div>
 
-            {/* TIPOS DE INGRESSOS - MOSTRAR DE ACORDO COM O MODO */}
+            {/* TIPOS DE INGRESSOS - ADAPTADO PARA AMBOS OS MODOS */}
             <div style={{ marginBottom: '30px' }}>
               <h3 style={{ color: '#333', marginBottom: '15px' }}>Tipos de Ingresso Disponíveis</h3>
               {ingressos && ingressos.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   {ingressos.map((ingresso, index) => {
-                    // Modo por tipo: mostra quantidade por tipo
-                    if (evento.controle_quantidade === 'porTipo') {
+                    // MODO POR TIPO: Mostra quantidade específica
+                    if (evento.modo_quantidade === 'porTipo') {
                       const disponiveis = (ingresso.quantidade || 0) - (ingresso.vendidos || 0);
                       const esgotado = disponiveis <= 0;
                       
@@ -173,7 +219,7 @@ export default async function EventoDetalhe(props) {
                         </div>
                       );
                     } else {
-                      // Modo total: não mostra quantidade por tipo, apenas o preço
+                      // MODO TOTAL: Mostra apenas os tipos sem quantidade individual
                       return (
                         <div key={index} style={{
                           display: 'flex',
@@ -206,37 +252,9 @@ export default async function EventoDetalhe(props) {
               )}
             </div>
 
-            {/* BOTÃO DE COMPRA (SIMULAÇÃO) */}
-            <button 
-              style={{
-                backgroundColor: '#f1c40f',
-                color: 'black',
-                padding: '15px 30px',
-                border: 'none',
-                borderRadius: '5px',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-                fontSize: '16px',
-                width: '100%'
-              }}
-              onClick={() => alert('Funcionalidade de compra em desenvolvimento!')}
-            >
-              Comprar Ingresso
-            </button>
-
-            <p style={{ 
-              textAlign: 'center', 
-              marginTop: '10px', 
-              color: '#666', 
-              fontSize: '0.9em',
-              fontStyle: 'italic'
-            }}>
-              * Funcionalidade de compra em desenvolvimento
-            </p>
-
             {/* RESUMO DO EVENTO */}
             <div style={{
-              marginTop: '20px',
+              marginBottom: '30px',
               padding: '15px',
               backgroundColor: '#e9ecef',
               borderRadius: '5px',
@@ -264,6 +282,34 @@ export default async function EventoDetalhe(props) {
                 </div>
               </div>
             </div>
+
+            {/* BOTÃO DE COMPRA (SIMULAÇÃO) */}
+            <button 
+              style={{
+                backgroundColor: '#f1c40f',
+                color: 'black',
+                padding: '15px 30px',
+                border: 'none',
+                borderRadius: '5px',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                fontSize: '16px',
+                width: '100%'
+              }}
+              onClick={() => alert('Funcionalidade de compra em desenvolvimento!')}
+            >
+              Comprar Ingresso
+            </button>
+
+            <p style={{ 
+              textAlign: 'center', 
+              marginTop: '10px', 
+              color: '#666', 
+              fontSize: '0.9em',
+              fontStyle: 'italic'
+            }}>
+              * Funcionalidade de compra em desenvolvimento
+            </p>
           </div>
         </div>
       </div>
@@ -271,7 +317,38 @@ export default async function EventoDetalhe(props) {
   } catch (error) {
     console.error('💥 Erro crítico:', error);
     return (
-      // ... (mesmo código de erro anterior)
+      <div style={{ 
+        fontFamily: 'sans-serif', 
+        padding: '50px 20px', 
+        textAlign: 'center',
+        backgroundColor: '#f4f4f4',
+        minHeight: '100vh'
+      }}>
+        <div style={{ 
+          backgroundColor: 'white', 
+          padding: '40px', 
+          borderRadius: '8px',
+          maxWidth: '500px',
+          margin: '0 auto',
+          boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
+        }}>
+          <h1 style={{ color: '#5d34a4', marginBottom: '20px' }}>Erro ao Carregar</h1>
+          <p style={{ marginBottom: '30px', color: '#666' }}>
+            Ocorreu um erro ao carregar os detalhes do evento.
+          </p>
+          <Link href="/" style={{
+            backgroundColor: '#f1c40f',
+            color: 'black',
+            padding: '12px 25px',
+            textDecoration: 'none',
+            borderRadius: '5px',
+            fontWeight: 'bold',
+            display: 'inline-block'
+          }}>
+            Voltar para a Home
+          </Link>
+        </div>
+      </div>
     );
   }
 }
