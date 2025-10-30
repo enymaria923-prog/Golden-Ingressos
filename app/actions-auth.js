@@ -1,10 +1,11 @@
 // app/actions-auth.js
-// O "Backend" do Login e Cadastro
+// O "Backend" do Login, Cadastro e Logout
 
-"use server"; // <-- Mágico! Diz ao Next.js que isso roda SÓ no servidor.
+"use server";
 
-import { createClient } from '../utils/supabase/server'; // <-- O "cérebro" que já corrigimos
+import { createClient } from '../utils/supabase/server';
 import { redirect } from 'next/navigation';
+import { revalidatePath } from 'next/cache';
 
 // --- FUNÇÃO DE LOGIN ---
 export async function login(formData) {
@@ -12,7 +13,6 @@ export async function login(formData) {
   const password = formData.get('password');
   const supabase = createClient();
 
-  // Chama a função de login do Supabase
   const { error } = await supabase.auth.signInWithPassword({
     email,
     password,
@@ -20,12 +20,10 @@ export async function login(formData) {
 
   if (error) {
     console.error("Erro no login:", error);
-    // Em um site real, mostraríamos um erro na tela.
-    // Por enquanto, vamos redirecionar de volta para a pág. de login com erro
     return redirect('/login?message=Erro ao tentar logar');
   }
 
-  // Se o login deu certo, redireciona para a Home
+  revalidatePath('/');
   return redirect('/');
 }
 
@@ -35,31 +33,26 @@ export async function signup(formData) {
   const password = formData.get('password');
   const supabase = createClient();
 
-  // Chama a função de cadastro do Supabase
   const { error } = await supabase.auth.signUp({
     email,
     password,
-    // 'options' é onde poderíamos colocar 'nome', 'sobrenome', etc.
-    // Por enquanto, só email e senha.
   });
 
   if (error) {
     console.error("Erro no cadastro:", error);
-    // Em um site real, mostraríamos um erro na tela.
     return redirect('/login?message=Erro ao tentar criar conta');
   }
 
-  // Se o cadastro deu certo, redireciona para a Home
-  // O Supabase vai enviar um email de confirmação.
+  revalidatePath('/');
   return redirect('/');
 }
+
 // --- FUNÇÃO DE LOGOUT (SAIR) ---
 export async function logout() {
   const supabase = createClient();
   
-  // Chama a função de logout do Supabase
   await supabase.auth.signOut();
   
-  // Redireciona para a Home
+  revalidatePath('/');
   return redirect('/');
 }
