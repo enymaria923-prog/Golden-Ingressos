@@ -20,8 +20,76 @@ function CardEvento({ evento }) {
   );
 }
 
+// Componente do Menu do Usuário Logado
+function UserMenu({ user }) {
+  return (
+    <div style={{ position: 'relative', display: 'inline-block' }}>
+      <button style={{ 
+        backgroundColor: '#fff', 
+        color: '#5d34a4', 
+        padding: '12px 25px', 
+        border: '2px solid #5d34a4', 
+        borderRadius: '5px', 
+        fontWeight: 'bold', 
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px'
+      }}>
+        👤 Minha Conta
+      </button>
+      <div style={{
+        position: 'absolute',
+        top: '100%',
+        right: 0,
+        backgroundColor: 'white',
+        border: '1px solid #ddd',
+        borderRadius: '5px',
+        boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+        padding: '10px',
+        minWidth: '150px',
+        marginTop: '5px',
+        zIndex: 1000
+      }}>
+        <p style={{ margin: '0 0 10px 0', fontWeight: 'bold', color: '#5d34a4' }}>
+          Olá, {user.email?.split('@')[0]}
+        </p>
+        <Link href="/perfil" style={{ display: 'block', padding: '8px 0', color: '#333', textDecoration: 'none' }}>
+          Meu Perfil
+        </Link>
+        <Link href="/meus-ingressos" style={{ display: 'block', padding: '8px 0', color: '#333', textDecoration: 'none' }}>
+          Meus Ingressos
+        </Link>
+        <Link href="/favoritos" style={{ display: 'block', padding: '8px 0', color: '#333', textDecoration: 'none' }}>
+          Favoritos
+        </Link>
+        <form action="/auth/logout" method="POST" style={{ marginTop: '10px', borderTop: '1px solid #eee', paddingTop: '10px' }}>
+          <button 
+            type="submit"
+            style={{ 
+              backgroundColor: 'transparent', 
+              color: '#ff4444', 
+              border: 'none', 
+              cursor: 'pointer',
+              width: '100%',
+              textAlign: 'left',
+              padding: '8px 0'
+            }}
+          >
+            Sair
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default async function Index() {
   const supabase = createClient();
+  
+  // Verifica se o usuário está logado
+  const { data: { user } } = await supabase.auth.getUser();
+  
   const { data: eventos, error } = await supabase.from('eventos').select('*').order('data', { ascending: true });
 
   if (error) {
@@ -46,11 +114,17 @@ export default async function Index() {
             Publicar Novo Evento
           </button>
         </Link>
-        <Link href="/login">
-          <button style={{ backgroundColor: '#fff', color: '#5d34a4', padding: '12px 25px', border: '2px solid #5d34a4', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>
-            Entrar
-          </button>
-        </Link>
+        
+        {/* Botão condicional - mostra "Entrar" ou menu do usuário */}
+        {user ? (
+          <UserMenu user={user} />
+        ) : (
+          <Link href="/login">
+            <button style={{ backgroundColor: '#fff', color: '#5d34a4', padding: '12px 25px', border: '2px solid #5d34a4', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>
+              Entrar
+            </button>
+          </Link>
+        )}
       </div>
 
       <h2 style={{ textAlign: 'center' }}>Eventos em Destaque</h2>
