@@ -1,0 +1,382 @@
+/* PublicarEvento.css - Estilos completos para a página de publicar evento */
+
+.publicar-evento-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: Arial, sans-serif;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+  color: #333;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 16px;
+  box-sizing: border-box;
+}
+
+.form-group textarea {
+  height: 100px;
+  resize: vertical;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: normal;
+}
+
+.checkbox-label input {
+  width: auto;
+}
+
+.btn-submit {
+  background: #007bff;
+  color: white;
+  padding: 12px 30px;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  cursor: pointer;
+  width: 100%;
+  margin-top: 20px;
+}
+
+.btn-submit:hover {
+  background: #0056b3;
+}
+
+/* Estilos para Setores */
+.setores-container {
+  border: 1px solid #ddd;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  background: #f9f9f9;
+}
+
+.setor-card {
+  border: 1px solid #ccc;
+  padding: 15px;
+  margin-bottom: 15px;
+  border-radius: 6px;
+  background: white;
+}
+
+.setor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.setor-header h4 {
+  margin: 0;
+  color: #333;
+}
+
+.tipo-ingresso-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr auto;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 10px;
+}
+
+.tipo-ingresso-row input {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.btn-remove, .btn-remove-small, .btn-add, .btn-add-setor {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.btn-remove { 
+  background: #ff4757; 
+  color: white; 
+}
+.btn-remove-small { 
+  background: #ff4757; 
+  color: white; 
+  width: 30px; 
+  height: 30px;
+}
+.btn-add { 
+  background: #3742fa; 
+  color: white; 
+  margin-top: 10px;
+}
+.btn-add-setor { 
+  background: #2ed573; 
+  color: white; 
+  padding: 12px 20px;
+  font-size: 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.tipos-ingresso h5 {
+  margin: 15px 0 10px 0;
+  color: #333;
+}
+
+/* Estilos para Categorias */
+.categoria-selector {
+  margin: 15px 0;
+}
+
+.categorias-selecionadas {
+  margin: 10px 0;
+  min-height: 40px;
+}
+
+.categoria-tag {
+  background: #e0e0e0;
+  padding: 5px 12px;
+  border-radius: 20px;
+  margin: 5px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 14px;
+}
+
+.categoria-tag button {
+  background: none;
+  border: none;
+  margin-left: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.pesquisa-categoria {
+  display: flex;
+  gap: 10px;
+  margin: 15px 0;
+}
+
+.pesquisa-categoria input {
+  flex: 1;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.pesquisa-categoria button {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.pesquisa-categoria button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.sugestoes-categoria, .sugestoes-local {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  background: white;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.sugestao-item, .sugestao-local-item {
+  padding: 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+  transition: background 0.2s;
+}
+
+.sugestao-item:hover, .sugestao-local-item:hover {
+  background: #f5f5f5;
+}
+
+.nova-categoria {
+  color: #3742fa;
+  font-weight: bold;
+}
+
+.mapa-assentos-alerta {
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  padding: 15px;
+  border-radius: 6px;
+  margin: 15px 0;
+  text-align: center;
+}
+
+.mapa-assentos-alerta p {
+  margin: 0 0 10px 0;
+  color: #856404;
+}
+
+.info-text {
+  color: #666;
+  font-size: 0.9em;
+  margin-bottom: 15px;
+  font-style: italic;
+}
+
+small {
+  color: #666;
+  font-size: 0.8em;
+}
+
+.btn-primary {
+  background: #007bff;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+}
+
+/* Estilos para SelecionarTaxa */
+.selecionar-taxa {
+  border: 1px solid #ddd;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  background: #f9f9f9;
+}
+
+.selecionar-taxa h3 {
+  margin-top: 0;
+  color: #333;
+}
+
+.opcoes-taxa {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin: 20px 0;
+}
+
+.opcao-taxa {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  border: 2px solid #e0e0e0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.opcao-taxa:hover {
+  border-color: #007bff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.opcao-taxa.selecionada {
+  border-color: #28a745;
+  background: #f8fff9;
+}
+
+.opcao-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.radio-container input[type="radio"] {
+  width: 20px;
+  height: 20px;
+  margin-top: 5px;
+}
+
+.opcao-info h4 {
+  margin: 0 0 5px 0;
+  color: #333;
+  font-size: 18px;
+}
+
+.opcao-descricao {
+  margin: 0;
+  color: #666;
+  font-weight: bold;
+}
+
+.beneficios {
+  margin-top: 10px;
+  padding-left: 35px;
+}
+
+.beneficios strong {
+  color: #333;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.beneficios ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.beneficios li {
+  padding: 2px 0;
+  color: #555;
+}
+
+.resumo-taxa {
+  background: #e7f3ff;
+  padding: 15px;
+  border-radius: 6px;
+  border-left: 4px solid #007bff;
+}
+
+.resumo-taxa p {
+  margin: 0;
+  color: #333;
+}
+
+/* Estilos gerais */
+h1 {
+  color: #333;
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+h3 {
+  color: #333;
+  margin-bottom: 15px;
+}
