@@ -10,27 +10,40 @@ export default function SearchBar() {
 
   const handleSearch = (e) => {
     e.preventDefault();
-    if (searchTerm.trim()) {
-      // Redireciona para página de busca com os parâmetros
-      router.push(`/busca?q=${encodeURIComponent(searchTerm)}&local=${encodeURIComponent(location)}`);
+    if (searchTerm.trim() || location) {
+      const params = new URLSearchParams();
+      if (searchTerm.trim()) params.append('q', searchTerm.trim());
+      if (location) params.append('local', location);
+      router.push(`/busca?${params.toString()}`);
     }
+  };
+
+  const handleQuickFilter = (filter) => {
+    setSearchTerm(filter);
+    // Busca imediatamente quando clica em um filtro rápido
+    const params = new URLSearchParams();
+    params.append('q', filter);
+    if (location) params.append('local', location);
+    router.push(`/busca?${params.toString()}`);
   };
 
   return (
     <div style={{ 
       backgroundColor: 'white', 
-      padding: '20px', 
-      borderRadius: '8px', 
-      boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-      margin: '20px auto',
-      maxWidth: '800px'
+      padding: '25px', 
+      borderRadius: '12px', 
+      boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+      margin: '25px auto',
+      maxWidth: '900px'
     }}>
-      <form onSubmit={handleSearch} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+      <form onSubmit={handleSearch} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         
-        {/* Campo de busca principal */}
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          <div style={{ flex: 3, display: 'flex', alignItems: 'center', backgroundColor: '#f8f9fa', borderRadius: '25px', padding: '5px 15px' }}>
-            <span style={{ marginRight: '10px', color: '#6c757d' }}>🔍</span>
+        {/* Linha principal de busca */}
+        <div style={{ display: 'flex', gap: '15px', alignItems: 'stretch', flexWrap: 'wrap' }}>
+          
+          {/* Campo de busca */}
+          <div style={{ flex: '2', minWidth: '250px', display: 'flex', alignItems: 'center', backgroundColor: '#f8f9fa', borderRadius: '25px', padding: '0 20px', border: '2px solid #e9ecef' }}>
+            <span style={{ marginRight: '12px', color: '#6c757d', fontSize: '18px' }}>🔍</span>
             <input
               type="text"
               value={searchTerm}
@@ -39,28 +52,30 @@ export default function SearchBar() {
               style={{
                 border: 'none',
                 backgroundColor: 'transparent',
-                padding: '10px 0',
+                padding: '15px 0',
                 width: '100%',
                 fontSize: '16px',
-                outline: 'none'
+                outline: 'none',
+                fontWeight: '500'
               }}
             />
           </div>
           
-          {/* Localização */}
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', backgroundColor: '#f8f9fa', borderRadius: '25px', padding: '5px 15px' }}>
-            <span style={{ marginRight: '10px', color: '#6c757d' }}>📍</span>
+          {/* Seletor de localização */}
+          <div style={{ flex: '1', minWidth: '200px', display: 'flex', alignItems: 'center', backgroundColor: '#f8f9fa', borderRadius: '25px', padding: '0 20px', border: '2px solid #e9ecef' }}>
+            <span style={{ marginRight: '12px', color: '#6c757d', fontSize: '18px' }}>📍</span>
             <select
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               style={{
                 border: 'none',
                 backgroundColor: 'transparent',
-                padding: '10px 0',
+                padding: '15px 0',
                 width: '100%',
-                fontSize: '14px',
+                fontSize: '15px',
                 outline: 'none',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                fontWeight: '500'
               }}
             >
               <option value="São Paulo, SP">São Paulo, SP</option>
@@ -72,7 +87,8 @@ export default function SearchBar() {
               <option value="Curitiba, PR">Curitiba, PR</option>
               <option value="Fortaleza, CE">Fortaleza, CE</option>
               <option value="Recife, PE">Recife, PE</option>
-              <option value="Online">Online</option>
+              <option value="Online">Eventos Online</option>
+              <option value="">Qualquer local</option>
             </select>
           </div>
 
@@ -84,97 +100,48 @@ export default function SearchBar() {
               color: 'white',
               border: 'none',
               borderRadius: '25px',
-              padding: '12px 30px',
+              padding: '15px 35px',
               fontSize: '16px',
               fontWeight: 'bold',
               cursor: 'pointer',
-              whiteSpace: 'nowrap'
+              whiteSpace: 'nowrap',
+              minWidth: '120px',
+              transition: 'background-color 0.2s'
             }}
+            onMouseOver={(e) => e.target.style.backgroundColor = '#4a2a82'}
+            onMouseOut={(e) => e.target.style.backgroundColor = '#5d34a4'}
           >
             Buscar
           </button>
         </div>
 
         {/* Filtros rápidos */}
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', flexWrap: 'wrap' }}>
-          <button 
-            type="button"
-            onClick={() => setSearchTerm('Teatro')}
-            style={{
-              backgroundColor: 'transparent',
-              color: '#5d34a4',
-              border: '1px solid #5d34a4',
-              borderRadius: '20px',
-              padding: '8px 16px',
-              fontSize: '14px',
-              cursor: 'pointer'
-            }}
-          >
-            🎭 Teatro
-          </button>
-          <button 
-            type="button"
-            onClick={() => setSearchTerm('Shows')}
-            style={{
-              backgroundColor: 'transparent',
-              color: '#5d34a4',
-              border: '1px solid #5d34a4',
-              borderRadius: '20px',
-              padding: '8px 16px',
-              fontSize: '14px',
-              cursor: 'pointer'
-            }}
-          >
-            🎵 Shows
-          </button>
-          <button 
-            type="button"
-            onClick={() => setSearchTerm('Stand-up')}
-            style={{
-              backgroundColor: 'transparent',
-              color: '#5d34a4',
-              border: '1px solid #5d34a4',
-              borderRadius: '20px',
-              padding: '8px 16px',
-              fontSize: '14px',
-              cursor: 'pointer'
-            }}
-          >
-            🎤 Stand-up
-          </button>
-          <button 
-            type="button"
-            onClick={() => setSearchTerm('Festivais')}
-            style={{
-              backgroundColor: 'transparent',
-              color: '#5d34a4',
-              border: '1px solid #5d34a4',
-              borderRadius: '20px',
-              padding: '8px 16px',
-              fontSize: '14px',
-              cursor: 'pointer'
-            }}
-          >
-            🎪 Festivais
-          </button>
-          <button 
-            type="button"
-            onClick={() => {
-              setSearchTerm('Online');
-              setLocation('Online');
-            }}
-            style={{
-              backgroundColor: 'transparent',
-              color: '#5d34a4',
-              border: '1px solid #5d34a4',
-              borderRadius: '20px',
-              padding: '8px 16px',
-              fontSize: '14px',
-              cursor: 'pointer'
-            }}
-          >
-            💻 Online
-          </button>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <span style={{ color: '#6c757d', fontSize: '14px', marginRight: '10px', alignSelf: 'center' }}>Categorias:</span>
+          {['Teatro', 'Shows', 'Stand-up', 'Festivais', 'Online'].map((categoria) => (
+            <button 
+              key={categoria}
+              type="button"
+              onClick={() => handleQuickFilter(categoria)}
+              style={{
+                backgroundColor: searchTerm === categoria ? '#5d34a4' : 'transparent',
+                color: searchTerm === categoria ? 'white' : '#5d34a4',
+                border: `1px solid #5d34a4`,
+                borderRadius: '20px',
+                padding: '8px 18px',
+                fontSize: '14px',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              {categoria === 'Teatro' && '🎭 '}
+              {categoria === 'Shows' && '🎵 '}
+              {categoria === 'Stand-up' && '🎤 '}
+              {categoria === 'Festivais' && '🎪 '}
+              {categoria === 'Online' && '💻 '}
+              {categoria}
+            </button>
+          ))}
         </div>
       </form>
     </div>
