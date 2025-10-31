@@ -1,5 +1,6 @@
 'use client';
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
+import { supabase } from '@/lib/supabase';
 import SetorManager from './components/SetorManager';
 import CategoriaSelector from './components/CategoriaSelector';
 import SelecionarTaxa from './components/SelecionarTaxa';
@@ -23,227 +24,157 @@ const PublicarEvento = () => {
   });
   const [imagem, setImagem] = useState(null);
   const [imagemPreview, setImagemPreview] = useState(null);
-  const fileInputRef = useRef(null);
+  const [setores, setSetores] = useState([]);
+  const [enviando, setEnviando] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setEnviando(true);
     
     // Validar campos obrigatórios
     if (!formData.titulo || !formData.descricao || !formData.data || !formData.hora || !formData.localNome || !imagem) {
       alert('Por favor, preencha todos os campos obrigatórios, incluindo a imagem!');
+      setEnviando(false);
       return;
     }
 
     if (categorias.length === 0) {
       alert('Por favor, selecione pelo menos uma categoria!');
+      setEnviando(false);
       return;
     }
-    
-    const dadosEvento = {
-      ...formData,
-      categorias,
-      temLugarMarcado,
-      taxa,
-      imagem,
-      status: 'pending'
-    };
 
-    console.log('Dados do evento para moderação:', dadosEvento);
-    alert('Evento enviado para moderação! Em breve estará disponível no site.');
-    
-    // Limpar formulário após envio
-    setFormData({
-      titulo: '',
-      descricao: '',
-      data: '',
-      hora: '',
-      localNome: '',
-      localEndereco: ''
-    });
-    setCategorias([]);
-    setTemLugarMarcado(false);
-    setTaxa({ taxaComprador: 15, taxaProdutor: 5 });
-    setImagem(null);
-    setImagemPreview(null);
-  };
+    if (setores.length === 0) {
+      alert('Por favor, adicione pelo menos um setor com tipos de ingresso!');
+      setEnviando(false);
+      return;
+    }
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      // Verificar tamanho do arquivo (5MB máximo)
-      if (file.size > 5 * 1024 * 1024) {
-        alert('A imagem é muito grande. Por favor, selecione uma imagem menor que 5MB.');
-        return;
+    try {
+      // 1. Fazer upload da imagem
+      let imagemUrl = '';
+      if (imagem) {
+        const nomeArquivo = `${Date.now()}-${imagem.name}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('eventos')
+          .upload(nomeArquivo, imagem);
+
+        if (uploadError) throw uploadError;
+
+        // Obter URL pública
+        const { data: urlData } = supabase.storage
+          .from('eventos')
+          .getPublicUrl(nomeArquivo);
+        
+        imagemUrl = urlData.publicUrl;
       }
-      
-      // Verificar tipo do arquivo
-      if (!file.type.match('image/jpeg') && !file.type.match('image/png') && !file.type.match('image/gif')) {
-        alert('Por favor, selecione apenas imagens nos formatos JPG, PNG ou GIF.');
-        return;
+
+      // 2. Inserir evento principal
+      const { data: evento, error: eventoError } = await supabase
+        .from('eventos')
+        .insert([
+          {
+            titulo: formData.titulo,
+            descricao: formData.descricao,
+            data: formData.data,
+            hora: formData.hora,
+            local_nome: formData.localNome,
+            local_endereco: formData.localEndereco,
+            categorias: categorias,
+            tem_lugar_marcado: temLugarMarcado,
+            taxa_comprador: taxa.taxaComprador,
+            taxa_produtor: taxa.taxaProdutor,
+            imagem_url: imagemUrl,
+            status: 'pendente',
+            // Dados do produtor (em produção, viriam do usuário logado)
+            produtor_nome: 'Produtor Teste',
+            produtor_email: 'produtor@teste.com',
+            produtor_telefone: '(11) 99999-9999',
+            produtor_documento: '123.456.789-00',
+            produtor_banco: 'Banco do Brasil',
+            produtor_agencia: '1234',
+            produtor_conta: '56789-0',
+            produtor_tipo: 'Pessoa Física'
+          }
+        ])
+        .select()
+        .single();
+
+      if (eventoError) throw eventoError;
+
+      // 3. Inserir setores e tipos de ingresso
+      for (const setor of setores) {
+        const { data: setorData, error: setorError } = await supabase
+          .from('setores')
+          .insert([
+            {
+              evento_id: evento.id,
+              nome: setor.nome,
+              capacidade_total: setor.capacidadeTotal
+            }
+          ])
+          .select()
+          .single();
+
+        if (setorError) throw setorError;
+
+        // Inserir tipos de ingresso
+        const tiposIngressoData = setor.tiposIngresso.map(tipo => ({
+          setor_id: setorData.id,
+          nome: tipo.nome,
+          preco: tipo.preco,
+          quantidade: tipo.quantidade
+        }));
+
+        const { error: tiposError } = await supabase
+          .from('tipos_ingresso')
+          .insert(tiposIngressoData);
+
+        if (tiposError) throw tiposError;
       }
+
+      alert('✅ Evento enviado para moderação! Agora aparecerá na área admin.');
       
-      setImagem(file);
+      // Limpar formulário
+      setFormData({
+        titulo: '',
+        descricao: '',
+        data: '',
+        hora: '',
+        localNome: '',
+        localEndereco: ''
+      });
+      setCategorias([]);
+      setTemLugarMarcado(false);
+      setTaxa({ taxaComprador: 15, taxaProdutor: 5 });
+      setImagem(null);
+      setImagemPreview(null);
+      setSetores([]);
       
-      // Criar preview da imagem
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setImagemPreview(e.target.result);
-      };
-      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Erro ao salvar evento:', error);
+      alert('Erro ao salvar evento: ' + error.message);
+    } finally {
+      setEnviando(false);
     }
   };
 
-  const handleClickUpload = () => {
-    fileInputRef.current.click();
-  };
-
-  const removeImage = () => {
-    setImagem(null);
-    setImagemPreview(null);
-    fileInputRef.current.value = '';
-  };
+  // ... (resto do código permanece igual)
 
   return (
     <div className="publicar-evento-container">
       <h1>Publicar Novo Evento</h1>
       
       <form onSubmit={handleSubmit}>
-        {/* Informações Básicas */}
-        <div className="form-section">
-          <h2>Informações Básicas</h2>
-          
-          <div className="form-group">
-            <label>Título do Evento *</label>
-            <input
-              type="text"
-              value={formData.titulo}
-              onChange={(e) => setFormData({...formData, titulo: e.target.value})}
-              placeholder="Ex: Show da Banda X, Peça de Teatro Y"
-              required
-            />
-          </div>
+        {/* Seções do formulário permanecem iguais */}
+        
+        {/* Atualize o SetorManager para receber setores e setSetores */}
+        <SetorManager setores={setores} setSetores={setSetores} />
 
-          <div className="form-group">
-            <label>Descrição do Evento *</label>
-            <textarea
-              value={formData.descricao}
-              onChange={(e) => setFormData({...formData, descricao: e.target.value})}
-              placeholder="Descreva detalhadamente o seu evento..."
-              required
-            />
-          </div>
+        {/* Resto do formulário */}
 
-          {/* Campo de Imagem CORRIGIDO */}
-          <div className="form-group">
-            <label>Imagem do Evento *</label>
-            <div className="image-upload-container">
-              <input
-                type="file"
-                ref={fileInputRef}
-                accept="image/jpeg,image/png,image/gif"
-                onChange={handleImageChange}
-                className="image-input"
-                required
-              />
-              
-              {imagemPreview ? (
-                <div className="image-preview-container">
-                  <img src={imagemPreview} alt="Preview" className="image-preview" />
-                  <div className="image-info">
-                    <p>✅ {imagem.name}</p>
-                    <button type="button" onClick={removeImage} className="btn-remove-image">
-                      Remover Imagem
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="image-upload-area" onClick={handleClickUpload}>
-                  <div className="upload-icon">📷</div>
-                  <p>Clique para selecionar uma imagem</p>
-                  <small>Arraste ou clique para fazer upload</small>
-                </div>
-              )}
-            </div>
-            <small>Formatos aceitos: JPG, PNG, GIF. Tamanho máximo: 5MB</small>
-          </div>
-
-          <CategoriaSelector onCategoriasChange={setCategorias} />
-
-          <div className="form-group">
-            <label>Nome do Local *</label>
-            <input
-              type="text"
-              value={formData.localNome}
-              onChange={(e) => setFormData({...formData, localNome: e.target.value})}
-              placeholder="Ex: Teatro Elis Regina, Casa de Show X"
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label>Endereço do Local (opcional)</label>
-            <input
-              type="text"
-              value={formData.localEndereco}
-              onChange={(e) => setFormData({...formData, localEndereco: e.target.value})}
-              placeholder="Ex: Rua Exemplo, 123 - Bairro - Cidade/Estado"
-            />
-            <small>Pode deixar em branco - nossa equipe completará se necessário</small>
-          </div>
-
-          <div className="form-row">
-            <div className="form-group">
-              <label>Data do Evento *</label>
-              <input
-                type="date"
-                value={formData.data}
-                onChange={(e) => setFormData({...formData, data: e.target.value})}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Horário *</label>
-              <input
-                type="time"
-                value={formData.hora}
-                onChange={(e) => setFormData({...formData, hora: e.target.value})}
-                required
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Configuração de Assentos */}
-        <div className="form-section">
-          <h2>Configuração de Assentos</h2>
-          <div className="form-group">
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={temLugarMarcado}
-                onChange={(e) => setTemLugarMarcado(e.target.checked)}
-              />
-              Evento com lugar marcado
-            </label>
-            <small>Marque esta opção se o evento terá assentos numerados</small>
-          </div>
-        </div>
-
-        {/* Setores e Ingressos */}
-        <div className="form-section">
-          <h2>Setores e Ingressos</h2>
-          <SetorManager />
-        </div>
-
-        {/* Configuração de Taxas */}
-        <div className="form-section">
-          <h2>Configuração de Taxas</h2>
-          <SelecionarTaxa onTaxaSelecionada={setTaxa} />
-        </div>
-
-        <button type="submit" className="btn-submit">
-          🚀 Publicar Evento
+        <button type="submit" className="btn-submit" disabled={enviando}>
+          {enviando ? 'Enviando...' : '🚀 Publicar Evento'}
         </button>
       </form>
     </div>
