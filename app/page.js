@@ -11,7 +11,7 @@ function CardEvento({ evento }) {
       <div style={{ padding: '15px' }}>
         <h3 style={{ margin: '0 0 10px 0', color: '#5d34a4' }}>{evento.nome}</h3>
         <p>{evento.categoria} | {new Date(evento.data).toLocaleDateString('pt-BR')}</p>
-        <p><strong>Preço: {evento.preco}</strong></p>
+        <p><strong>Preço: R$ {evento.preco}</strong></p>
         <Link href={`/evento/${evento.id}`}>
           <button style={{ backgroundColor: '#f1c40f', color: 'black', padding: '10px 15px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', width: '100%' }}>
             Comprar Ingresso
@@ -45,7 +45,7 @@ export default async function Index() {
       <header style={{ backgroundColor: '#5d34a4', color: 'white', padding: '20px', textAlign: 'center', marginBottom: '20px', borderRadius: '8px' }}>
         <h1>GOLDEN INGRESSOS</h1>
         <p>Encontre seu próximo evento inesquecível.</p>
-           </header>
+      </header>
       
       {/* Barra de Pesquisa */}
       <SearchBar />
