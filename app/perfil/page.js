@@ -1,121 +1,129 @@
-// app/perfil/page.js
-// CÓDIGO COMPLETO E CORRIGIDO
-
-// CORREÇÃO 1: Caminho '../../'
-import { createClient } from '../../utils/supabase/server'; 
+import { createClient } from '../../utils/supabase/server';
 import { redirect } from 'next/navigation';
-import { atualizarPerfil } from '../actions-perfil'; 
+import Link from 'next/link';
 
 export default async function PerfilPage() {
-  
   const supabase = createClient();
 
-  // CORREÇÃO 2: 'getUser' robusto
-  // 1. Protege a rota (de forma segura):
-  const { data, error: userError } = await supabase.auth.getUser();
-  if (userError || !data?.user) {
-    return redirect('/login?message=Você precisa estar logado para ver seu perfil.');
+  // Verifica se o usuário está logado
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    redirect('/login');
   }
-  const user = data.user; // Agora 'user' é seguro de usar
 
-  // 2. Busca o perfil existente:
-  const { data: perfil, error } = await supabase
+  // Busca informações adicionais do perfil (se existirem)
+  const { data: perfil } = await supabase
     .from('perfis')
-    // CORREÇÃO 3: .select() com 'id' para o Firewall (RLS)
-    .select('id, nome_completo, chave_pix, tipo_chave_pix, banco_conta_corrente, preferencia_pagamento') 
-    .eq('id', user.id) // O 'id' do perfil TEM que ser igual ao 'id' do usuário
-    .single(); // .single() pega só um resultado
-
-  if (error && error.code !== 'PGRST116') {
-    // PGRST116 = "range not satisiable" (significa que não encontrou o perfil, o que é normal para um novo usuário)
-    console.error("Erro ao buscar perfil:", error);
-  }
+    .select('nome_completo, telefone, data_nascimento, localizacao')
+    .eq('id', user.id)
+    .single();
 
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px' }}>
       
       {/* Cabeçalho */}
-      <header style={{ backgroundColor: '#5d34a4', color: 'white', padding: '20px', textAlign: 'center' }}>
-        <a href="/" style={{ color: 'white', textDecoration: 'none', float: 'left' }}>&larr; Voltar para a Home</a>
-        <h1 style={{ margin: '0' }}>Meu Perfil de Produtor</h1>
+      <header style={{ backgroundColor: '#5d34a4', color: 'white', padding: '20px', textAlign: 'center', borderRadius: '8px', marginBottom: '20px' }}>
+        <Link href="/" style={{ color: 'white', textDecoration: 'none', float: 'left' }}>&larr; Voltar</Link>
+        <h1 style={{ margin: '0' }}>Meu Perfil</h1>
       </header>
 
-      {/* Formulário do Perfil */}
-      <div style={{ maxWidth: '800px', margin: '40px auto', padding: '30px', backgroundColor: 'white', borderRadius: '8px' }}>
-        
-        <p style={{ fontSize: '14px', color: '#555' }}>
-          Email da Conta: <strong>{user.email}</strong> (Não pode ser alterado)
-        </p>
-        <hr style={{ margin: '20px 0' }} />
+      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
 
-        {/* O 'action' chama a função que vamos criar no próximo passo */}
-        <form action={atualizarPerfil} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        {/* Cartão de Informações Pessoais */}
+        <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', marginBottom: '20px' }}>
+          <h2 style={{ color: '#5d34a4', marginTop: 0 }}>Informações Pessoais</h2>
           
-          <h3>Dados Pessoais</h3>
-          <label htmlFor="nome_completo">Nome Completo:</label>
-          <input 
-            id="nome_completo" 
-            name="nome_completo" 
-            type="text" 
-            style={{ padding: '10px' }}
-            defaultValue={perfil?.nome_completo || ''} // Pré-preenche com dados do banco
-          />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+            <div>
+              <p><strong>Nome:</strong> {perfil?.nome_completo || 'Não informado'}</p>
+              <p><strong>Email:</strong> {user.email}</p>
+              <p><strong>Telefone:</strong> {perfil?.telefone || 'Não informado'}</p>
+            </div>
+            <div>
+              <p><strong>Data de Nascimento:</strong> {perfil?.data_nascimento || 'Não informado'}</p>
+              <p><strong>Localização:</strong> {perfil?.localizacao || 'Não informado'}</p>
+            </div>
+          </div>
 
-          <h3>Recebimento via PIX</h3>
-          <label htmlFor="chave_pix">Chave PIX:</label>
-          <input 
-            id="chave_pix" 
-            name="chave_pix" 
-            type="text" 
-            style={{ padding: '10px' }}
-            defaultValue={perfil?.chave_pix || ''}
-          />
-          
-          <label htmlFor="tipo_chave_pix">Tipo da Chave PIX:</label>
-          <select 
-            id="tipo_chave_pix" 
-            name="tipo_chave_pix" 
-            style={{ padding: '10px' }}
-            defaultValue={perfil?.tipo_chave_pix || ''}
-          >
-            <option value="">Selecione...</option>
-            <option value="CPF">CPF</option>
-            <option value="Email">Email</option>
-            <option value="Celular">Celular</option>
-            <option value="Aleatoria">Chave Aleatória</option>
-          </select>
-
-          <h3>Recebimento via Conta Corrente</h3>
-          <label htmlFor="banco_conta_corrente">Dados Bancários (Banco, Agência, Conta):</label>
-          <textarea 
-            id="banco_conta_corrente" 
-            name="banco_conta_corrente" 
-            rows="3" 
-            style={{ padding: '10px' }}
-            defaultValue={perfil?.banco_conta_corrente || ''}
-          />
-
-          <h3>Preferência</h3>
-          <label htmlFor="preferencia_pagamento">Forma de Pagamento Preferida:</label>
-          <select 
-            id="preferencia_pagamento" 
-            name="preferencia_pagamento" 
-            style={{ padding: '10px' }}
-            defaultValue={perfil?.preferencia_pagamento || ''}
-          >
-            <option value="">Selecione...</option>
-            <option value="PIX">Apenas PIX</option>
-            <option value="Transferência">Apenas Transferência</option>
-            <option value="Ambos">Ambos</option>
-          </select>
-
-          <button 
-            type="submit"
-            style={{ backgroundColor: '#f1c40f', color: 'black', padding: '15px', fontWeight: 'bold', border: 'none', cursor: 'pointer', fontSize: '16px' }}
-          >
-            Salvar Alterações
+          <button style={{ 
+            backgroundColor: '#f1c40f', 
+            color: 'black', 
+            padding: '10px 20px', 
+            border: 'none', 
+            borderRadius: '5px', 
+            fontWeight: 'bold', 
+            cursor: 'pointer',
+            marginTop: '10px'
+          }}>
+            Editar Perfil
           </button>
-        </form>
+        </div>
+
+        {/* Cartão de Estatísticas */}
+        <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', marginBottom: '20px' }}>
+          <h2 style={{ color: '#5d34a4', marginTop: 0 }}>Estatísticas</h2>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', textAlign: 'center' }}>
+            <div>
+              <h3 style={{ margin: '0', fontSize: '24px', color: '#5d34a4' }}>0</h3>
+              <p style={{ margin: '0' }}>Eventos participados</p>
+            </div>
+            <div>
+              <h3 style={{ margin: '0', fontSize: '24px', color: '#5d34a4' }}>0</h3>
+              <p style={{ margin: '0' }}>Ingressos comprados</p>
+            </div>
+            <div>
+              <h3 style={{ margin: '0', fontSize: '24px', color: '#5d34a4' }}>0</h3>
+              <p style={{ margin: '0' }}>Eventos favoritos</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Cartão de Preferências */}
+        <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px', marginBottom: '20px' }}>
+          <h2 style={{ color: '#5d34a4', marginTop: 0 }}>Preferências</h2>
+          
+          <div style={{ marginBottom: '15px' }}>
+            <h3 style={{ marginBottom: '10px' }}>Notificações</h3>
+            <label style={{ display: 'block', marginBottom: '5px' }}>
+              <input type="checkbox" /> Notificações por email
+            </label>
+            <label style={{ display: 'block', marginBottom: '5px' }}>
+              <input type="checkbox" /> Notificações por SMS
+            </label>
+            <label style={{ display: 'block', marginBottom: '5px' }}>
+              <input type="checkbox" /> Notificações push
+            </label>
+          </div>
+
+          <div>
+            <h3 style={{ marginBottom: '10px' }}>Privacidade</h3>
+            <label style={{ display: 'block', marginBottom: '5px' }}>
+              <input type="checkbox" /> Mostrar perfil público
+            </label>
+            <label style={{ display: 'block', marginBottom: '5px' }}>
+              <input type="checkbox" /> Mostrar atividades
+            </label>
+          </div>
+        </div>
+
+        {/* Cartão de Ações Rápidas */}
+        <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '8px' }}>
+          <h2 style={{ color: '#5d34a4', marginTop: 0 }}>Ações Rápidas</h2>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <Link href="/metodos-pagamento" style={{ padding: '10px', backgroundColor: '#f1c40f', color: 'black', textDecoration: 'none', borderRadius: '5px', textAlign: 'center' }}>
+              Métodos de pagamento
+            </Link>
+            <Link href="/alertas" style={{ padding: '10px', backgroundColor: '#3498db', color: 'white', textDecoration: 'none', borderRadius: '5px', textAlign: 'center' }}>
+              Configurar alertas
+            </Link>
+            <Link href="/seguranca" style={{ padding: '10px', backgroundColor: '#e74c3c', color: 'white', textDecoration: 'none', borderRadius: '5px', textAlign: 'center' }}>
+              Segurança da conta
+            </Link>
+          </div>
+        </div>
+
       </div>
     </div>
   );
