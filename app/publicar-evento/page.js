@@ -1,53 +1,130 @@
-// app/publicar-evento/page.js
-// PÁGINA DE PUBLICAÇÃO: VERSÃO CORRIGIDA COM MÚLTIPLOS INGRESSOS
+'use client';
+import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import SetorManager from './components/SetorManager';
+import CategoriaSelector from './components/CategoriaSelector';
+import LocalSearch from './components/LocalSearch';
+import SelecionarTaxa from './components/SelecionarTaxa';
+import './PublicarEvento.css';
 
-import { createClient } from '../../utils/supabase/server';
-import { criarEvento } from '../actions'; 
-import SubmitFormClient from './SubmitFormClient';
-
-export default async function PublicarEventoPage() {
+const PublicarEvento = () => {
+  const router = useRouter();
   
-  const supabase = createClient();
-  const { data, error: userError } = await supabase.auth.getUser();
-  const user = data?.user;
+  const [formData, setFormData] = useState({
+    titulo: '',
+    descricao: '',
+    data: '',
+    hora: '',
+  });
+  
+  const [categorias, setCategorias] = useState([]);
+  const [local, setLocal] = useState('');
+  const [temLugarMarcado, setTemLugarMarcado] = useState(false);
+  const [taxa, setTaxa] = useState({ taxaComprador: 15, taxaProdutor: 5 });
 
-  // LÓGICA DE PROTEÇÃO DE PRODUTOR
-  if (userError || !user) {
-    return (
-      <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px', textAlign: 'center' }}>
-        <h1 style={{ color: '#5d34a4', marginTop: '50px' }}>Acesso de Produtor Requerido</h1>
-        <p style={{ fontSize: '18px' }}>Para criar um evento, você precisa ter seu login de produtor.</p>
-        <a href="/login" style={{ backgroundColor: '#f1c40f', color: 'black', padding: '15px 20px', textDecoration: 'none', fontWeight: 'bold', borderRadius: '5px', display: 'inline-block', marginTop: '20px' }}>
-          Ir para a Página de Login
-        </a>
-      </div>
-    );
-  }
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    const dadosEvento = {
+      ...formData,
+      categorias,
+      local,
+      temLugarMarcado,
+      taxa,
+      status: 'pending'
+    };
+
+    console.log('Dados do evento:', dadosEvento);
+    alert('Evento enviado para moderação!');
+    // Aqui você vai conectar com seu backend depois
+  };
 
   return (
-    <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px' }}>
+    <div className="publicar-evento-container">
+      <h1>Publicar Novo Evento</h1>
       
-      {/* Cabeçalho */}
-      <header style={{ backgroundColor: '#5d34a4', color: 'white', padding: '20px', textAlign: 'center' }}>
-        <a href="/" style={{ color: 'white', textDecoration: 'none', float: 'left' }}>&larr; Voltar para a Home</a>
-        <h1 style={{ margin: '0' }}>Publicar Novo Evento</h1>
-      </header>
+      <form onSubmit={handleSubmit}>
+        <div className="form-group">
+          <label>Título do Evento *</label>
+          <input
+            type="text"
+            value={formData.titulo}
+            onChange={(e) => setFormData({...formData, titulo: e.target.value})}
+            required
+          />
+        </div>
 
-      {/* Container do Formulário */}
-      <div style={{ 
-        maxWidth: '800px', 
-        margin: '40px auto', 
-        padding: '30px', 
-        backgroundColor: 'white', 
-        borderRadius: '8px',
-      }}>
-        
-        <p>Logado como: {user.email}</p>
-        
-        {/* COMPONENTE COM MÚLTIPLOS INGRESSOS */}
-        <SubmitFormClient criarEvento={criarEvento} userEmail={user.email} />
-        
-      </div>
+        <div className="form-group">
+          <label>Descrição *</label>
+          <textarea
+            value={formData.descricao}
+            onChange={(e) => setFormData({...formData, descricao: e.target.value})}
+            required
+          />
+        </div>
+
+        <CategoriaSelector onCategoriasChange={setCategorias} />
+
+        <LocalSearch onLocalSelect={setLocal} />
+
+        <div className="form-row">
+          <div className="form-group">
+            <label>Data *</label>
+            <input
+              type="date"
+              value={formData.data}
+              onChange={(e) => setFormData({...formData, data: e.target.value})}
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Hora *</label>
+            <input
+              type="time"
+              value={formData.hora}
+              onChange={(e) => setFormData({...formData, hora: e.target.value})}
+              required
+            />
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={temLugarMarcado}
+              onChange={(e) => setTemLugarMarcado(e.target.checked)}
+            />
+            Evento com lugar marcado
+          </label>
+          <small>Os compradores poderão escolher assentos específicos</small>
+        </div>
+
+        {temLugarMarcado && (
+          <div className="mapa-assentos-alerta">
+            <p>⚠️ Configuração de mapa de assentos necessária</p>
+            <button 
+              type="button" 
+              onClick={() => router.push('/configurar-mapa-assentos')}
+              className="btn-primary"
+            >
+              Configurar Mapa de Assentos
+            </button>
+          </div>
+        )}
+
+        <SetorManager />
+
+        {/* NOVO COMPONENTE DE TAXAS */}
+        <SelecionarTaxa onTaxaSelecionada={setTaxa} />
+
+        <button type="submit" className="btn-submit">
+          Enviar para Moderação
+        </button>
+      </form>
     </div>
   );
-}
+};
+
+export default PublicarEvento;
