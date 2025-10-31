@@ -106,21 +106,22 @@
   box-shadow: 0 4px 8px rgba(0,0,0,0.2);
 }
 
-/* Estilos para Upload de Imagem */
-.file-upload-container {
+/* ESTILOS CORRIGIDOS PARA UPLOAD DE IMAGEM */
+.image-upload-container {
   position: relative;
   margin-bottom: 5px;
 }
 
-.file-input {
-  position: absolute;
-  left: -9999px;
-  opacity: 0;
+.image-input {
+  display: none; /* Esconde o input file padrão */
 }
 
-.file-upload-label {
-  display: block;
-  padding: 15px;
+.image-upload-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
   border: 2px dashed #007bff;
   border-radius: 8px;
   text-align: center;
@@ -128,17 +129,72 @@
   transition: all 0.3s ease;
   background: #f8f9fa;
   color: #007bff;
+  min-height: 150px;
+}
+
+.image-upload-area:hover {
+  background: #e7f3ff;
+  border-color: #0056b3;
+  transform: translateY(-2px);
+}
+
+.upload-icon {
+  font-size: 48px;
+  margin-bottom: 10px;
+}
+
+.image-upload-area p {
+  margin: 0 0 5px 0;
+  font-weight: 500;
+  font-size: 16px;
+}
+
+.image-upload-area small {
+  color: #6c757d;
+  font-size: 12px;
+}
+
+.image-preview-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  padding: 20px;
+  border: 2px solid #28a745;
+  border-radius: 8px;
+  background: #f8fff9;
+}
+
+.image-preview {
+  max-width: 100%;
+  max-height: 200px;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.image-info {
+  text-align: center;
+}
+
+.image-info p {
+  margin: 0 0 10px 0;
+  color: #28a745;
   font-weight: 500;
 }
 
-.file-upload-label:hover {
-  background: #e7f3ff;
-  border-color: #0056b3;
+.btn-remove-image {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background 0.3s ease;
 }
 
-.file-input:focus + .file-upload-label {
-  border-color: #0056b3;
-  box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+.btn-remove-image:hover {
+  background: #c82333;
 }
 
 /* Estilos para Setores */
