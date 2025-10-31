@@ -62,20 +62,20 @@ export default async function EventoPage({ params }) {
           </div>
 
           <Link href={`/checkout?evento_id=${evento.id}`}>
-            <button style={{ 
-              backgroundColor: '#f1c40f', 
-              color: 'black', 
-              padding: '15px', 
-              border: 'none', 
-              borderRadius: '8px', 
-              fontWeight: 'bold', 
-              cursor: 'pointer', 
-              width: '100%',
-              fontSize: '18px'
-            }}>
-              Comprar Ingresso
-            </button>
-          </Link>
+  <button style={{ 
+    backgroundColor: '#f1c40f', 
+    color: 'black', 
+    padding: '15px', 
+    border: 'none', 
+    borderRadius: '8px', 
+    fontWeight: 'bold', 
+    cursor: 'pointer', 
+    width: '100%',
+    fontSize: '18px'
+  }}>
+    Comprar Ingresso
+  </button>
+</Link>
 
           <p style={{ fontSize: '14px', color: '#666', textAlign: 'center', marginTop: '15px' }}>
             Pagamento seguro via Mercado Pago
