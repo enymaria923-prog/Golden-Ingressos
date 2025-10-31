@@ -11,8 +11,8 @@ const PublicarEvento = () => {
     descricao: '',
     data: '',
     hora: '',
-    localNome: '',      // Nome do local (ex: Teatro Elis Regina)
-    localEndereco: ''   // Endereço (opcional)
+    localNome: '',
+    localEndereco: ''
   });
   
   const [categorias, setCategorias] = useState([]);
@@ -21,13 +21,14 @@ const PublicarEvento = () => {
     taxaComprador: 15, 
     taxaProdutor: 5 
   });
+  const [imagem, setImagem] = useState(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     // Validar campos obrigatórios
-    if (!formData.titulo || !formData.descricao || !formData.data || !formData.hora || !formData.localNome) {
-      alert('Por favor, preencha todos os campos obrigatórios!');
+    if (!formData.titulo || !formData.descricao || !formData.data || !formData.hora || !formData.localNome || !imagem) {
+      alert('Por favor, preencha todos os campos obrigatórios, incluindo a imagem!');
       return;
     }
 
@@ -41,6 +42,7 @@ const PublicarEvento = () => {
       categorias,
       temLugarMarcado,
       taxa,
+      imagem,
       status: 'pending'
     };
 
@@ -59,6 +61,14 @@ const PublicarEvento = () => {
     setCategorias([]);
     setTemLugarMarcado(false);
     setTaxa({ taxaComprador: 15, taxaProdutor: 5 });
+    setImagem(null);
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setImagem(file);
+    }
   };
 
   return (
@@ -91,9 +101,30 @@ const PublicarEvento = () => {
             />
           </div>
 
+          {/* Campo de Imagem */}
+          <div className="form-group">
+            <label>Imagem do Evento *</label>
+            <div className="file-upload-container">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="file-input"
+                required
+              />
+              <div className="file-upload-label">
+                {imagem ? (
+                  <span>✅ Imagem selecionada: {imagem.name}</span>
+                ) : (
+                  <span>📷 Clique para selecionar uma imagem</span>
+                )}
+              </div>
+            </div>
+            <small>Formatos aceitos: JPG, PNG, GIF. Tamanho máximo: 5MB</small>
+          </div>
+
           <CategoriaSelector onCategoriasChange={setCategorias} />
 
-          {/* NOVOS CAMPOS DE LOCAL SIMPLES */}
           <div className="form-group">
             <label>Nome do Local *</label>
             <input
@@ -139,7 +170,7 @@ const PublicarEvento = () => {
           </div>
         </div>
 
-        {/* Configuração de Assentos - SEM ALERTA */}
+        {/* Configuração de Assentos */}
         <div className="form-section">
           <h2>Configuração de Assentos</h2>
           <div className="form-group">
