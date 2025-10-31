@@ -1,14 +1,29 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { logout } from '../actions-auth';
 
 export default function UserDropdown({ user }) {
   const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // Fecha o dropdown quando clicar fora
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   return (
-    <div style={{ position: 'relative', display: 'inline-block' }}>
+    <div style={{ position: 'relative', display: 'inline-block' }} ref={dropdownRef}>
       <button 
         onClick={() => setIsOpen(!isOpen)}
         style={{ 
@@ -37,20 +52,46 @@ export default function UserDropdown({ user }) {
           borderRadius: '5px',
           boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
           padding: '10px',
-          minWidth: '150px',
+          minWidth: '180px',
           marginTop: '5px',
           zIndex: 1000
         }}>
-          <p style={{ margin: '0 0 10px 0', fontWeight: 'bold', color: '#5d34a4', fontSize: '14px' }}>
+          <p style={{ 
+            margin: '0 0 10px 0', 
+            fontWeight: 'bold', 
+            color: '#5d34a4', 
+            fontSize: '14px',
+            borderBottom: '1px solid #eee',
+            paddingBottom: '8px'
+          }}>
             Olá, {user.email?.split('@')[0]}
           </p>
-          <Link href="/perfil" style={{ display: 'block', padding: '8px 0', color: '#333', textDecoration: 'none', fontSize: '14px' }}>
+          <Link 
+            href="/perfil" 
+            style={{ display: 'block', padding: '8px 0', color: '#333', textDecoration: 'none', fontSize: '14px' }}
+            onClick={() => setIsOpen(false)}
+          >
             Meu Perfil
           </Link>
-          <Link href="/meus-ingressos" style={{ display: 'block', padding: '8px 0', color: '#333', textDecoration: 'none', fontSize: '14px' }}>
+          <Link 
+            href="/produtor" 
+            style={{ display: 'block', padding: '8px 0', color: '#333', textDecoration: 'none', fontSize: '14px' }}
+            onClick={() => setIsOpen(false)}
+          >
+            Área do Produtor
+          </Link>
+          <Link 
+            href="/meus-ingressos" 
+            style={{ display: 'block', padding: '8px 0', color: '#333', textDecoration: 'none', fontSize: '14px' }}
+            onClick={() => setIsOpen(false)}
+          >
             Meus Ingressos
           </Link>
-          <Link href="/favoritos" style={{ display: 'block', padding: '8px 0', color: '#333', textDecoration: 'none', fontSize: '14px' }}>
+          <Link 
+            href="/favoritos" 
+            style={{ display: 'block', padding: '8px 0', color: '#333', textDecoration: 'none', fontSize: '14px' }}
+            onClick={() => setIsOpen(false)}
+          >
             Favoritos
           </Link>
           <form action={logout} style={{ marginTop: '10px', borderTop: '1px solid #eee', paddingTop: '10px' }}>
