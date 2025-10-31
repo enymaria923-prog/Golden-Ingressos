@@ -1,6 +1,6 @@
 'use client';
 import React, { useState } from 'react';
-import { supabase } from '@/utils/supabase/client';
+import { supabase } from '../../../utils/supabase/client';
 import SetorManager from './components/SetorManager';
 import CategoriaSelector from './components/CategoriaSelector';
 import SelecionarTaxa from './components/SelecionarTaxa';
@@ -79,9 +79,9 @@ const PublicarEvento = () => {
         return total + setor.tiposIngresso.reduce((sum, tipo) => sum + (tipo.quantidade || 0), 0);
       }, 0);
 
-      // 2. Inserir evento principal
+      // 2. Inserir evento principal na tabela "eventos"
       const { data: evento, error: eventoError } = await supabase
-        .from('evento')
+        .from('eventos')
         .insert([
           {
             nome: formData.nome,
@@ -112,7 +112,7 @@ const PublicarEvento = () => {
         .from('taxas_evento')
         .insert([
           {
-            evento_id: evento.id,
+            eventos_id: evento.id,
             taxa_comprador: taxa.taxaComprador,
             taxa_produtor: taxa.taxaProdutor
           }
@@ -126,7 +126,7 @@ const PublicarEvento = () => {
           .from('setores')
           .insert([
             {
-              evento_id: evento.id,
+              eventos_id: evento.id,
               nome: setor.nome,
               capacidade_total: setor.capacidadeTotal
             }
