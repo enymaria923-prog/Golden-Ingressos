@@ -1,60 +1,44 @@
-// app/checkout/page.js - VERSÃO CORRIGIDA
+// app/checkout/page.js - VERSÃO FUNCIONANDO
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-export const dynamic = 'force-dynamic';
-
 export default function CheckoutPage() {
-  const searchParams = useSearchParams();
-  const eventoId = searchParams.get('evento_id');
   const router = useRouter();
-  
   const [evento, setEvento] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Pegar evento_id da URL no cliente
+    const urlParams = new URLSearchParams(window.location.search);
+    const eventoId = urlParams.get('evento_id');
+    
     if (!eventoId) {
       router.push('/');
       return;
     }
 
-    // Buscar dados do evento - SIMULADO POR ENQUANTO
-    const fetchEventoSimulado = async () => {
-      // Simular busca - depois integra com Supabase
-      setTimeout(() => {
-        setEvento({
-          id: eventoId,
-          nome: "Evento de Exemplo",
-          preco: 50,
-          data: new Date(),
-          imagem_url: "https://placehold.co/300x200/5d34a4/ffffff?text=EVENTO",
-          categoria: "Show",
-          localizacao: "São Paulo, SP"
-        });
-        setLoading(false);
-      }, 1000);
-    };
-
-    fetchEventoSimulado();
-  }, [eventoId, router]);
+    // Buscar dados do evento - SIMULADO
+    setTimeout(() => {
+      setEvento({
+        id: eventoId,
+        nome: "Show Incrível",
+        preco: 89.90,
+        data: new Date('2024-12-25T20:00:00'),
+        imagem_url: "https://placehold.co/600x400/5d34a4/ffffff?text=SHOW+INCRÍVEL",
+        categoria: "Show",
+        localizacao: "São Paulo, SP"
+      });
+      setLoading(false);
+    }, 500);
+  }, [router]);
 
   if (loading) {
     return (
       <div style={{ fontFamily: 'sans-serif', padding: '40px', textAlign: 'center' }}>
-        <h2>Carregando...</h2>
-      </div>
-    );
-  }
-
-  if (!evento) {
-    return (
-      <div style={{ fontFamily: 'sans-serif', padding: '40px', textAlign: 'center' }}>
-        <h2>Evento não encontrado</h2>
-        <Link href="/">Voltar para Home</Link>
+        <h2>Carregando checkout...</h2>
       </div>
     );
   }
@@ -62,68 +46,153 @@ export default function CheckoutPage() {
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px' }}>
       <header style={{ backgroundColor: '#5d34a4', color: 'white', padding: '20px', textAlign: 'center', marginBottom: '20px', borderRadius: '8px' }}>
-        <Link href={`/evento/${evento.id}`} style={{ color: 'white', textDecoration: 'none', float: 'left' }}>&larr; Voltar</Link>
+        <button 
+          onClick={() => router.back()}
+          style={{ 
+            backgroundColor: 'transparent', 
+            color: 'white', 
+            border: 'none', 
+            fontSize: '16px', 
+            cursor: 'pointer',
+            float: 'left'
+          }}
+        >
+          &larr; Voltar
+        </button>
         <h1>Checkout - {evento.nome}</h1>
       </header>
 
-      <div style={{ maxWidth: '600px', margin: '0 auto', backgroundColor: 'white', padding: '30px', borderRadius: '8px', textAlign: 'center' }}>
+      <div style={{ maxWidth: '800px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
         
-        <h2 style={{ color: '#5d34a4' }}>Sistema de Pagamento em Desenvolvimento</h2>
-        
-        <div style={{ margin: '30px 0' }}>
-          <img 
-            src={evento.imagem_url} 
-            alt={evento.nome}
-            style={{ width: '100%', borderRadius: '8px', marginBottom: '20px' }}
-          />
+        {/* Resumo do Pedido */}
+        <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '8px' }}>
+          <h2 style={{ color: '#5d34a4', marginTop: 0 }}>Resumo do Pedido</h2>
           
-          <h3>{evento.nome}</h3>
-          <p><strong>Preço:</strong> R$ {evento.preco}</p>
-          <p><strong>Data:</strong> {new Date(evento.data).toLocaleDateString('pt-BR')}</p>
-          <p><strong>Local:</strong> {evento.localizacao}</p>
+          <div style={{ display: 'flex', gap: '15px', marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid #eee' }}>
+            <img 
+              src={evento.imagem_url} 
+              alt={evento.nome}
+              style={{ width: '80px', height: '80px', borderRadius: '8px', objectFit: 'cover' }}
+            />
+            <div>
+              <h3 style={{ margin: '0 0 5px 0', fontSize: '16px' }}>{evento.nome}</h3>
+              <p style={{ margin: '0', fontSize: '14px', color: '#666' }}>{evento.categoria}</p>
+              <p style={{ margin: '5px 0', fontSize: '14px' }}>
+                📅 {evento.data.toLocaleDateString('pt-BR')}
+              </p>
+            </div>
+          </div>
+
+          <div style={{ borderTop: '1px solid #eee', paddingTop: '15px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+              <span>Ingresso:</span>
+              <span>R$ {evento.preco.toFixed(2)}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+              <span>Taxa de serviço:</span>
+              <span>R$ {(evento.preco * 0.1).toFixed(2)}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '18px', borderTop: '1px solid #eee', paddingTop: '10px' }}>
+              <span>Total:</span>
+              <span>R$ {(evento.preco * 1.1).toFixed(2)}</span>
+            </div>
+          </div>
         </div>
 
-        <div style={{ 
-          backgroundColor: '#fff3cd', 
-          padding: '20px', 
-          borderRadius: '8px', 
-          marginBottom: '30px',
-          border: '1px solid #ffeaa7'
-        }}>
-          <h4 style={{ color: '#856404', marginTop: 0 }}>⚠️ Sistema de Pagamento</h4>
-          <p style={{ color: '#856404', marginBottom: 0 }}>
-            Estamos implementando o sistema de pagamento real com Mercado Pago.
-            Em breve você poderá pagar com Cartão, PIX e Boleto.
-          </p>
-        </div>
+        {/* Formulário de Pagamento */}
+        <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '8px' }}>
+          <h2 style={{ color: '#5d34a4', marginTop: 0 }}>Pagamento</h2>
+          
+          <div style={{ marginBottom: '20px' }}>
+            <h3 style={{ marginBottom: '15px' }}>Forma de Pagamento</h3>
+            
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                padding: '15px', 
+                border: '2px solid #5d34a4', 
+                borderRadius: '8px', 
+                cursor: 'pointer',
+                backgroundColor: '#f8f6ff'
+              }}>
+                <input type="radio" name="payment" defaultChecked style={{ marginRight: '10px' }} />
+                <div>
+                  <strong>💳 Cartão de crédito</strong>
+                  <p style={{ margin: '5px 0 0 0', fontSize: '14px', color: '#666' }}>
+                    Parcele em até 12x
+                  </p>
+                </div>
+              </label>
+            </div>
 
-        <div style={{ display: 'flex', gap: '15px', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <Link 
-            href="/meus-ingressos" 
-            style={{ 
-              backgroundColor: '#5d34a4', 
-              color: 'white', 
-              padding: '12px 25px', 
-              borderRadius: '5px', 
-              textDecoration: 'none',
-              fontWeight: 'bold'
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                padding: '15px', 
+                border: '1px solid #ddd', 
+                borderRadius: '8px', 
+                cursor: 'pointer'
+              }}>
+                <input type="radio" name="payment" style={{ marginRight: '10px' }} />
+                <div>
+                  <strong>📱 PIX</strong>
+                  <p style={{ margin: '5px 0 0 0', fontSize: '14px', color: '#666' }}>
+                    Pagamento instantâneo
+                  </p>
+                </div>
+              </label>
+            </div>
+
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                padding: '15px', 
+                border: '1px solid #ddd', 
+                borderRadius: '8px', 
+                cursor: 'pointer'
+              }}>
+                <input type="radio" name="payment" style={{ marginRight: '10px' }} />
+                <div>
+                  <strong>📄 Boleto</strong>
+                  <p style={{ margin: '5px 0 0 0', fontSize: '14px', color: '#666' }}>
+                    Pagamento em até 3 dias
+                  </p>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <div style={{ 
+            backgroundColor: '#fff3cd', 
+            padding: '15px', 
+            borderRadius: '8px', 
+            marginBottom: '20px',
+            border: '1px solid #ffeaa7'
+          }}>
+            <p style={{ margin: '0', fontSize: '14px', color: '#856404' }}>
+              <strong>⚠️ Modo Demonstração:</strong> Sistema de pagamento real em desenvolvimento.
+            </p>
+          </div>
+
+          <button
+            onClick={() => alert('Sistema de pagamento em desenvolvimento!')}
+            style={{
+              backgroundColor: '#f1c40f',
+              color: 'black',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '15px',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              width: '100%'
             }}
           >
-            Ver Meus Ingressos
-          </Link>
-          <Link 
-            href="/" 
-            style={{ 
-              backgroundColor: '#f1c40f', 
-              color: 'black', 
-              padding: '12px 25px', 
-              borderRadius: '5px', 
-              textDecoration: 'none',
-              fontWeight: 'bold'
-            }}
-          >
-            Explorar Mais Eventos
-          </Link>
+            Finalizar Compra - R$ {(evento.preco * 1.1).toFixed(2)}
+          </button>
         </div>
       </div>
     </div>
