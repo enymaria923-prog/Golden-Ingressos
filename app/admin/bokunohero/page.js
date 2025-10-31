@@ -14,6 +14,11 @@ function AdminContent() {
   const [eventoSelecionado, setEventoSelecionado] = useState(null);
   const [mostrarDetalhes, setMostrarDetalhes] = useState(false);
   const [carregando, setCarregando] = useState(true);
+  const [filtros, setFiltros] = useState({
+    data: 'todos',
+    produtor: '',
+    status: 'todos'
+  });
 
   useEffect(() => {
     const senha = searchParams.get('senha');
@@ -120,7 +125,56 @@ function AdminContent() {
     }
   };
 
-  // ... (resto do código permanece igual)
+  const filtrarEventos = () => {
+    let eventosFiltrados = [...eventos];
+    
+    if (filtros.data !== 'todos') {
+      const hoje = new Date();
+      switch (filtros.data) {
+        case 'ultimos5dias':
+          const cincoDiasAtras = new Date(hoje);
+          cincoDiasAtras.setDate(hoje.getDate() - 5);
+          eventosFiltrados = eventosFiltrados.filter(evento => 
+            new Date(evento.createdAt) >= cincoDiasAtras
+          );
+          break;
+        case 'proximos5dias':
+          const cincoDiasFrente = new Date(hoje);
+          cincoDiasFrente.setDate(hoje.getDate() + 5);
+          eventosFiltrados = eventosFiltrados.filter(evento => 
+            new Date(evento.data) <= cincoDiasFrente && 
+            new Date(evento.data) >= hoje
+          );
+          break;
+        case 'hoje':
+          eventosFiltrados = eventosFiltrados.filter(evento => 
+            new Date(evento.data).toDateString() === hoje.toDateString()
+          );
+          break;
+      }
+    }
+
+    if (filtros.produtor) {
+      eventosFiltrados = eventosFiltrados.filter(evento =>
+        evento.produtor.nome.toLowerCase().includes(filtros.produtor.toLowerCase())
+      );
+    }
+
+    if (filtros.status !== 'todos') {
+      eventosFiltrados = eventosFiltrados.filter(evento => 
+        evento.status === filtros.status
+      );
+    }
+
+    eventosFiltrados.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    return eventosFiltrados;
+  };
+
+  const eventosFiltrados = filtrarEventos();
+
+  if (carregando) {
+    return <div className="admin-loading">Carregando eventos...</div>;
+  }
 
   return (
     <div className="admin-container">
