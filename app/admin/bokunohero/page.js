@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/utils/supabase/client';
 import FiltrosAdmin from './components/FiltrosAdmin';
 import ListaEventosAdmin from './components/ListaEventosAdmin';
 import DetalhesEventoModal from './components/DetalhesEventoModal';
