@@ -157,7 +157,7 @@ const PublicarEvento = () => {
             assentosData.push({
               setor_id: setorData.id,
               numero: i.toString(),
-              fileira: 'A' // Você pode implementar lógica para fileiras
+              fileira: 'A'
             });
           }
 
@@ -200,7 +200,38 @@ const PublicarEvento = () => {
     }
   };
 
-  // ... (resto do código de imagem permanece igual)
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('A imagem é muito grande. Por favor, selecione uma imagem menor que 5MB.');
+        return;
+      }
+      
+      if (!file.type.match('image/jpeg') && !file.type.match('image/png') && !file.type.match('image/gif')) {
+        alert('Por favor, selecione apenas imagens nos formatos JPG, PNG ou GIF.');
+        return;
+      }
+      
+      setImagem(file);
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagemPreview(e.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleClickUpload = () => {
+    document.querySelector('.image-input').click();
+  };
+
+  const removeImage = () => {
+    setImagem(null);
+    setImagemPreview(null);
+    document.querySelector('.image-input').value = '';
+  };
 
   return (
     <div className="publicar-evento-container">
@@ -231,7 +262,6 @@ const PublicarEvento = () => {
             />
           </div>
 
-          {/* Campo de Imagem (manter igual) */}
           <div className="form-group">
             <label>Imagem do Evento *</label>
             <div className="image-upload-container">
