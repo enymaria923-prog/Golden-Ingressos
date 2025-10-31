@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { supabase } from '@/utils/supabase/client';
+import { supabase } from '../../../utils/supabase/client';
 import FiltrosAdmin from './components/FiltrosAdmin';
 import ListaEventosAdmin from './components/ListaEventosAdmin';
 import DetalhesEventoModal from './components/DetalhesEventoModal';
@@ -32,9 +32,9 @@ function AdminContent() {
 
   const carregarEventos = async () => {
     try {
-      // Buscar eventos com todas as relações
+      // Buscar eventos com todas as relações da tabela "eventos"
       const { data: eventos, error } = await supabase
-        .from('evento')
+        .from('eventos')
         .select(`
           *,
           taxas_evento (*),
@@ -66,7 +66,7 @@ function AdminContent() {
         imagemUrl: evento.imagem,
         createdAt: evento.created_at,
         produtor: {
-          nome: 'Produtor', // Em produção, buscar dados do user_id
+          nome: 'Produtor',
           email: 'produtor@email.com'
         },
         setores: evento.setores.map(setor => ({
@@ -96,7 +96,7 @@ function AdminContent() {
   const aprovarEvento = async (eventoId) => {
     try {
       const { error } = await supabase
-        .from('evento')
+        .from('eventos')
         .update({ status: 'aprovado' })
         .eq('id', eventoId);
 
@@ -112,7 +112,7 @@ function AdminContent() {
   const rejeitarEvento = async (eventoId) => {
     try {
       const { error } = await supabase
-        .from('evento')
+        .from('eventos')
         .update({ status: 'rejeitado' })
         .eq('id', eventoId);
 
