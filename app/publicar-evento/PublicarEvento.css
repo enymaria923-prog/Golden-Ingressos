@@ -106,6 +106,41 @@
   box-shadow: 0 4px 8px rgba(0,0,0,0.2);
 }
 
+/* Estilos para Upload de Imagem */
+.file-upload-container {
+  position: relative;
+  margin-bottom: 5px;
+}
+
+.file-input {
+  position: absolute;
+  left: -9999px;
+  opacity: 0;
+}
+
+.file-upload-label {
+  display: block;
+  padding: 15px;
+  border: 2px dashed #007bff;
+  border-radius: 8px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: #f8f9fa;
+  color: #007bff;
+  font-weight: 500;
+}
+
+.file-upload-label:hover {
+  background: #e7f3ff;
+  border-color: #0056b3;
+}
+
+.file-input:focus + .file-upload-label {
+  border-color: #0056b3;
+  box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+}
+
 /* Estilos para Setores */
 .setores-container {
   border: 1px solid #e0e0e0;
