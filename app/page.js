@@ -1,6 +1,7 @@
 import { createClient } from '../utils/supabase/server.js';
 import Link from 'next/link';
 import UserDropdown from './components/UserDropdown';
+import SearchBar from './components/SearchBar';
 
 // Componente SIMPLES do Cartão
 function CardEvento({ evento }) {
@@ -44,7 +45,10 @@ export default async function Index() {
       <header style={{ backgroundColor: '#5d34a4', color: 'white', padding: '20px', textAlign: 'center', marginBottom: '20px', borderRadius: '8px' }}>
         <h1>GOLDEN INGRESSOS</h1>
         <p>Encontre seu próximo evento inesquecível.</p>
-      </header>
+           </header>
+      
+      {/* Barra de Pesquisa */}
+      <SearchBar />
       
       <div style={{ textAlign: 'center', marginBottom: '40px' }}>
         <Link href="/publicar-evento">
