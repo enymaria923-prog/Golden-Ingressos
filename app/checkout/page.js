@@ -1,11 +1,12 @@
-// app/checkout/page.js - VERSÃO QUE FUNCIONA
+// app/checkout/page.js - VERSÃO CORRIGIDA
 'use client';
-export const dynamic = 'force-dynamic';
 
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+
+export const dynamic = 'force-dynamic';
 
 export default function CheckoutPage() {
   const searchParams = useSearchParams();
@@ -16,29 +17,30 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (eventoId) {
-      // Buscar dados do evento - SIMULADO POR ENQUANTO
-      fetchEventoSimulado();
-    } else {
+    if (!eventoId) {
       router.push('/');
+      return;
     }
-  }, [eventoId]);
 
-  const fetchEventoSimulado = async () => {
-    // Simular busca - depois integra com Supabase
-    setTimeout(() => {
-      setEvento({
-        id: eventoId,
-        nome: "Evento de Exemplo",
-        preco: 50,
-        data: new Date(),
-        imagem_url: "https://placehold.co/300x200/5d34a4/ffffff?text=EVENTO",
-        categoria: "Show",
-        localizacao: "São Paulo, SP"
-      });
-      setLoading(false);
-    }, 1000);
-  };
+    // Buscar dados do evento - SIMULADO POR ENQUANTO
+    const fetchEventoSimulado = async () => {
+      // Simular busca - depois integra com Supabase
+      setTimeout(() => {
+        setEvento({
+          id: eventoId,
+          nome: "Evento de Exemplo",
+          preco: 50,
+          data: new Date(),
+          imagem_url: "https://placehold.co/300x200/5d34a4/ffffff?text=EVENTO",
+          categoria: "Show",
+          localizacao: "São Paulo, SP"
+        });
+        setLoading(false);
+      }, 1000);
+    };
+
+    fetchEventoSimulado();
+  }, [eventoId, router]);
 
   if (loading) {
     return (
