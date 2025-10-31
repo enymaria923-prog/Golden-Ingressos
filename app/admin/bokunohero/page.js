@@ -1,12 +1,13 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import FiltrosAdmin from './components/FiltrosAdmin';
 import ListaEventosAdmin from './components/ListaEventosAdmin';
 import DetalhesEventoModal from './components/DetalhesEventoModal';
 import './admin.css';
 
-const AdminPage = () => {
+// Componente principal que usa useSearchParams
+function AdminContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [eventos, setEventos] = useState([]);
@@ -19,7 +20,7 @@ const AdminPage = () => {
     status: 'todos'
   });
 
-  // Verificação de senha simples
+  // Verificação de senha
   useEffect(() => {
     const senha = searchParams.get('senha');
     if (senha !== 'valtinho') {
@@ -28,11 +29,11 @@ const AdminPage = () => {
       return;
     }
     carregarEventos();
-  }, []);
+  }, [searchParams, router]);
 
   const carregarEventos = async () => {
     try {
-      // Simulando dados de eventos - substitua pela sua API
+      // Dados mockados - substitua pela sua API
       const eventosMock = [
         {
           id: 1,
@@ -67,39 +68,6 @@ const AdminPage = () => {
             }
           ],
           createdAt: '2024-01-10T10:00:00Z'
-        },
-        {
-          id: 2,
-          titulo: 'Peça de Teatro Dramático',
-          descricao: 'Uma peça emocionante',
-          data: '2024-02-20',
-          hora: '19:30',
-          localNome: 'Teatro Municipal',
-          localEndereco: 'Av. Principal, 456',
-          categorias: ['Teatro Adulto', 'Drama'],
-          temLugarMarcado: false,
-          taxa: { taxaComprador: 10, taxaProdutor: 3 },
-          status: 'pendente',
-          produtor: {
-            nome: 'Maria Santos',
-            email: 'maria@empresa.com',
-            telefone: '(11) 88888-8888',
-            documento: '98.765.432/0001-00',
-            banco: 'Itaú',
-            agencia: '5678',
-            conta: '12345-6',
-            tipo: 'Pessoa Jurídica'
-          },
-          setores: [
-            {
-              nome: 'Plateia',
-              capacidadeTotal: 200,
-              tiposIngresso: [
-                { nome: 'Inteira', preco: 80, quantidade: 200, vendidos: 120 }
-              ]
-            }
-          ],
-          createdAt: '2024-01-12T14:30:00Z'
         }
       ];
       setEventos(eventosMock);
@@ -112,8 +80,7 @@ const AdminPage = () => {
 
   const filtrarEventos = () => {
     let eventosFiltrados = [...eventos];
-
-    // Filtrar por data
+    
     if (filtros.data !== 'todos') {
       const hoje = new Date();
       switch (filtros.data) {
@@ -140,23 +107,19 @@ const AdminPage = () => {
       }
     }
 
-    // Filtrar por produtor
     if (filtros.produtor) {
       eventosFiltrados = eventosFiltrados.filter(evento =>
         evento.produtor.nome.toLowerCase().includes(filtros.produtor.toLowerCase())
       );
     }
 
-    // Filtrar por status
     if (filtros.status !== 'todos') {
       eventosFiltrados = eventosFiltrados.filter(evento => 
         evento.status === filtros.status
       );
     }
 
-    // Ordenar por data (mais recentes primeiro)
     eventosFiltrados.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
     return eventosFiltrados;
   };
 
@@ -210,6 +173,13 @@ const AdminPage = () => {
       )}
     </div>
   );
-};
+}
 
-export default AdminPage;
+// Componente principal com Suspense
+export default function AdminPage() {
+  return (
+    <Suspense fallback={<div className="admin-loading">Carregando...</div>}>
+      <AdminContent />
+    </Suspense>
+  );
+}
