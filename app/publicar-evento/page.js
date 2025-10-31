@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import SetorManager from './components/SetorManager';
 import CategoriaSelector from './components/CategoriaSelector';
 import SelecionarTaxa from './components/SelecionarTaxa';
@@ -22,6 +22,8 @@ const PublicarEvento = () => {
     taxaProdutor: 5 
   });
   const [imagem, setImagem] = useState(null);
+  const [imagemPreview, setImagemPreview] = useState(null);
+  const fileInputRef = useRef(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -62,13 +64,43 @@ const PublicarEvento = () => {
     setTemLugarMarcado(false);
     setTaxa({ taxaComprador: 15, taxaProdutor: 5 });
     setImagem(null);
+    setImagemPreview(null);
   };
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      // Verificar tamanho do arquivo (5MB máximo)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('A imagem é muito grande. Por favor, selecione uma imagem menor que 5MB.');
+        return;
+      }
+      
+      // Verificar tipo do arquivo
+      if (!file.type.match('image/jpeg') && !file.type.match('image/png') && !file.type.match('image/gif')) {
+        alert('Por favor, selecione apenas imagens nos formatos JPG, PNG ou GIF.');
+        return;
+      }
+      
       setImagem(file);
+      
+      // Criar preview da imagem
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagemPreview(e.target.result);
+      };
+      reader.readAsDataURL(file);
     }
+  };
+
+  const handleClickUpload = () => {
+    fileInputRef.current.click();
+  };
+
+  const removeImage = () => {
+    setImagem(null);
+    setImagemPreview(null);
+    fileInputRef.current.value = '';
   };
 
   return (
@@ -101,24 +133,36 @@ const PublicarEvento = () => {
             />
           </div>
 
-          {/* Campo de Imagem */}
+          {/* Campo de Imagem CORRIGIDO */}
           <div className="form-group">
             <label>Imagem do Evento *</label>
-            <div className="file-upload-container">
+            <div className="image-upload-container">
               <input
                 type="file"
-                accept="image/*"
+                ref={fileInputRef}
+                accept="image/jpeg,image/png,image/gif"
                 onChange={handleImageChange}
-                className="file-input"
+                className="image-input"
                 required
               />
-              <div className="file-upload-label">
-                {imagem ? (
-                  <span>✅ Imagem selecionada: {imagem.name}</span>
-                ) : (
-                  <span>📷 Clique para selecionar uma imagem</span>
-                )}
-              </div>
+              
+              {imagemPreview ? (
+                <div className="image-preview-container">
+                  <img src={imagemPreview} alt="Preview" className="image-preview" />
+                  <div className="image-info">
+                    <p>✅ {imagem.name}</p>
+                    <button type="button" onClick={removeImage} className="btn-remove-image">
+                      Remover Imagem
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="image-upload-area" onClick={handleClickUpload}>
+                  <div className="upload-icon">📷</div>
+                  <p>Clique para selecionar uma imagem</p>
+                  <small>Arraste ou clique para fazer upload</small>
+                </div>
+              )}
             </div>
             <small>Formatos aceitos: JPG, PNG, GIF. Tamanho máximo: 5MB</small>
           </div>
