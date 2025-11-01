@@ -1,7 +1,8 @@
 'use client';
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { supabase } from '/../utils/supabase/client';
+import { createClient } from '../../../utils/supabase/client'
+// TRÊS pontos duplos!
 import './admin.css';
 
 function AdminContent() {
