@@ -32,7 +32,9 @@ function AdminContent() {
 
   const carregarEventos = async () => {
     try {
-      // Buscar eventos com todas as relações da tabela "eventos"
+      console.log('🔍 Buscando eventos no Supabase...');
+      
+      // Buscar eventos com todas as relações
       const { data: eventos, error } = await supabase
         .from('eventos')
         .select(`
@@ -40,53 +42,76 @@ function AdminContent() {
           taxas_evento (*),
           setores (
             *,
-            tipos_ingresso (*),
-            assentos (*)
-          )
+            tipos_ingresso (*)
+          ),
+          profiles!eventos_user_id_fkey (nome, email)
         `)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Erro do Supabase:', error);
+        throw error;
+      }
 
-      console.log('Eventos carregados:', eventos);
+      console.log('✅ Eventos carregados:', eventos);
 
-      // Formatar os dados
-      const eventosFormatados = eventos.map(evento => ({
-        id: evento.id,
-        titulo: evento.nome,
-        descricao: evento.descricao,
-        data: evento.data,
-        hora: evento.hora,
-        localNome: evento.local,
-        localEndereco: evento.localizacao,
-        categorias: evento.categoria ? evento.categoria.split(',') : [],
-        temLugarMarcado: evento.tem_lugar_marcado,
-        taxa: evento.taxas_evento?.[0] || { taxa_comprador: 15, taxa_produtor: 5 },
-        status: evento.status || 'pendente',
-        imagemUrl: evento.imagem,
-        createdAt: evento.created_at,
-        produtor: {
-          nome: 'Produtor',
-          email: 'produtor@email.com'
-        },
-        setores: evento.setores.map(setor => ({
-          id: setor.id,
-          nome: setor.nome,
-          capacidadeTotal: setor.capacidade_total,
-          tiposIngresso: setor.tipos_ingresso.map(tipo => ({
-            id: tipo.id,
-            nome: tipo.nome,
-            preco: parseFloat(tipo.preco),
-            quantidade: tipo.quantidade,
-            vendidos: tipo.vendidos || 0
-          })),
-          assentos: setor.assentos || []
-        }))
-      }));
+      // Formatar os dados com informações REAIS
+      const eventosFormatados = eventos.map(evento => {
+        // Calcular vendas totais (simulação - você precisará criar tabela de vendas)
+        const totalVendidos = evento.ingressos_vendidos || 0;
+        const faturamentoBruto = totalVendidos * (evento.preco || 0);
+        const taxaComprador = evento.taxas_evento?.[0]?.taxa_comprador || 15;
+        const taxaProdutor = evento.taxas_evento?.[0]?.taxa_produtor || 5;
+        
+        const taxaValor = faturamentoBruto * (taxaComprador / 100);
+        const valorProdutor = faturamentoBruto * (1 - (taxaProdutor / 100));
+        const lucroPlataforma = taxaValor - (faturamentoBruto * (taxaProdutor / 100));
+
+        return {
+          id: evento.id,
+          titulo: evento.nome,
+          descricao: evento.descricao,
+          data: evento.data,
+          hora: evento.hora,
+          localNome: evento.local,
+          localEndereco: evento.localizacao,
+          categorias: evento.categoria ? evento.categoria.split(',') : [],
+          temLugarMarcado: evento.tem_lugar_marcado,
+          taxa: evento.taxas_evento?.[0] || { 
+            taxa_comprador: taxaComprador, 
+            taxa_produtor: taxaProdutor 
+          },
+          status: evento.status || 'pendente',
+          imagemUrl: evento.imagem_url,
+          createdAt: evento.created_at,
+          produtor: {
+            nome: evento.profiles?.nome || 'Produtor',
+            email: evento.profiles?.email || 'produtor@email.com'
+          },
+          setores: evento.setores?.map(setor => ({
+            id: setor.id,
+            nome: setor.nome,
+            capacidadeTotal: setor.capacidade_total,
+            tiposIngresso: setor.tipos_ingresso?.map(tipo => ({
+              id: tipo.id,
+              nome: tipo.nome,
+              preco: parseFloat(tipo.preco),
+              quantidade: tipo.quantidade,
+              vendidos: tipo.vendidos || 0
+            })) || []
+          })) || [],
+          // Dados financeiros
+          totalVendidos: totalVendidos,
+          faturamentoBruto: faturamentoBruto,
+          taxaValor: taxaValor,
+          valorProdutor: valorProdutor,
+          lucroPlataforma: lucroPlataforma
+        };
+      });
 
       setEventos(eventosFormatados);
     } catch (error) {
-      console.error('Erro ao carregar eventos:', error);
+      console.error('❌ Erro ao carregar eventos:', error);
       alert('Erro ao carregar eventos: ' + error.message);
     } finally {
       setCarregando(false);
@@ -102,6 +127,7 @@ function AdminContent() {
 
       if (error) throw error;
       
+      alert('✅ Evento aprovado!');
       carregarEventos();
     } catch (error) {
       console.error('Erro ao aprovar evento:', error);
@@ -118,6 +144,7 @@ function AdminContent() {
 
       if (error) throw error;
       
+      alert('❌ Evento rejeitado!');
       carregarEventos();
     } catch (error) {
       console.error('Erro ao rejeitar evento:', error);
@@ -130,26 +157,30 @@ function AdminContent() {
     
     if (filtros.data !== 'todos') {
       const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+      
       switch (filtros.data) {
         case 'ultimos5dias':
           const cincoDiasAtras = new Date(hoje);
           cincoDiasAtras.setDate(hoje.getDate() - 5);
-          eventosFiltrados = eventosFiltrados.filter(evento => 
-            new Date(evento.createdAt) >= cincoDiasAtras
-          );
+          eventosFiltrados = eventosFiltrados.filter(evento => {
+            const dataEvento = new Date(evento.createdAt);
+            return dataEvento >= cincoDiasAtras;
+          });
           break;
         case 'proximos5dias':
           const cincoDiasFrente = new Date(hoje);
           cincoDiasFrente.setDate(hoje.getDate() + 5);
-          eventosFiltrados = eventosFiltrados.filter(evento => 
-            new Date(evento.data) <= cincoDiasFrente && 
-            new Date(evento.data) >= hoje
-          );
+          eventosFiltrados = eventosFiltrados.filter(evento => {
+            const dataEvento = new Date(evento.data);
+            return dataEvento <= cincoDiasFrente && dataEvento >= hoje;
+          });
           break;
         case 'hoje':
-          eventosFiltrados = eventosFiltrados.filter(evento => 
-            new Date(evento.data).toDateString() === hoje.toDateString()
-          );
+          eventosFiltrados = eventosFiltrados.filter(evento => {
+            const dataEvento = new Date(evento.data);
+            return dataEvento.toDateString() === hoje.toDateString();
+          });
           break;
       }
     }
