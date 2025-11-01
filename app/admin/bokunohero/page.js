@@ -2,23 +2,13 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '../../../../utils/supabase/client';
-import FiltrosAdmin from './components/FiltrosAdmin';
-import ListaEventosAdmin from './components/ListaEventosAdmin';
-import DetalhesEventoModal from './components/DetalhesEventoModal';
 import './admin.css';
 
 function AdminContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [eventos, setEventos] = useState([]);
-  const [eventoSelecionado, setEventoSelecionado] = useState(null);
-  const [mostrarDetalhes, setMostrarDetalhes] = useState(false);
   const [carregando, setCarregando] = useState(true);
-  const [filtros, setFiltros] = useState({
-    data: 'todos',
-    produtor: '',
-    status: 'todos'
-  });
 
   useEffect(() => {
     const senha = searchParams.get('senha');
@@ -32,86 +22,38 @@ function AdminContent() {
 
   const carregarEventos = async () => {
     try {
-      console.log('🔍 Buscando eventos no Supabase...');
+      console.log('Buscando eventos...');
       
-      // Buscar eventos com todas as relações
+      // Buscar TODOS os eventos sem filtro complexo
       const { data: eventos, error } = await supabase
         .from('eventos')
-        .select(`
-          *,
-          taxas_evento (*),
-          setores (
-            *,
-            tipos_ingresso (*)
-          )
-        `)
-        .order('data', { ascending: false });
+        .select('*')
+        .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('❌ Erro do Supabase:', error);
+        console.error('Erro:', error);
         throw error;
       }
 
-      console.log('✅ Eventos carregados:', eventos);
+      console.log('Eventos encontrados:', eventos);
 
-      // Formatar os dados com informações REAIS
-      const eventosFormatados = eventos.map(evento => {
-        // Calcular vendas totais
-        const totalVendidos = evento.ingressos_vendidos || 0;
-        const faturamentoBruto = totalVendidos * (evento.preco || 0);
-        const taxaComprador = evento.taxas_evento?.[0]?.taxa_comprador || 15;
-        const taxaProdutor = evento.taxas_evento?.[0]?.taxa_produtor || 5;
-        
-        const taxaValor = faturamentoBruto * (taxaComprador / 100);
-        const valorProdutor = faturamentoBruto * (1 - (taxaProdutor / 100));
-        const lucroPlataforma = taxaValor - (faturamentoBruto * (taxaProdutor / 100));
-
-        return {
-          id: evento.id,
-          titulo: evento.nome,
-          descricao: evento.descricao,
-          data: evento.data,
-          hora: evento.hora,
-          localNome: evento.local,
-          localEndereco: evento.localizacao,
-          categorias: evento.categoria ? evento.categoria.split(',') : [],
-          temLugarMarcado: evento.tem_lugar_marcado,
-          taxa: evento.taxas_evento?.[0] || { 
-            taxa_comprador: taxaComprador, 
-            taxa_produtor: taxaProdutor 
-          },
-          status: evento.status || 'pendente',
-          imagemUrl: evento.imagem_url,
-          createdAt: evento.data, // Usando data do evento como fallback
-          produtor: {
-            nome: 'Produtor', // Vamos buscar isso depois
-            email: 'produtor@email.com'
-          },
-          setores: evento.setores?.map(setor => ({
-            id: setor.id,
-            nome: setor.nome,
-            capacidadeTotal: setor.capacidade_total,
-            tiposIngresso: setor.tipos_ingresso?.map(tipo => ({
-              id: tipo.id,
-              nome: tipo.nome,
-              preco: parseFloat(tipo.preco),
-              quantidade: tipo.quantidade,
-              vendidos: tipo.vendidos || 0
-            })) || []
-          })) || [],
-          // Dados financeiros
-          totalVendidos: totalVendidos,
-          faturamentoBruto: faturamentoBruto,
-          taxaValor: taxaValor,
-          valorProdutor: valorProdutor,
-          lucroPlataforma: lucroPlataforma
-        };
-      });
+      // Formatar dados básicos
+      const eventosFormatados = eventos.map(evento => ({
+        id: evento.id,
+        titulo: evento.nome,
+        descricao: evento.descricao,
+        data: evento.data,
+        hora: evento.hora,
+        localNome: evento.local,
+        status: evento.status || 'pendente',
+        imagemUrl: evento.imagem_url,
+        createdAt: evento.created_at || evento.data
+      }));
 
       setEventos(eventosFormatados);
     } catch (error) {
-      console.error('❌ Erro ao carregar eventos:', error);
-      alert('Erro ao carregar eventos: ' + error.message);
+      console.error('Erro ao carregar eventos:', error);
+      alert('Erro: ' + error.message);
     } finally {
       setCarregando(false);
     }
@@ -126,11 +68,11 @@ function AdminContent() {
 
       if (error) throw error;
       
-      alert('✅ Evento aprovado!');
+      alert('Evento aprovado!');
       carregarEventos();
     } catch (error) {
       console.error('Erro ao aprovar evento:', error);
-      alert('Erro ao aprovar evento: ' + error.message);
+      alert('Erro: ' + error.message);
     }
   };
 
@@ -143,64 +85,13 @@ function AdminContent() {
 
       if (error) throw error;
       
-      alert('❌ Evento rejeitado!');
+      alert('Evento rejeitado!');
       carregarEventos();
     } catch (error) {
       console.error('Erro ao rejeitar evento:', error);
-      alert('Erro ao rejeitar evento: ' + error.message);
+      alert('Erro: ' + error.message);
     }
   };
-
-  const filtrarEventos = () => {
-    let eventosFiltrados = [...eventos];
-    
-    if (filtros.data !== 'todos') {
-      const hoje = new Date();
-      hoje.setHours(0, 0, 0, 0);
-      
-      switch (filtros.data) {
-        case 'ultimos5dias':
-          const cincoDiasAtras = new Date(hoje);
-          cincoDiasAtras.setDate(hoje.getDate() - 5);
-          eventosFiltrados = eventosFiltrados.filter(evento => {
-            const dataEvento = new Date(evento.createdAt);
-            return dataEvento >= cincoDiasAtras;
-          });
-          break;
-        case 'proximos5dias':
-          const cincoDiasFrente = new Date(hoje);
-          cincoDiasFrente.setDate(hoje.getDate() + 5);
-          eventosFiltrados = eventosFiltrados.filter(evento => {
-            const dataEvento = new Date(evento.data);
-            return dataEvento <= cincoDiasFrente && dataEvento >= hoje;
-          });
-          break;
-        case 'hoje':
-          eventosFiltrados = eventosFiltrados.filter(evento => {
-            const dataEvento = new Date(evento.data);
-            return dataEvento.toDateString() === hoje.toDateString();
-          });
-          break;
-      }
-    }
-
-    if (filtros.produtor) {
-      eventosFiltrados = eventosFiltrados.filter(evento =>
-        evento.produtor.nome.toLowerCase().includes(filtros.produtor.toLowerCase())
-      );
-    }
-
-    if (filtros.status !== 'todos') {
-      eventosFiltrados = eventosFiltrados.filter(evento => 
-        evento.status === filtros.status
-      );
-    }
-
-    eventosFiltrados.sort((a, b) => new Date(b.data) - new Date(a.data));
-    return eventosFiltrados;
-  };
-
-  const eventosFiltrados = filtrarEventos();
 
   if (carregando) {
     return <div className="admin-loading">Carregando eventos...</div>;
@@ -209,7 +100,7 @@ function AdminContent() {
   return (
     <div className="admin-container">
       <header className="admin-header">
-        <h1>🏛️ Área de Moderação - Golden Ingressos</h1>
+        <h1>Área de Moderação - Golden Ingressos</h1>
         <div className="admin-stats">
           <span>Total: {eventos.length} eventos</span>
           <span>Aprovados: {eventos.filter(e => e.status === 'aprovado').length}</span>
@@ -217,29 +108,43 @@ function AdminContent() {
         </div>
       </header>
 
-      <FiltrosAdmin filtros={filtros} setFiltros={setFiltros} />
-
       <button onClick={carregarEventos} className="btn-recargar">
-        🔄 Recarregar Eventos
+        Recarregar Eventos
       </button>
 
-      <ListaEventosAdmin
-        eventos={eventosFiltrados}
-        onAprovar={aprovarEvento}
-        onRejeitar={rejeitarEvento}
-        onEditar={(evento) => router.push(`/admin/bokunohero/editar/${evento.id}?senha=valtinho`)}
-        onVerDetalhes={(evento) => {
-          setEventoSelecionado(evento);
-          setMostrarDetalhes(true);
-        }}
-      />
-
-      {mostrarDetalhes && eventoSelecionado && (
-        <DetalhesEventoModal
-          evento={eventoSelecionado}
-          onClose={() => setMostrarDetalhes(false)}
-        />
-      )}
+      <div className="eventos-list">
+        {eventos.map(evento => (
+          <div key={evento.id} className="evento-card">
+            <h3>{evento.titulo}</h3>
+            <p><strong>Data:</strong> {evento.data} {evento.hora}</p>
+            <p><strong>Local:</strong> {evento.localNome}</p>
+            <p><strong>Status:</strong> {evento.status}</p>
+            
+            <div className="evento-actions">
+              <button 
+                onClick={() => aprovarEvento(evento.id)} 
+                className="btn-aprovar"
+                disabled={evento.status === 'aprovado'}
+              >
+                ✅ Aprovar
+              </button>
+              <button 
+                onClick={() => rejeitarEvento(evento.id)} 
+                className="btn-rejeitar"
+                disabled={evento.status === 'rejeitado'}
+              >
+                ❌ Rejeitar
+              </button>
+              <button 
+                onClick={() => router.push(`/admin/bokunohero/editar/${evento.id}?senha=valtinho`)}
+                className="btn-editar"
+              >
+                ✏️ Editar
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
