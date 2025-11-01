@@ -1,6 +1,6 @@
 'use client';
 import React, { useState } from 'react';
-import { supabase } from '../../../utils/supabase/client';
+import { supabase } from '../../../utils/supabase/client'; // Caminho corrigido
 import { useRouter } from 'next/navigation';
 import './PublicarEvento.css';
 
@@ -48,7 +48,7 @@ const PublicarEvento = () => {
       if (error) throw error;
 
       alert('✅ Evento enviado para moderação!');
-      router.push('/admin/bokunohero'); // Redireciona para a página do admin
+      router.push('/admin/bokunohero');
       
       setFormData({
         nome: '',
