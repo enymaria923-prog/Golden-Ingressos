@@ -1,11 +1,15 @@
 'use client';
 import React, { useState, useRef } from 'react';
+import { createClient } from '../../utils/supabase/client'; // Importação CORRETA do utilitário Supabase
 import SetorManager from './components/SetorManager';
 import CategoriaSelector from './components/CategoriaSelector';
 import SelecionarTaxa from './components/SelecionarTaxa';
 import './PublicarEvento.css';
 
 const PublicarEvento = () => {
+  // Inicialização do Supabase Client
+  const supabase = createClient();
+
   const [formData, setFormData] = useState({
     titulo: '',
     descricao: '',
@@ -23,12 +27,14 @@ const PublicarEvento = () => {
   });
   const [imagem, setImagem] = useState(null);
   const [imagemPreview, setImagemPreview] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false); // Adicionado para controle do botão
   const fileInputRef = useRef(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Validar campos obrigatórios
+    if (isSubmitting) return;
+
+    // Validar campos obrigatórios (suas validações)
     if (!formData.titulo || !formData.descricao || !formData.data || !formData.hora || !formData.localNome || !imagem) {
       alert('Por favor, preencha todos os campos obrigatórios, incluindo a imagem!');
       return;
@@ -39,35 +45,96 @@ const PublicarEvento = () => {
       return;
     }
     
-    const dadosEvento = {
-      ...formData,
-      categorias,
-      temLugarMarcado,
-      taxa,
-      imagem,
-      status: 'pending'
-    };
+    setIsSubmitting(true);
+    let publicUrl = '';
 
-    console.log('Dados do evento para moderação:', dadosEvento);
-    alert('Evento enviado para moderação! Em breve estará disponível no site.');
-    
-    // Limpar formulário após envio
-    setFormData({
-      titulo: '',
-      descricao: '',
-      data: '',
-      hora: '',
-      localNome: '',
-      localEndereco: ''
-    });
-    setCategorias([]);
-    setTemLugarMarcado(false);
-    setTaxa({ taxaComprador: 15, taxaProdutor: 5 });
-    setImagem(null);
-    setImagemPreview(null);
+    try {
+      // 1. UPLOAD DA IMAGEM para o Supabase Storage
+      const fileExtension = imagem.name.split('.').pop();
+      // Criando um slug e timestamp único para o caminho do arquivo
+      const slug = formData.titulo.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+      const filePath = `eventos/${slug}-${Date.now()}.${fileExtension}`;
+      const bucketName = 'eventos-capas'; // <-- VERIFIQUE SE O NOME DO SEU BUCKET ESTÁ CORRETO
+
+      console.log('Iniciando upload para Storage...');
+      const { error: uploadError } = await supabase.storage
+        .from(bucketName)
+        .upload(filePath, imagem, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) {
+        throw new Error(`Erro ao fazer upload da imagem: ${uploadError.message}`);
+      }
+
+      // 2. OBTER URL pública
+      const { data: publicUrlData } = supabase.storage
+        .from(bucketName)
+        .getPublicUrl(filePath);
+
+      publicUrl = publicUrlData.publicUrl;
+      console.log('URL da Imagem:', publicUrl);
+
+      // 3. INSERIR DADOS NA TABELA 'eventos'
+      const eventData = {
+        titulo: formData.titulo,
+        descricao: formData.descricao,
+        data: formData.data,
+        hora: formData.hora,
+        local_nome: formData.localNome,
+        local_endereco: formData.localEndereco,
+        categorias: categorias, 
+        tem_lugar_marcado: temLugarMarcado,
+        taxas: taxa, 
+        imagem_url: publicUrl, // Salva a URL pública
+        status: 'pendente', // Definindo o status para a moderação (Admin deve filtrar por este)
+        // Nota: O SetorManager não está passando dados para cá, se precisar, 
+        // a lógica de ingressos e setores precisa ser adicionada aqui
+      };
+
+      console.log('Iniciando inserção no banco de dados...');
+      const { error: insertError } = await supabase
+        .from('eventos') // <-- VERIFIQUE SE O NOME DA SUA TABELA É 'eventos'
+        .insert([eventData]);
+
+      if (insertError) {
+        // Se a inserção no banco de dados falhar, tente remover a imagem que foi carregada
+        await supabase.storage.from(bucketName).remove([filePath]);
+        throw new Error(`Erro ao inserir evento no BD: ${insertError.message}`);
+      }
+      
+      console.log('✅ Evento enviado para moderação com sucesso!');
+      alert('Evento enviado para moderação! Em breve estará disponível no site.');
+      
+      // Limpar formulário após envio (seu código original)
+      setFormData({
+        titulo: '',
+        descricao: '',
+        data: '',
+        hora: '',
+        localNome: '',
+        localEndereco: ''
+      });
+      setCategorias([]);
+      setTemLugarMarcado(false);
+      setTaxa({ taxaComprador: 15, taxaProdutor: 5 });
+      setImagem(null);
+      setImagemPreview(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+
+    } catch (error) {
+      console.error('💥 Erro no processo de publicação:', error.message);
+      alert(`Erro ao publicar evento: ${error.message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleImageChange = (e) => {
+    // ... Sua função handleImageChange (mantida intacta) ...
     const file = e.target.files[0];
     if (file) {
       // Verificar tamanho do arquivo (5MB máximo)
@@ -100,7 +167,9 @@ const PublicarEvento = () => {
   const removeImage = () => {
     setImagem(null);
     setImagemPreview(null);
-    fileInputRef.current.value = '';
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   return (
@@ -143,14 +212,15 @@ const PublicarEvento = () => {
                 accept="image/jpeg,image/png,image/gif"
                 onChange={handleImageChange}
                 className="image-input"
-                required
+                // Removendo o 'required' do HTML e confiando na validação do JS
               />
               
               {imagemPreview ? (
                 <div className="image-preview-container">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={imagemPreview} alt="Preview" className="image-preview" />
                   <div className="image-info">
-                    <p>✅ {imagem.name}</p>
+                    <p>✅ {imagem?.name || 'Imagem selecionada'}</p>
                     <button type="button" onClick={removeImage} className="btn-remove-image">
                       Remover Imagem
                     </button>
@@ -242,8 +312,8 @@ const PublicarEvento = () => {
           <SelecionarTaxa onTaxaSelecionada={setTaxa} />
         </div>
 
-        <button type="submit" className="btn-submit">
-          🚀 Publicar Evento
+        <button type="submit" className="btn-submit" disabled={isSubmitting}>
+          {isSubmitting ? 'Enviando para Moderação...' : '🚀 Publicar Evento'}
         </button>
       </form>
     </div>
