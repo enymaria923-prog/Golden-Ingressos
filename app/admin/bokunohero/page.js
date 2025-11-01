@@ -5,9 +5,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '../../../utils/supabase/client';
 import './admin.css';
 
-// CORREÇÃO: Removemos a inicialização global para evitar erros de Server Component.
-// A instância do cliente Supabase será criada DENTRO da função carregarEventos.
-
 function AdminContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -25,63 +22,63 @@ function AdminContent() {
   }, [searchParams, router]);
 
   const carregarEventos = async () => {
-    // CORREÇÃO: Inicializa o cliente Supabase AQUI, dentro da função, 
-    // garantindo que o objeto 'supabase' exista no runtime do cliente.
+    // 1. Inicializa o cliente Supabase aqui
     const supabase = createClient(); 
+    setCarregando(true); // Garante que o estado de loading é ativado.
 
     try {
       console.log('Buscando eventos...');
       
-      const { data: eventos, error } = await supabase
+      const { data: eventosData, error } = await supabase
         .from('eventos')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        // Se houver um erro de Supabase, lançamos.
+        throw error;
+      }
 
-      console.log('Eventos encontrados:', eventos);
-      setEventos(eventos || []);
+      console.log('Eventos encontrados:', eventosData);
+      setEventos(eventosData || []);
     } catch (error) {
-      console.error('Erro ao carregar eventos:', error);
-      alert('Erro: ' + error.message);
+      console.error('ERRO CRÍTICO AO CARREGAR EVENTOS:', error);
+      alert('Erro ao carregar dados do banco de dados: ' + error.message);
+      setEventos([]); // Limpa a lista em caso de erro.
     } finally {
-      setCarregando(false);
+      // 2. Garante que o estado de loading seja desligado, aconteça o que acontecer.
+      setCarregando(false); 
+      console.log('Carregamento finalizado.');
     }
   };
 
-  // Os callbacks aprovarEvento e rejeitarEvento também precisam da instância.
-  // Vamos reescrevê-los para garantir a instância local.
   const aprovarEvento = async (eventoId) => {
-    const supabase = createClient(); // Inicializa localmente
+    const supabase = createClient(); 
     try {
       const { error } = await supabase
         .from('eventos')
         .update({ status: 'aprovado' })
         .eq('id', eventoId);
-
       if (error) throw error;
-      
       alert('Evento aprovado!');
       carregarEventos();
     } catch (error) {
-      alert('Erro: ' + error.message);
+      alert('Erro ao aprovar: ' + error.message);
     }
   };
 
   const rejeitarEvento = async (eventoId) => {
-    const supabase = createClient(); // Inicializa localmente
+    const supabase = createClient();
     try {
       const { error } = await supabase
         .from('eventos')
         .update({ status: 'rejeitado' })
         .eq('id', eventoId);
-
       if (error) throw error;
-      
       alert('Evento rejeitado!');
       carregarEventos();
     } catch (error) {
-      alert('Erro: ' + error.message);
+      alert('Erro ao rejeitar: ' + error.message);
     }
   };
 
@@ -106,7 +103,7 @@ function AdminContent() {
 
       <div className="eventos-list">
         {eventos.length === 0 ? (
-          <p className="no-events">Nenhum evento encontrado ou erro de permissão.</p>
+          <p className="no-events">Nenhum evento encontrado ou erro de permissão/conexão.</p>
         ) : (
           eventos.map(evento => (
             <div key={evento.id} className="evento-card">
