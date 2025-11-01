@@ -1,9 +1,11 @@
 'use client';
 import React, { useState } from 'react';
 import { supabase } from '../../../utils/supabase/client';
+import { useRouter } from 'next/navigation';
 import './PublicarEvento.css';
 
 const PublicarEvento = () => {
+  const router = useRouter();
   const [formData, setFormData] = useState({
     nome: '',
     descricao: '',
@@ -13,7 +15,6 @@ const PublicarEvento = () => {
     localizacao: ''
   });
   
-  const [imagem, setImagem] = useState(null);
   const [enviando, setEnviando] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -27,7 +28,6 @@ const PublicarEvento = () => {
     }
 
     try {
-      // Inserir evento simples
       const { data: evento, error } = await supabase
         .from('eventos')
         .insert([
@@ -48,8 +48,8 @@ const PublicarEvento = () => {
       if (error) throw error;
 
       alert('✅ Evento enviado para moderação!');
+      router.push('/admin/bokunohero'); // Redireciona para a página do admin
       
-      // Limpar formulário
       setFormData({
         nome: '',
         descricao: '',
