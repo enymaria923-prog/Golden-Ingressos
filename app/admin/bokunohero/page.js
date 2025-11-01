@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { supabase } from '../../../utils/supabase/client';
+import { supabase } from '../../../../utils/supabase/client';
 import FiltrosAdmin from './components/FiltrosAdmin';
 import ListaEventosAdmin from './components/ListaEventosAdmin';
 import DetalhesEventoModal from './components/DetalhesEventoModal';
@@ -43,10 +43,9 @@ function AdminContent() {
           setores (
             *,
             tipos_ingresso (*)
-          ),
-          profiles!eventos_user_id_fkey (nome, email)
+          )
         `)
-        .order('created_at', { ascending: false });
+        .order('data', { ascending: false });
 
       if (error) {
         console.error('❌ Erro do Supabase:', error);
@@ -57,7 +56,7 @@ function AdminContent() {
 
       // Formatar os dados com informações REAIS
       const eventosFormatados = eventos.map(evento => {
-        // Calcular vendas totais (simulação - você precisará criar tabela de vendas)
+        // Calcular vendas totais
         const totalVendidos = evento.ingressos_vendidos || 0;
         const faturamentoBruto = totalVendidos * (evento.preco || 0);
         const taxaComprador = evento.taxas_evento?.[0]?.taxa_comprador || 15;
@@ -83,10 +82,10 @@ function AdminContent() {
           },
           status: evento.status || 'pendente',
           imagemUrl: evento.imagem_url,
-          createdAt: evento.created_at,
+          createdAt: evento.data, // Usando data do evento como fallback
           produtor: {
-            nome: evento.profiles?.nome || 'Produtor',
-            email: evento.profiles?.email || 'produtor@email.com'
+            nome: 'Produtor', // Vamos buscar isso depois
+            email: 'produtor@email.com'
           },
           setores: evento.setores?.map(setor => ({
             id: setor.id,
@@ -197,7 +196,7 @@ function AdminContent() {
       );
     }
 
-    eventosFiltrados.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    eventosFiltrados.sort((a, b) => new Date(b.data) - new Date(a.data));
     return eventosFiltrados;
   };
 
