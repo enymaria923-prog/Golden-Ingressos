@@ -24,33 +24,15 @@ function AdminContent() {
     try {
       console.log('Buscando eventos...');
       
-      // Buscar TODOS os eventos sem filtro complexo
       const { data: eventos, error } = await supabase
         .from('eventos')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Erro:', error);
-        throw error;
-      }
+      if (error) throw error;
 
       console.log('Eventos encontrados:', eventos);
-
-      // Formatar dados básicos
-      const eventosFormatados = eventos.map(evento => ({
-        id: evento.id,
-        titulo: evento.nome,
-        descricao: evento.descricao,
-        data: evento.data,
-        hora: evento.hora,
-        localNome: evento.local,
-        status: evento.status || 'pendente',
-        imagemUrl: evento.imagem_url,
-        createdAt: evento.created_at || evento.data
-      }));
-
-      setEventos(eventosFormatados);
+      setEventos(eventos || []);
     } catch (error) {
       console.error('Erro ao carregar eventos:', error);
       alert('Erro: ' + error.message);
@@ -71,7 +53,6 @@ function AdminContent() {
       alert('Evento aprovado!');
       carregarEventos();
     } catch (error) {
-      console.error('Erro ao aprovar evento:', error);
       alert('Erro: ' + error.message);
     }
   };
@@ -88,7 +69,6 @@ function AdminContent() {
       alert('Evento rejeitado!');
       carregarEventos();
     } catch (error) {
-      console.error('Erro ao rejeitar evento:', error);
       alert('Erro: ' + error.message);
     }
   };
@@ -115,10 +95,10 @@ function AdminContent() {
       <div className="eventos-list">
         {eventos.map(evento => (
           <div key={evento.id} className="evento-card">
-            <h3>{evento.titulo}</h3>
+            <h3>{evento.nome}</h3>
             <p><strong>Data:</strong> {evento.data} {evento.hora}</p>
-            <p><strong>Local:</strong> {evento.localNome}</p>
-            <p><strong>Status:</strong> {evento.status}</p>
+            <p><strong>Local:</strong> {evento.local}</p>
+            <p><strong>Status:</strong> {evento.status || 'pendente'}</p>
             
             <div className="evento-actions">
               <button 
@@ -134,12 +114,6 @@ function AdminContent() {
                 disabled={evento.status === 'rejeitado'}
               >
                 ❌ Rejeitar
-              </button>
-              <button 
-                onClick={() => router.push(`/admin/bokunohero/editar/${evento.id}?senha=valtinho`)}
-                className="btn-editar"
-              >
-                ✏️ Editar
               </button>
             </div>
           </div>
