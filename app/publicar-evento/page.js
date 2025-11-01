@@ -1,6 +1,6 @@
 'use client';
 import React, { useState } from 'react';
-import { supabase } from '../../utils/supabase/client'; // Caminho corrigido
+import { supabase } from '../../utils/supabase/client';
 import { useRouter } from 'next/navigation';
 import './PublicarEvento.css';
 
@@ -48,7 +48,7 @@ const PublicarEvento = () => {
       if (error) throw error;
 
       alert('✅ Evento enviado para moderação!');
-      router.push('/admin/bokunchero'); // Note: "bokunchero" não "bokunohero"
+      router.push('/admin/bokunchero');
       
       setFormData({
         nome: '',
