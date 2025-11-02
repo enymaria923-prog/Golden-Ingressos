@@ -2,15 +2,14 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 // ===================================================================
-// CORREÇÃO AQUI: Importando a *instância* 'supabase' 
-// (como era no seu código original)
+// CORREÇÃO DEFINITIVA: Importando a *instância* 'supabase' 
 import { supabase } from '../../../utils/supabase/client';
 // ===================================================================
 import Link from 'next/link';
 import './admin.css';
 
 // ===================================================================
-// ETAPA 1: Tela de Login (Sem alterações)
+// ETAPA 1: Tela de Login (Mantida)
 // ===================================================================
 function LoginForm({ onLoginSuccess, setLoginError, loginError }) {
   const [password, setPassword] = useState('');
@@ -43,14 +42,14 @@ function LoginForm({ onLoginSuccess, setLoginError, loginError }) {
           />
         </div>
         {loginError && <p className="login-error">{loginError}</p>}
-        <button typeD="submit" className="btn-submit-login">Entrar</button>
+        <button type="submit" className="btn-submit-login">Entrar</button>
       </form>
     </div>
   );
 }
 
 // ===================================================================
-// NOVO Card de Estatísticas (Sem alterações)
+// Card de Estatísticas (Mantido)
 // ===================================================================
 function EventoCardEstatisticas({ evento, aprovar, rejeitar }) {
   const taxaCliente = evento.TaxaCliente || 15; 
@@ -114,82 +113,106 @@ function EventoCardEstatisticas({ evento, aprovar, rejeitar }) {
 }
 
 // ===================================================================
-// ETAPA 2: Conteúdo do Admin (Corrigido para usar a instância 'supabase')
+// Conteúdo do Admin (COM A LÓGICA DE BUSCA CORRIGIDA)
 // ===================================================================
 function AdminContent() {
-  const [eventos, setEventos] = useState([]);
-  const [eventosFiltrados, setEventosFiltrados] = useState([]); 
+  const [eventos, setEventos] = useState([]); // A lista COMPLETA vinda do BD
+  const [eventosFiltrados, setEventosFiltrados] = useState([]); // A lista que o usuário VÊ
   const [carregando, setCarregando] = useState(true);
   
   const [filtroProdutor, setFiltroProdutor] = useState('');
   const [filtroDataRange, setFiltroDataRange] = useState(null); 
 
-  // ===================================================================
-  // CORREÇÃO AQUI: 
-  // Removemos o 'const supabase = createClient();' 
-  // pois o 'supabase' já foi importado do client.js
-  // ===================================================================
+  // USA a instância 'supabase' importada (NÃO tenta criar uma nova)
 
-  const carregarEventos = async (dataFiltro = null) => {
+  // Esta função agora SÓ busca os dados. A filtragem é feita no Front-end.
+  const carregarEventos = async () => {
     setCarregando(true);
-    let query = supabase.from('eventos') // Usa o 'supabase' importado
-      .select('*')
-      .not('status', 'eq', 'rejeitado')
-      .order('created_at', { ascending: false }); 
-
-    if (dataFiltro) {
-        const hoje = new Date();
-        const hojeISO = hoje.toISOString().split('T')[0];
-        if (dataFiltro === 'proximos_5_dias') {
-          const cincoDiasFrente = new Date();
-          cincoDiasFrente.setDate(hoje.getDate() + 5);
-          query = query
-            .gte('data', hojeISO)
-            .lte('data', cincoDiasFrente.toISOString().split('T')[0]);
-        }
-        else if (dataFiltro === 'ultimos_5_dias') {
-          const cincoDiasAtras = new Date();
-          cincoDiasAtras.setDate(hoje.getDate() - 5);
-          query = query
-            .gte('data', cincoDiasAtras.toISOString().split('T')[0])
-            .lte('data', hojeISO);
-        }
-    }
-    
     try {
-      const { data: eventosData, error } = await query;
+      console.log('Buscando eventos (pendentes e aprovados)...');
+      
+      // ===================================================================
+      // CORREÇÃO DA BUSCA: 
+      // Removi os filtros de data (.gte, .lte) que estavam quebrando a query.
+      // Vamos fazer o filtro de data no front-end, que é mais seguro.
+      // ===================================================================
+      let { data: eventosData, error } = await supabase
+        .from('eventos')
+        .select('*')
+        .not('status', 'eq', 'rejeitado') // Pega Pendentes e Aprovados
+        .order('created_at', { ascending: false }); // Mais recentes no topo
+
       if (error) throw error;
-      setEventos(eventosData || []);
-      setEventosFiltrados(eventosData || []); 
+      
+      console.log('Eventos recebidos do BD:', eventosData);
+      setEventos(eventosData || []); // Salva a lista completa
+      setEventosFiltrados(eventosData || []); // Inicializa a lista filtrada
+
     } catch (error) {
       console.error('Erro ao carregar eventos:', error);
-      alert('Erro: ' + error.message);
+      alert('Erro ao carregar eventos: ' + error.message);
     } finally {
       setCarregando(false);
     }
   };
 
+  // Carrega os eventos UMA VEZ quando o componente monta
   useEffect(() => {
     carregarEventos();
   }, []);
   
+  // ===================================================================
+  // CORREÇÃO DOS FILTROS (rodando no Front-End)
+  // Este useEffect agora aplica TODOS os filtros na lista 'eventos'
+  // ===================================================================
   useEffect(() => {
-      let tempEventos = eventos;
-      if (filtroProdutor) {
-          tempEventos = tempEventos.filter(e => e.user_id && e.user_id.includes(filtroProdutor));
+    let tempEventos = [...eventos]; // Começa com a lista completa
+    
+    // 1. Filtro de Produtor
+    if (filtroProdutor) {
+      tempEventos = tempEventos.filter(e => e.user_id && e.user_id.includes(filtroProdutor));
+    }
+
+    // 2. Filtro de Data
+    if (filtroDataRange) {
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0); // Zera a hora para comparações de data
+
+      if (filtroDataRange === 'proximos_5_dias') {
+        const cincoDiasFrente = new Date(hoje);
+        cincoDiasFrente.setDate(hoje.getDate() + 5);
+        
+        tempEventos = tempEventos.filter(e => {
+          const dataEvento = new Date(e.data);
+          return dataEvento >= hoje && dataEvento <= cincoDiasFrente;
+        });
+      } 
+      else if (filtroDataRange === 'ultimos_5_dias') {
+        const cincoDiasAtras = new Date(hoje);
+        cincoDiasAtras.setDate(hoje.getDate() - 5);
+        
+        tempEventos = tempEventos.filter(e => {
+          const dataEvento = new Date(e.data);
+          return dataEvento >= cincoDiasAtras && dataEvento <= hoje;
+        });
       }
-      setEventosFiltrados(tempEventos);
-  }, [filtroProdutor, eventos]);
+    }
+    
+    // Atualiza a lista que o usuário VÊ
+    setEventosFiltrados(tempEventos);
+
+  }, [filtroProdutor, filtroDataRange, eventos]); // Roda sempre que um filtro ou a lista principal mudar
   
+  // Funções de Moderação (Usam o 'supabase' importado)
   const aprovarEvento = async (eventoId) => {
     try {
-      const { error } = await supabase // Usa o 'supabase' importado
+      const { error } = await supabase
         .from('eventos')
         .update({ status: 'aprovado' })
         .eq('id', eventoId);
       if (error) throw error;
       alert('Evento aprovado!');
-      carregarEventos(filtroDataRange); 
+      carregarEventos(); // Recarrega a lista
     } catch (error) {
       alert('Erro: ' + error.message);
     }
@@ -197,13 +220,13 @@ function AdminContent() {
 
   const rejeitarEvento = async (eventoId) => {
     try {
-      const { error } = await supabase // Usa o 'supabase' importado
+      const { error } = await supabase
         .from('eventos')
         .update({ status: 'rejeitado' })
         .eq('id', eventoId);
       if (error) throw error;
       alert('Evento rejeitado!');
-      carregarEventos(filtroDataRange); 
+      carregarEventos(); // Recarrega a lista
     } catch (error) {
       alert('Erro: ' + error.message);
     }
@@ -214,9 +237,9 @@ function AdminContent() {
     window.location.reload(); 
   };
   
+  // Esta função agora SÓ MUDA O ESTADO, o useEffect faz a filtragem
   const handleFiltroDataRapida = (tipo) => {
-    setFiltroDataRange(tipo);
-    carregarEventos(tipo); 
+    setFiltroDataRange(tipo); 
   };
 
   if (carregando) {
@@ -228,14 +251,16 @@ function AdminContent() {
       <header className="admin-header">
         <h1>Área de Moderação (Super Admin)</h1>
         <div className="admin-stats">
+          {/* Conta os eventos da lista COMPLETA */}
           <span>Pendentes: {eventos.filter(e => e.status === 'pendente' || !e.status).length}</span>
-          <span>AprovADOS: {eventos.filter(e => e.status === 'aprovado').length}</span>
+          <span>Aprovados: {eventos.filter(e => e.status === 'aprovado').length}</span>
         </div>
         <button onClick={handleLogout} className="btn-logout">Sair</button>
       </header>
 
+      {/* Barra de Ação (Mantida) */}
       <div className="admin-action-bar">
-        <button onClick={() => carregarEventos(filtroDataRange)} className="btn-recargar">
+        <button onClick={carregarEventos} className="btn-recargar">
           Recarregar Eventos
         </button>
         <Link href="/admin/rejeitados" legacyBehavior>
@@ -243,6 +268,7 @@ function AdminContent() {
         </Link>
       </div>
 
+      {/* Filtros (Mantidos) */}
       <div className="admin-filtros">
         <h3>Filtros de Busca</h3>
         <div className="form-group">
@@ -262,6 +288,7 @@ function AdminContent() {
         </div>
       </div>
 
+      {/* Lista de Eventos (Mostra a lista FILTRADA) */}
       <div className="eventos-list eventos-estatisticas">
         {eventosFiltrados.length === 0 ? (
           <p className="no-events">Nenhum evento encontrado com os filtros atuais.</p>
@@ -281,8 +308,7 @@ function AdminContent() {
 }
 
 // ===================================================================
-// COMPONENTE PRINCIPAL: Decide se mostra o Login ou o Conteúdo
-// (Mantido com a correção do 'typeof window' para o build)
+// COMPONENTE PRINCIPAL (Mantido)
 // ===================================================================
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
