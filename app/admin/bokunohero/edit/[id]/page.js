@@ -1,19 +1,27 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
+// ===================================================================
+// CORREÇÃO DOS CAMINHOS: 
+// Adicionado um '../' a mais para voltar até a pasta 'app'
+// ===================================================================
 import { createClient } from '../../../../../utils/supabase/client'; 
+import SetorManager from '../../../../../publicar-evento/components/SetorManager';
+import CategoriaSelector from '../../../../../publicar-evento/components/CategoriaSelector';
+import SelecionarTaxa from '../../../../../publicar-evento/components/SelecionarTaxa';
+import '../../../../../publicar-evento/PublicarEvento.css'; // Reutilizando CSS
+// ===================================================================
+
 import { useParams, useRouter } from 'next/navigation';
-// Reutilizando componentes da Publicação
-// (Certifique-se que esses caminhos estão corretos)
-import SetorManager from '../../../../publicar-evento/components/SetorManager';
-import CategoriaSelector from '../../../../publicar-evento/components/CategoriaSelector';
-import SelecionarTaxa from '../../../../publicar-evento/components/SelecionarTaxa';
-import '../../../../publicar-evento/PublicarEvento.css'; // Reutilizando CSS
 
 const EditarEvento = () => {
+  // ===================================================================
+  // CORREÇÃO: 
+  // Usa o 'createClient' importado para criar a instância
   const supabase = createClient();
+  // ===================================================================
+  
   const router = useRouter();
   
-  // CORREÇÃO: Usamos 'useParams' SÓ DEPOIS de montar
   const params = useParams(); 
   const [eventoId, setEventoId] = useState(null);
 
@@ -40,26 +48,20 @@ const EditarEvento = () => {
   const [carregando, setCarregando] = useState(true);
   const fileInputRef = useRef(null);
   
-  // ===================================================================
-  // CORREÇÃO DO BUILD: 
-  // Separamos a verificação de Auth e a busca de dados
-  // ===================================================================
+  // Efeito para carregar dados (dividido para evitar erro de build)
   useEffect(() => {
-    // 1. Proteger a página com login
-    // Isso só roda no cliente, resolvendo o erro do 'sessionStorage'
+    // 1. Proteger a página
     const isLoggedIn = sessionStorage.getItem('admin_logged_in') === 'true';
     if (!isLoggedIn) {
-      alert('Acesso negado. Faça o login na área admin primeiro.');
+      console.error('Acesso negado. Faça o login na área admin primeiro.');
       router.push('/admin/bokunohero'); 
       return;
     }
     
     // 2. Pegar o ID da URL
-    // O 'params' pode ser nulo no primeiro render.
     if (params && params.id) {
       setEventoId(params.id);
     } else {
-      // Se não houver ID (improvável), para o carregamento
       setCarregando(false);
     }
 
@@ -68,7 +70,6 @@ const EditarEvento = () => {
 
   // 3. CARREGAR DADOS DO EVENTO (SÓ RODA DEPOIS QUE O eventoId é definido)
   useEffect(() => {
-    // Se não houver ID, não faz nada
     if (!eventoId) return;
 
     const buscarEvento = async () => {
@@ -82,7 +83,7 @@ const EditarEvento = () => {
 
         if (error) throw error;
         if (!evento) {
-          alert('Evento não encontrado!');
+          console.error('Evento não encontrado!');
           router.push('/admin/bokunohero');
           return;
         }
@@ -107,7 +108,6 @@ const EditarEvento = () => {
 
       } catch (error) {
         console.error('Erro ao buscar evento:', error.message);
-        alert('Erro ao carregar dados do evento.');
       } finally {
         setCarregando(false);
       }
@@ -127,11 +127,11 @@ const EditarEvento = () => {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        alert('A imagem é muito grande. Por favor, selecione uma imagem menor que 5MB.');
+        console.error('A imagem é muito grande. Por favor, selecione uma imagem menor que 5MB.');
         return;
       }
       if (!file.type.match('image/jpeg') && !file.type.match('image/png') && !file.type.match('image/gif')) {
-        alert('Por favor, selecione apenas imagens nos formatos JPG, PNG ou GIF.');
+        console.error('Por favor, selecione apenas imagens nos formatos JPG, PNG ou GIF.');
         return;
       }
       setImagem(file); // Armazena o ARQUIVO para o novo upload
@@ -158,7 +158,7 @@ const EditarEvento = () => {
     if (isSubmitting) return;
     
     if (!formData.titulo || !formData.descricao || !formData.data || !formData.hora || !formData.localNome) {
-      alert('Por favor, preencha todos os campos obrigatórios!');
+      console.error('Por favor, preencha todos os campos obrigatórios!');
       return;
     }
     
@@ -219,12 +219,10 @@ const EditarEvento = () => {
       }
       
       console.log('✅ Evento atualizado com sucesso!');
-      alert('Evento atualizado com sucesso!');
       router.push('/admin/bokunohero'); // Volta para a lista principal
 
     } catch (error) {
       console.error('💥 Erro no processo de edição:', error.message);
-      alert(`Erro ao editar evento: ${error.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -385,3 +383,4 @@ const EditarEvento = () => {
 };
 
 export default EditarEvento;
+
