@@ -111,10 +111,8 @@ const PublicarEvento = () => {
         const filePath = `eventos/${slug}-${Date.now()}.${fileExtension}`;
         uploadedFilePath = filePath; // Salva o caminho do arquivo para possível exclusão
         
-        // ===================================================================
         // CORREÇÃO: Usando o nome do bucket que você criou: 'imagens_eventos'
         const bucketName = 'imagens_eventos'; 
-        // ===================================================================
 
         console.log(`Iniciando upload para Storage no bucket: ${bucketName}...`);
         const { error: uploadError } = await supabase.storage
@@ -146,10 +144,15 @@ const PublicarEvento = () => {
         hora: formData.hora,
         local_nome: formData.localNome,
         local_endereco: formData.localEndereco,
-        categorias: categorias, 
+        
+        // ===================================================================
+        // CORREÇÃO: Usando a coluna 'categoria' (singular) e pegando 
+        // apenas o PRIMEIRO item da lista de categorias.
+        categoria: categorias[0], 
+        // ===================================================================
+        
         tem_lugar_marcado: temLugarMarcado,
         taxas: taxa, 
-        // AQUI ESTÁ A COLUNA CORRIGIDA: IMAGEM_URL
         imagem_url: publicUrl, 
         status: 'pendente', // Definindo o status para a moderação
       };
