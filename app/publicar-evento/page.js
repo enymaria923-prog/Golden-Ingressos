@@ -133,12 +133,12 @@ const PublicarEvento = () => {
         endereco: formData.localEndereco, // Coluna 'endereco'
         categoria: categorias[0], // Coluna 'categoria' (singular)
         
-        tem_lugar_marcavel: temLugarMarcado, // <-- Corrigido para o nome da coluna que você provavelmente tem
+        tem_lugar_marcado: temLugarMarcado, // <-- Vou manter este nome por enquanto
         
         // ===================================================================
-        // CORREÇÃO 'TAXAS': Assumindo que os nomes são snake_case
-        taxa_comprador: taxa.taxaComprador,
-        taxa_produtor: taxa.taxaProdutor,
+        // CORREÇÃO: Usando os nomes EXATOS das colunas que você criou:
+        TaxaCliente: taxa.taxaComprador,
+        TaxaProdutor: taxa.taxaProdutor,
         // ===================================================================
         
         imagem_url: publicUrl, 
