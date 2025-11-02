@@ -2,14 +2,15 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 // ===================================================================
-// Importando a *instância* 'supabase' (O jeito que você tinha)
+// CORREÇÃO: 
+// Voltamos a importar a *instância* 'supabase'
 import { supabase } from '../../../utils/supabase/client';
 // ===================================================================
 import Link from 'next/link';
 import './admin.css';
 
 // ===================================================================
-// ETAPA 1: Tela de Login (COM A CORREÇÃO DO typeD)
+// ETAPA 1: Tela de Login (Mantida)
 // ===================================================================
 function LoginForm({ onLoginSuccess, setLoginError, loginError }) {
   const [password, setPassword] = useState('');
@@ -42,10 +43,7 @@ function LoginForm({ onLoginSuccess, setLoginError, loginError }) {
           />
         </div>
         {loginError && <p className="login-error">{loginError}</p>}
-        {/* =================================================================== */}
-        {/* CORREÇÃO AQUI: Era 'typeD', agora é 'type' */}
         <button type="submit" className="btn-submit-login">Entrar</button>
-        {/* =================================================================== */}
       </form>
     </div>
   );
@@ -116,11 +114,11 @@ function EventoCardEstatisticas({ evento, aprovar, rejeitar }) {
 }
 
 // ===================================================================
-// Conteúdo do Admin (Mantido com filtros no front-end e sem 'alert')
+// Conteúdo do Admin (Corrigido para usar a instância 'supabase')
 // ===================================================================
 function AdminContent() {
-  const [eventos, setEventos] = useState([]); // A lista COMPLETA vinda do BD
-  const [eventosFiltrados, setEventosFiltrados] = useState([]); // A lista que o usuário VÊ
+  const [eventos, setEventos] = useState([]); 
+  const [eventosFiltrados, setEventosFiltrados] = useState([]); 
   const [carregando, setCarregando] = useState(true);
   
   const [filtroProdutor, setFiltroProdutor] = useState('');
@@ -136,19 +134,19 @@ function AdminContent() {
       let { data: eventosData, error } = await supabase
         .from('eventos')
         .select('*')
-        .not('status', 'eq', 'rejeitado') // Pega Pendentes e Aprovados
-        .order('created_at', { ascending: false }); // Mais recentes no topo
+        .not('status', 'eq', 'rejeitado') 
+        .order('created_at', { ascending: false }); 
 
       if (error) throw error;
       
       console.log('Eventos recebidos do BD:', eventosData);
-      setEventos(eventosData || []); // Salva a lista completa
-      setEventosFiltrados(eventosData || []); // Inicializa a lista filtrada
+      setEventos(eventosData || []); 
+      setEventosFiltrados(eventosData || []); 
 
     } catch (error) {
       console.error('Erro ao carregar eventos:', error);
     } finally {
-      setCarregando(false); // Isso agora VAI rodar
+      setCarregando(false); 
     }
   };
 
