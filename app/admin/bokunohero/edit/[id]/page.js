@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createClient } from '../../../../../utils/supabase/client'; 
 import { useParams, useRouter } from 'next/navigation';
 // Reutilizando componentes da Publicação
+// (Certifique-se que esses caminhos estão corretos)
 import SetorManager from '../../../../publicar-evento/components/SetorManager';
 import CategoriaSelector from '../../../../publicar-evento/components/CategoriaSelector';
 import SelecionarTaxa from '../../../../publicar-evento/components/SelecionarTaxa';
@@ -10,9 +11,11 @@ import '../../../../publicar-evento/PublicarEvento.css'; // Reutilizando CSS
 
 const EditarEvento = () => {
   const supabase = createClient();
-  const params = useParams(); // Pega o ID do evento na URL
   const router = useRouter();
-  const eventoId = params.id;
+  
+  // CORREÇÃO: Usamos 'useParams' SÓ DEPOIS de montar
+  const params = useParams(); 
+  const [eventoId, setEventoId] = useState(null);
 
   // Estados com valores iniciais para edição
   const [formData, setFormData] = useState({
@@ -22,7 +25,6 @@ const EditarEvento = () => {
     hora: '',
     localNome: '', 
     localEndereco: '', 
-    // Outros campos...
   });
   
   const [categorias, setCategorias] = useState([]);
@@ -37,10 +39,14 @@ const EditarEvento = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [carregando, setCarregando] = useState(true);
   const fileInputRef = useRef(null);
-
-  // 1. CARREGAR DADOS DO EVENTO
+  
+  // ===================================================================
+  // CORREÇÃO DO BUILD: 
+  // Separamos a verificação de Auth e a busca de dados
+  // ===================================================================
   useEffect(() => {
-    // Proteger a página com login
+    // 1. Proteger a página com login
+    // Isso só roda no cliente, resolvendo o erro do 'sessionStorage'
     const isLoggedIn = sessionStorage.getItem('admin_logged_in') === 'true';
     if (!isLoggedIn) {
       alert('Acesso negado. Faça o login na área admin primeiro.');
@@ -48,7 +54,25 @@ const EditarEvento = () => {
       return;
     }
     
+    // 2. Pegar o ID da URL
+    // O 'params' pode ser nulo no primeiro render.
+    if (params && params.id) {
+      setEventoId(params.id);
+    } else {
+      // Se não houver ID (improvável), para o carregamento
+      setCarregando(false);
+    }
+
+  }, [params, router]);
+
+
+  // 3. CARREGAR DADOS DO EVENTO (SÓ RODA DEPOIS QUE O eventoId é definido)
+  useEffect(() => {
+    // Se não houver ID, não faz nada
+    if (!eventoId) return;
+
     const buscarEvento = async () => {
+      setCarregando(true);
       try {
         const { data: evento, error } = await supabase
           .from('eventos')
@@ -89,20 +113,46 @@ const EditarEvento = () => {
       }
     };
 
-    if (eventoId) {
-      buscarEvento();
-    } else {
-      setCarregando(false); // Não há ID, talvez um erro?
-    }
-  }, [eventoId, router, supabase]);
+    buscarEvento();
+    
+  }, [eventoId, router, supabase]); // Depende do eventoId estar pronto
 
+  // Funções do formulário (HandleChange, HandleImage, etc.)
   const handleFormChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({...prev, [name]: value}));
   };
-  
-  // (Mantenha as funções handleImageChange, handleClickUpload e removeImage do publicar-evento)
 
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('A imagem é muito grande. Por favor, selecione uma imagem menor que 5MB.');
+        return;
+      }
+      if (!file.type.match('image/jpeg') && !file.type.match('image/png') && !file.type.match('image/gif')) {
+        alert('Por favor, selecione apenas imagens nos formatos JPG, PNG ou GIF.');
+        return;
+      }
+      setImagem(file); // Armazena o ARQUIVO para o novo upload
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagemPreview(e.target.result); // Define o PREVIEW
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+  
+  const handleClickUpload = () => fileInputRef.current.click();
+  const removeImage = () => {
+    setImagem(null);
+    setImagemPreview(null); // Remove também o preview
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+
+  // Função de SUBMIT (Atualizar o evento)
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (isSubmitting) return;
@@ -113,14 +163,15 @@ const EditarEvento = () => {
     }
     
     setIsSubmitting(true);
-    let publicUrl = imagemPreview; 
+    let publicUrl = imagemPreview; // Mantém a URL antiga por padrão
     let uploadedFilePath = null; 
 
     try {
-      // 2. Lógica de Upload da Imagem (se uma NOVA imagem foi selecionada)
-      if (imagem) {
-        // ... (Lógica de upload de imagem idêntica à do publicar-evento)
-        // Lembre-se de deletar a imagem antiga se o upload for bem-sucedido.
+      // 2. Lógica de Upload (SÓ SE UMA NOVA imagem FOI SELECIONADA)
+      if (imagem) { 
+        console.log("Nova imagem detectada. Fazendo upload...");
+        // (Aqui você deveria deletar a imagem antiga do storage)
+        
         const fileExtension = imagem.name.split('.').pop();
         const slug = formData.titulo.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
         const filePath = `eventos/${slug}-${Date.now()}.${fileExtension}`;
@@ -131,12 +182,12 @@ const EditarEvento = () => {
           .from(bucketName)
           .upload(filePath, imagem, { cacheControl: '3600', upsert: false });
 
-        if (uploadError) throw new Error(`Erro ao fazer upload da imagem: ${uploadError.message}`);
+        if (uploadError) throw new Error(`Erro ao fazer upload da nova imagem: ${uploadError.message}`);
 
         const { data: publicUrlData } = supabase.storage
           .from(bucketName)
           .getPublicUrl(filePath);
-        publicUrl = publicUrlData.publicUrl;
+        publicUrl = publicUrlData.publicUrl; // Define a NOVA URL
       }
       
       // 3. ATUALIZAÇÃO NO BANCO DE DADOS
@@ -151,17 +202,16 @@ const EditarEvento = () => {
         tem_lugar_marcado: temLugarMarcado, 
         TaxaCliente: taxa.taxaComprador,  
         TaxaProdutor: taxa.taxaProdutor, 
-        imagem_url: publicUrl,           
+        imagem_url: publicUrl, // Salva a URL (nova ou antiga)
       };
 
       console.log('Iniciando atualização no banco de dados...');
       const { error: updateError } = await supabase
         .from('eventos') 
         .update(eventData)
-        .eq('id', eventoId); // É ISSO QUE GARANTE A EDIÇÃO E NÃO INSERÇÃO
+        .eq('id', eventoId); // Garante a EDIÇÃO
 
       if (updateError) {
-        // Se a atualização falhar, tente remover a imagem que acabou de ser upada
         if (uploadedFilePath) {
             await supabase.storage.from('imagens_eventos').remove([uploadedFilePath]);
         }
@@ -184,14 +234,13 @@ const EditarEvento = () => {
     return <div className="admin-loading">Carregando dados do evento para edição...</div>;
   }
 
+  // O formulário de Edição
   return (
     <div className="publicar-evento-container">
       <h1>Editar Evento: {formData.titulo} (ID: {eventoId})</h1>
       <small>⚠️ Você está no modo Super Admin. Tenha cuidado ao salvar.</small>
       
       <form onSubmit={handleSubmit}>
-        {/* ... (Todo o formulário de publicação deve ser copiado/reutilizado aqui) ... */}
-        
         {/* Informações Básicas */}
         <div className="form-section">
           <h2>Informações Básicas</h2>
@@ -217,8 +266,39 @@ const EditarEvento = () => {
             />
           </div>
 
-          {/* Campo de Imagem (Copiar a lógica completa do publicar-evento/page.js) */}
-          {/* OBS: Para evitar um código enorme, você deve copiar as funções handleImageChange, handleClickUpload, removeImage do arquivo original e o JSX completo do campo de imagem. */}
+          {/* Campo de Imagem (Carrega o preview da imagem_url) */}
+          <div className="form-group">
+            <label>Imagem do Evento *</label>
+            <div className="image-upload-container">
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/jpeg,image/png,image/gif"
+                onChange={handleImageChange}
+                className="image-input"
+                style={{ display: 'none' }}
+              />
+              
+              {imagemPreview ? (
+                <div className="image-preview-container">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={imagemPreview} alt="Preview" className="image-preview" />
+                  <div className="image-info">
+                    <p>✅ {imagem?.name || 'Imagem carregada'}</p>
+                    <button type="button" onClick={removeImage} className="btn-remove-image">
+                      Remover/Trocar Imagem
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="image-upload-area" onClick={handleClickUpload}>
+                  <div className="upload-icon">📷</div>
+                  <p>Clique para selecionar uma imagem</p>
+                  <small>Arraste ou clique para fazer upload</small>
+                </div>
+              )}
+            </div>
+          </div>
 
           <CategoriaSelector onCategoriasChange={setCategorias} initialCategorias={categorias} />
 
@@ -283,11 +363,11 @@ const EditarEvento = () => {
           </div>
         </div>
 
-        {/* Setores e Ingressos (Mantenha o componente SetorManager, mas a lógica de carregar/salvar setores é complexa e precisa ser implementada dentro dele) */}
+        {/* Setores e Ingressos */}
         <div className="form-section">
           <h2>Setores e Ingressos</h2>
           <SetorManager eventoId={eventoId} isEditing={true} />
-          <small>⚠️ O gerenciamento de setores no modo edição é complexo. Verifique se o SetorManager está adaptado para carregar/salvar dados.</small>
+          <small>⚠️ O SetorManager precisa ser adaptado para carregar dados do eventoId.</small>
         </div>
 
         {/* Configuração de Taxas */}
