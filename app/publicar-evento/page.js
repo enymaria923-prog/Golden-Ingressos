@@ -15,8 +15,8 @@ const PublicarEvento = () => {
     descricao: '',
     data: '',
     hora: '',
-    localNome: '',
-    localEndereco: ''
+    localNome: '', // Campo do formulário para o NOME do local
+    localEndereco: '' // Campo do formulário para o ENDEREÇO
   });
   
   const [categorias, setCategorias] = useState([]);
@@ -26,9 +26,7 @@ const PublicarEvento = () => {
     taxaProdutor: 5 
   });
   
-  // O estado 'imagem' armazena o objeto File para upload
   const [imagem, setImagem] = useState(null); 
-  // O estado 'imagemPreview' armazena o DataURL para visualização local
   const [imagemPreview, setImagemPreview] = useState(null); 
   
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -44,28 +42,21 @@ const PublicarEvento = () => {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // 1. Validação de Tamanho (5MB máximo)
       if (file.size > 5 * 1024 * 1024) {
         alert('A imagem é muito grande. Por favor, selecione uma imagem menor que 5MB.');
-        e.target.value = null; // Limpa o input
+        e.target.value = null; 
         setImagem(null);
         setImagemPreview(null);
         return;
       }
-      
-      // 2. Validação de Tipo
       if (!file.type.match('image/jpeg') && !file.type.match('image/png') && !file.type.match('image/gif')) {
         alert('Por favor, selecione apenas imagens nos formatos JPG, PNG ou GIF.');
-        e.target.value = null; // Limpa o input
+        e.target.value = null; 
         setImagem(null);
         setImagemPreview(null);
         return;
       }
-      
-      // Armazena o objeto File
       setImagem(file);
-      
-      // Cria preview da imagem
       const reader = new FileReader();
       reader.onload = (e) => {
         setImagemPreview(e.target.result);
@@ -99,20 +90,17 @@ const PublicarEvento = () => {
     
     setIsSubmitting(true);
     let publicUrl = '';
-    let uploadedFilePath = null; // Usado para rollback em caso de falha na inserção
+    let uploadedFilePath = null; 
 
     try {
       // --- PROCESSO DE UPLOAD DE IMAGEM ---
-      
       if (imagem) {
         const fileExtension = imagem.name.split('.').pop();
-        // Criando um slug e timestamp único para o caminho do arquivo (melhor prática)
         const slug = formData.titulo.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
         const filePath = `eventos/${slug}-${Date.now()}.${fileExtension}`;
-        uploadedFilePath = filePath; // Salva o caminho do arquivo para possível exclusão
+        uploadedFilePath = filePath; 
         
-        // CORREÇÃO: Usando o nome do bucket que você criou: 'imagens_eventos'
-        const bucketName = 'imagens_eventos'; 
+        const bucketName = 'imagens_eventos'; // Nome correto do seu bucket
 
         console.log(`Iniciando upload para Storage no bucket: ${bucketName}...`);
         const { error: uploadError } = await supabase.storage
@@ -126,7 +114,6 @@ const PublicarEvento = () => {
           throw new Error(`Erro ao fazer upload da imagem: ${uploadError.message}`);
         }
 
-        // Obtém o URL público da imagem recém-enviada
         const { data: publicUrlData } = supabase.storage
           .from(bucketName)
           .getPublicUrl(filePath);
@@ -142,14 +129,14 @@ const PublicarEvento = () => {
         descricao: formData.descricao,
         data: formData.data,
         hora: formData.hora,
-        local_nome: formData.localNome,
-        local_endereco: formData.localEndereco,
         
         // ===================================================================
-        // CORREÇÃO: Usando a coluna 'categoria' (singular) e pegando 
-        // apenas o PRIMEIRO item da lista de categorias.
-        categoria: categorias[0], 
+        // CORREÇÃO FINAL: Mapeando os nomes do formulário para os nomes das suas colunas
+        local: formData.localNome, // Salva o Nome do Local na coluna 'local'
+        endereco: formData.localEndereco, // Salva o Endereço na coluna 'endereco'
         // ===================================================================
+        
+        categoria: categorias[0], // Coluna 'categoria' (singular)
         
         tem_lugar_marcado: temLugarMarcado,
         taxas: taxa, 
@@ -159,13 +146,12 @@ const PublicarEvento = () => {
 
       console.log('Iniciando inserção no banco de dados...');
       const { error: insertError } = await supabase
-        .from('eventos') // <-- TABELA CORRIGIDA: 'eventos'
+        .from('eventos') // Tabela 'eventos'
         .insert([eventData]);
 
       if (insertError) {
-        // Se a inserção falhar, usa o caminho salvo (uploadedFilePath) para remover a imagem
         if (uploadedFilePath) {
-            const bucketName = 'imagens_eventos'; // Garante o nome correto aqui também
+            const bucketName = 'imagens_eventos'; 
             await supabase.storage.from(bucketName).remove([uploadedFilePath]);
         }
         throw new Error(`Erro ao inserir evento no BD: ${insertError.message}`);
@@ -174,19 +160,13 @@ const PublicarEvento = () => {
       console.log('✅ Evento enviado para moderação com sucesso!');
       alert('Evento enviado para moderação! Em breve estará disponível no site.');
       
-      // Limpar formulário após envio (seu código original)
+      // Limpar formulário
       setFormData({
-        titulo: '',
-        descricao: '',
-        data: '',
-        hora: '',
-        localNome: '',
-        localEndereco: ''
+        titulo: '', descricao: '', data: '', hora: '', localNome: '', localEndereco: ''
       });
       setCategorias([]);
       setTemLugarMarcado(false);
       setTaxa({ taxaComprador: 15, taxaProdutor: 5 });
-      // Limpa os estados da imagem
       setImagem(null);
       setImagemPreview(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -269,14 +249,16 @@ const PublicarEvento = () => {
 
           <CategoriaSelector onCategoriasChange={setCategorias} />
 
+          {/* Campos de Local e Endereço */}
+          {/* O name="localNome" atualiza o state. O handleSubmit fará o mapeamento correto. */}
           <div className="form-group">
             <label>Nome do Local *</label>
             <input
               type="text"
-              name="localNome"
+              name="localNome" 
               value={formData.localNome}
               onChange={handleFormChange}
-              placeholder="Ex: Teatro Elis Regina, Casa de Show X"
+              placeholder="Ex: Teatro Maria Della Costa"
               required
             />
           </div>
