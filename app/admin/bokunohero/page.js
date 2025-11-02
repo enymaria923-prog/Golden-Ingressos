@@ -1,10 +1,7 @@
 'use client';
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
-// ===================================================================
-// CORREÇÃO DEFINITIVA: Importando a *instância* 'supabase' 
 import { supabase } from '../../../utils/supabase/client';
-// ===================================================================
 import Link from 'next/link';
 import './admin.css';
 
@@ -113,7 +110,7 @@ function EventoCardEstatisticas({ evento, aprovar, rejeitar }) {
 }
 
 // ===================================================================
-// Conteúdo do Admin (COM A LÓGICA DE BUSCA CORRIGIDA)
+// Conteúdo do Admin (COM A LÓGICA DE BUSCA E ALERTAS CORRIGIDA)
 // ===================================================================
 function AdminContent() {
   const [eventos, setEventos] = useState([]); // A lista COMPLETA vinda do BD
@@ -123,19 +120,11 @@ function AdminContent() {
   const [filtroProdutor, setFiltroProdutor] = useState('');
   const [filtroDataRange, setFiltroDataRange] = useState(null); 
 
-  // USA a instância 'supabase' importada (NÃO tenta criar uma nova)
-
-  // Esta função agora SÓ busca os dados. A filtragem é feita no Front-end.
   const carregarEventos = async () => {
     setCarregando(true);
     try {
       console.log('Buscando eventos (pendentes e aprovados)...');
       
-      // ===================================================================
-      // CORREÇÃO DA BUSCA: 
-      // Removi os filtros de data (.gte, .lte) que estavam quebrando a query.
-      // Vamos fazer o filtro de data no front-end, que é mais seguro.
-      // ===================================================================
       let { data: eventosData, error } = await supabase
         .from('eventos')
         .select('*')
@@ -145,43 +134,37 @@ function AdminContent() {
       if (error) throw error;
       
       console.log('Eventos recebidos do BD:', eventosData);
-      setEventos(eventosData || []); // Salva a lista completa
-      setEventosFiltrados(eventosData || []); // Inicializa a lista filtrada
+      setEventos(eventosData || []); 
+      setEventosFiltrados(eventosData || []); 
 
     } catch (error) {
+      // ===================================================================
+      // CORREÇÃO: Substituí 'alert' por 'console.error' para não crashar
       console.error('Erro ao carregar eventos:', error);
-      alert('Erro ao carregar eventos: ' + error.message);
+      // ===================================================================
     } finally {
-      setCarregando(false);
+      setCarregando(false); // Isso agora VAI rodar
     }
   };
 
-  // Carrega os eventos UMA VEZ quando o componente monta
   useEffect(() => {
     carregarEventos();
   }, []);
   
-  // ===================================================================
-  // CORREÇÃO DOS FILTROS (rodando no Front-End)
-  // Este useEffect agora aplica TODOS os filtros na lista 'eventos'
-  // ===================================================================
   useEffect(() => {
-    let tempEventos = [...eventos]; // Começa com a lista completa
+    let tempEventos = [...eventos]; 
     
-    // 1. Filtro de Produtor
     if (filtroProdutor) {
       tempEventos = tempEventos.filter(e => e.user_id && e.user_id.includes(filtroProdutor));
     }
 
-    // 2. Filtro de Data
     if (filtroDataRange) {
       const hoje = new Date();
-      hoje.setHours(0, 0, 0, 0); // Zera a hora para comparações de data
+      hoje.setHours(0, 0, 0, 0); 
 
       if (filtroDataRange === 'proximos_5_dias') {
         const cincoDiasFrente = new Date(hoje);
         cincoDiasFrente.setDate(hoje.getDate() + 5);
-        
         tempEventos = tempEventos.filter(e => {
           const dataEvento = new Date(e.data);
           return dataEvento >= hoje && dataEvento <= cincoDiasFrente;
@@ -190,7 +173,6 @@ function AdminContent() {
       else if (filtroDataRange === 'ultimos_5_dias') {
         const cincoDiasAtras = new Date(hoje);
         cincoDiasAtras.setDate(hoje.getDate() - 5);
-        
         tempEventos = tempEventos.filter(e => {
           const dataEvento = new Date(e.data);
           return dataEvento >= cincoDiasAtras && dataEvento <= hoje;
@@ -198,12 +180,9 @@ function AdminContent() {
       }
     }
     
-    // Atualiza a lista que o usuário VÊ
     setEventosFiltrados(tempEventos);
-
-  }, [filtroProdutor, filtroDataRange, eventos]); // Roda sempre que um filtro ou a lista principal mudar
+  }, [filtroProdutor, filtroDataRange, eventos]);
   
-  // Funções de Moderação (Usam o 'supabase' importado)
   const aprovarEvento = async (eventoId) => {
     try {
       const { error } = await supabase
@@ -211,10 +190,12 @@ function AdminContent() {
         .update({ status: 'aprovado' })
         .eq('id', eventoId);
       if (error) throw error;
-      alert('Evento aprovado!');
-      carregarEventos(); // Recarrega a lista
+      // CORREÇÃO: Removido 'alert'
+      console.log('Evento aprovado!');
+      carregarEventos(); 
     } catch (error) {
-      alert('Erro: ' + error.message);
+      // CORREÇÃO: Removido 'alert'
+      console.error('Erro ao aprovar:', error.message);
     }
   };
 
@@ -225,10 +206,12 @@ function AdminContent() {
         .update({ status: 'rejeitado' })
         .eq('id', eventoId);
       if (error) throw error;
-      alert('Evento rejeitado!');
-      carregarEventos(); // Recarrega a lista
+      // CORREÇÃO: Removido 'alert'
+      console.log('Evento rejeitado!');
+      carregarEventos(); 
     } catch (error) {
-      alert('Erro: ' + error.message);
+      // CORREÇÃO: Removido 'alert'
+      console.error('Erro ao rejeitar:', error.message);
     }
   };
 
@@ -237,7 +220,6 @@ function AdminContent() {
     window.location.reload(); 
   };
   
-  // Esta função agora SÓ MUDA O ESTADO, o useEffect faz a filtragem
   const handleFiltroDataRapida = (tipo) => {
     setFiltroDataRange(tipo); 
   };
@@ -251,14 +233,12 @@ function AdminContent() {
       <header className="admin-header">
         <h1>Área de Moderação (Super Admin)</h1>
         <div className="admin-stats">
-          {/* Conta os eventos da lista COMPLETA */}
           <span>Pendentes: {eventos.filter(e => e.status === 'pendente' || !e.status).length}</span>
           <span>Aprovados: {eventos.filter(e => e.status === 'aprovado').length}</span>
         </div>
         <button onClick={handleLogout} className="btn-logout">Sair</button>
       </header>
 
-      {/* Barra de Ação (Mantida) */}
       <div className="admin-action-bar">
         <button onClick={carregarEventos} className="btn-recargar">
           Recarregar Eventos
@@ -268,7 +248,6 @@ function AdminContent() {
         </Link>
       </div>
 
-      {/* Filtros (Mantidos) */}
       <div className="admin-filtros">
         <h3>Filtros de Busca</h3>
         <div className="form-group">
@@ -288,7 +267,6 @@ function AdminContent() {
         </div>
       </div>
 
-      {/* Lista de Eventos (Mostra a lista FILTRADA) */}
       <div className="eventos-list eventos-estatisticas">
         {eventosFiltrados.length === 0 ? (
           <p className="no-events">Nenhum evento encontrado com os filtros atuais.</p>
