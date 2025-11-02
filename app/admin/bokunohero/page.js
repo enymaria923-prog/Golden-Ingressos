@@ -1,9 +1,24 @@
 'use client';
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '../../../utils/supabase/client';
+// ===================================================================
+// CORREÇÃO NA MARRA: 
+// Importando o 'createBrowserClient' e IGNORANDO o 'utils/supabase/client.js'
+import { createBrowserClient } from '@supabase/ssr';
+// ===================================================================
 import Link from 'next/link';
 import './admin.css';
+
+// ===================================================================
+// CORREÇÃO NA MARRA: 
+// Colocando as chaves direto aqui para matar o erro 'undefined'
+// Usei as chaves que você me mandou.
+// ===================================================================
+const supabase_url = 'https://ubqlygisnqigiqkzbamd.supabase.co';
+const supabase_key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVicWx5Z2lzbnFpZ2lxa3piYW1kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE2ODI4NzgsImV4cCI6MjA3NzI1ODg3OH0.yXfhMk9intqcQs3xYBX2PcZzoPJp0iMy9RtHDMJpL7o';
+const supabase = createBrowserClient(supabase_url, supabase_key);
+// ===================================================================
+
 
 // ===================================================================
 // ETAPA 1: Tela de Login (Mantida)
@@ -110,7 +125,7 @@ function EventoCardEstatisticas({ evento, aprovar, rejeitar }) {
 }
 
 // ===================================================================
-// Conteúdo do Admin (COM A LÓGICA DE BUSCA E ALERTAS CORRIGIDA)
+// Conteúdo do Admin (Sem 'alert' e usando o 'supabase' criado acima)
 // ===================================================================
 function AdminContent() {
   const [eventos, setEventos] = useState([]); // A lista COMPLETA vinda do BD
@@ -120,6 +135,8 @@ function AdminContent() {
   const [filtroProdutor, setFiltroProdutor] = useState('');
   const [filtroDataRange, setFiltroDataRange] = useState(null); 
 
+  // USA a instância 'supabase' criada na marra acima
+
   const carregarEventos = async () => {
     setCarregando(true);
     try {
@@ -128,8 +145,8 @@ function AdminContent() {
       let { data: eventosData, error } = await supabase
         .from('eventos')
         .select('*')
-        .not('status', 'eq', 'rejeitado') // Pega Pendentes e Aprovados
-        .order('created_at', { ascending: false }); // Mais recentes no topo
+        .not('status', 'eq', 'rejeitado') 
+        .order('created_at', { ascending: false }); 
 
       if (error) throw error;
       
@@ -138,12 +155,9 @@ function AdminContent() {
       setEventosFiltrados(eventosData || []); 
 
     } catch (error) {
-      // ===================================================================
-      // CORREÇÃO: Substituí 'alert' por 'console.error' para não crashar
       console.error('Erro ao carregar eventos:', error);
-      // ===================================================================
     } finally {
-      setCarregando(false); // Isso agora VAI rodar
+      setCarregando(false); 
     }
   };
 
@@ -190,11 +204,9 @@ function AdminContent() {
         .update({ status: 'aprovado' })
         .eq('id', eventoId);
       if (error) throw error;
-      // CORREÇÃO: Removido 'alert'
       console.log('Evento aprovado!');
       carregarEventos(); 
     } catch (error) {
-      // CORREÇÃO: Removido 'alert'
       console.error('Erro ao aprovar:', error.message);
     }
   };
@@ -206,11 +218,9 @@ function AdminContent() {
         .update({ status: 'rejeitado' })
         .eq('id', eventoId);
       if (error) throw error;
-      // CORREÇÃO: Removido 'alert'
       console.log('Evento rejeitado!');
       carregarEventos(); 
     } catch (error) {
-      // CORREÇÃO: Removido 'alert'
       console.error('Erro ao rejeitar:', error.message);
     }
   };
