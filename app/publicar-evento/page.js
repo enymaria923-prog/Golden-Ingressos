@@ -1,6 +1,6 @@
 'use client';
-import React, { useState, useRef, useCallback } from 'react';
-import { createClient } from '../../utils/supabase/client'; // Importação CORRETA do utilitário Supabase
+import React, { useState, useRef } from 'react';
+import { createClient } from '../../utils/supabase/client'; // Importação do cliente Supabase para o lado do cliente
 import SetorManager from './components/SetorManager';
 import CategoriaSelector from './components/CategoriaSelector';
 import SelecionarTaxa from './components/SelecionarTaxa';
@@ -26,28 +26,24 @@ const PublicarEvento = () => {
     taxaProdutor: 5 
   });
   
-  // O estado 'imagem' armazena o objeto File para upload
   const [imagem, setImagem] = useState(null); 
-  // O estado 'imagemPreview' armazena o DataURL para visualização local
   const [imagemPreview, setImagemPreview] = useState(null); 
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef(null);
   
-  // Função para lidar com a mudança de estado do formulário (texto, data, hora, etc.)
   const handleFormChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({...prev, [name]: value}));
   };
 
-  // Função para lidar com a seleção de imagem
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       // 1. Validação de Tamanho (5MB máximo)
       if (file.size > 5 * 1024 * 1024) {
         alert('A imagem é muito grande. Por favor, selecione uma imagem menor que 5MB.');
-        e.target.value = null; // Limpa o input
+        e.target.value = null; 
         setImagem(null);
         setImagemPreview(null);
         return;
@@ -56,16 +52,14 @@ const PublicarEvento = () => {
       // 2. Validação de Tipo
       if (!file.type.match('image/jpeg') && !file.type.match('image/png') && !file.type.match('image/gif')) {
         alert('Por favor, selecione apenas imagens nos formatos JPG, PNG ou GIF.');
-        e.target.value = null; // Limpa o input
+        e.target.value = null; 
         setImagem(null);
         setImagemPreview(null);
         return;
       }
       
-      // Armazena o objeto File
       setImagem(file);
       
-      // Cria preview da imagem
       const reader = new FileReader();
       reader.onload = (e) => {
         setImagemPreview(e.target.result);
@@ -74,7 +68,6 @@ const PublicarEvento = () => {
     }
   };
 
-  // Funções utilitárias para o input de imagem
   const handleClickUpload = () => fileInputRef.current.click();
   const removeImage = () => {
     setImagem(null);
@@ -99,20 +92,18 @@ const PublicarEvento = () => {
     
     setIsSubmitting(true);
     let publicUrl = '';
-    let uploadedFilePath = null; // Usado para rollback em caso de falha na inserção
+    let uploadedFilePath = null; 
 
     try {
       // --- PROCESSO DE UPLOAD DE IMAGEM ---
       
       if (imagem) {
         const fileExtension = imagem.name.split('.').pop();
-        // Criando um slug e timestamp único para o caminho do arquivo (melhor prática)
         const slug = formData.titulo.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
         const filePath = `eventos/${slug}-${Date.now()}.${fileExtension}`;
-        uploadedFilePath = filePath; // Salva o caminho do arquivo para possível exclusão
-        const bucketName = 'eventos-capas'; // <-- VERIFIQUE SE O NOME DO SEU BUCKET ESTÁ CORRETO
+        uploadedFilePath = filePath; 
+        const bucketName = 'eventos-capas'; 
 
-        console.log('Iniciando upload para Storage...');
         const { error: uploadError } = await supabase.storage
           .from(bucketName)
           .upload(filePath, imagem, {
@@ -124,13 +115,11 @@ const PublicarEvento = () => {
           throw new Error(`Erro ao fazer upload da imagem: ${uploadError.message}`);
         }
 
-        // Obtém o URL público da imagem recém-enviada
         const { data: publicUrlData } = supabase.storage
           .from(bucketName)
           .getPublicUrl(filePath);
 
         publicUrl = publicUrlData.publicUrl;
-        console.log('URL da Imagem:', publicUrl);
       }
       
       // --- INSERÇÃO DE DADOS NA TABELA 'eventos' ---
@@ -145,40 +134,32 @@ const PublicarEvento = () => {
         categorias: categorias, 
         tem_lugar_marcado: temLugarMarcado,
         taxas: taxa, 
-        // AQUI ESTÁ A COLUNA CORRIGIDA: IMAGEM_URL
+        // Coluna conforme solicitado: imagem_url
         imagem_url: publicUrl, 
-        status: 'pendente', // Definindo o status para a moderação
+        status: 'pendente', 
       };
 
-      console.log('Iniciando inserção no banco de dados...');
       const { error: insertError } = await supabase
-        .from('eventos') // <-- TABELA CORRIGIDA: 'eventos'
+        .from('eventos') // Tabela conforme solicitado: 'eventos'
         .insert([eventData]);
 
       if (insertError) {
-        // Se a inserção falhar, usa o caminho salvo (uploadedFilePath) para remover a imagem
+        // Rollback: remove a imagem do storage se a inserção no banco de dados falhar
         if (uploadedFilePath) {
             await supabase.storage.from('eventos-capas').remove([uploadedFilePath]);
         }
         throw new Error(`Erro ao inserir evento no BD: ${insertError.message}`);
       }
       
-      console.log('✅ Evento enviado para moderação com sucesso!');
       alert('Evento enviado para moderação! Em breve estará disponível no site.');
       
-      // Limpar formulário após envio (seu código original)
+      // Limpar formulário
       setFormData({
-        titulo: '',
-        descricao: '',
-        data: '',
-        hora: '',
-        localNome: '',
-        localEndereco: ''
+        titulo: '', descricao: '', data: '', hora: '', localNome: '', localEndereco: ''
       });
       setCategorias([]);
       setTemLugarMarcado(false);
       setTaxa({ taxaComprador: 15, taxaProdutor: 5 });
-      // Limpa os estados da imagem
       setImagem(null);
       setImagemPreview(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -197,6 +178,8 @@ const PublicarEvento = () => {
       <h1>Publicar Novo Evento</h1>
       
       <form onSubmit={handleSubmit}>
+        {/* ... restante do seu formulário (mantido intacto) ... */}
+
         {/* Informações Básicas */}
         <div className="form-section">
           <h2>Informações Básicas</h2>
@@ -347,8 +330,3 @@ const PublicarEvento = () => {
 };
 
 export default PublicarEvento;
-```eof
-
-Eu confirmo que a tabela é `'eventos'` e a coluna é `'imagem_url'` neste código.
-
-Por favor, use este código para o `app/publicar-evento/page.js`. Se o problema persistir, o próximo passo é verificar a configuração das regras de acesso (RLS) no seu Supabase Storage e na sua tabela `eventos`.
