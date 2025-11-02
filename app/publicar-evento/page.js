@@ -133,13 +133,12 @@ const PublicarEvento = () => {
         endereco: formData.localEndereco, // Coluna 'endereco'
         categoria: categorias[0], // Coluna 'categoria' (singular)
         
-        tem_lugar_marcado: temLugarMarcado,
+        tem_lugar_marcavel: temLugarMarcado, // <-- Corrigido para o nome da coluna que você provavelmente tem
         
         // ===================================================================
-        // CORREÇÃO 'TAXAS': Salvando cada valor na sua própria coluna
-        // Assumindo que os nomes das colunas são 'taxaComprador' e 'taxaProdutor'
-        taxaComprador: taxa.taxaComprador,
-        taxaProdutor: taxa.taxaProdutor,
+        // CORREÇÃO 'TAXAS': Assumindo que os nomes são snake_case
+        taxa_comprador: taxa.taxaComprador,
+        taxa_produtor: taxa.taxaProdutor,
         // ===================================================================
         
         imagem_url: publicUrl, 
@@ -339,3 +338,4 @@ const PublicarEvento = () => {
 };
 
 export default PublicarEvento;
+
