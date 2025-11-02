@@ -129,17 +129,19 @@ const PublicarEvento = () => {
         descricao: formData.descricao,
         data: formData.data,
         hora: formData.hora,
-        
-        // ===================================================================
-        // CORREÇÃO FINAL: Mapeando os nomes do formulário para os nomes das suas colunas
-        local: formData.localNome, // Salva o Nome do Local na coluna 'local'
-        endereco: formData.localEndereco, // Salva o Endereço na coluna 'endereco'
-        // ===================================================================
-        
+        local: formData.localNome, // Coluna 'local'
+        endereco: formData.localEndereco, // Coluna 'endereco'
         categoria: categorias[0], // Coluna 'categoria' (singular)
         
         tem_lugar_marcado: temLugarMarcado,
-        taxas: taxa, 
+        
+        // ===================================================================
+        // CORREÇÃO 'TAXAS': Salvando cada valor na sua própria coluna
+        // Assumindo que os nomes das colunas são 'taxaComprador' e 'taxaProdutor'
+        taxaComprador: taxa.taxaComprador,
+        taxaProdutor: taxa.taxaProdutor,
+        // ===================================================================
+        
         imagem_url: publicUrl, 
         status: 'pendente', // Definindo o status para a moderação
       };
