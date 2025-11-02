@@ -1,7 +1,11 @@
 'use client';
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '../../../utils/supabase/client';
+// ===================================================================
+// CORREÇÃO AQUI: Importando a *instância* 'supabase' 
+// (como era no seu código original)
+import { supabase } from '../../../utils/supabase/client';
+// ===================================================================
 import Link from 'next/link';
 import './admin.css';
 
@@ -14,7 +18,6 @@ function LoginForm({ onLoginSuccess, setLoginError, loginError }) {
   const handleLogin = (e) => {
     e.preventDefault();
     if (password === 'valtinho') {
-      // Salva no sessionStorage para manter o login
       sessionStorage.setItem('admin_logged_in', 'true');
       onLoginSuccess(true);
       setLoginError('');
@@ -40,7 +43,7 @@ function LoginForm({ onLoginSuccess, setLoginError, loginError }) {
           />
         </div>
         {loginError && <p className="login-error">{loginError}</p>}
-        <button type="submit" className="btn-submit-login">Entrar</button>
+        <button typeD="submit" className="btn-submit-login">Entrar</button>
       </form>
     </div>
   );
@@ -50,22 +53,17 @@ function LoginForm({ onLoginSuccess, setLoginError, loginError }) {
 // NOVO Card de Estatísticas (Sem alterações)
 // ===================================================================
 function EventoCardEstatisticas({ evento, aprovar, rejeitar }) {
-  // Dados de Taxas (usando as colunas TaxaCliente e TaxaProdutor)
   const taxaCliente = evento.TaxaCliente || 15; 
   const taxaProdutor = evento.TaxaProdutor || 5; 
-  
-  // Assumindo que o ingresso é um valor único (Simplificação: sem setores)
   const precoIngresso = evento.preco || 50; 
-  const ingressosVendidos = 100; // SIMULAÇÃO: Precisa ser buscado da tabela de ingressos
+  const ingressosVendidos = 100; // SIMULAÇÃO
   
-  // ********** CÁLCULOS FINANCEIROS (SIMULAÇÃO) **********
   const faturamentoIngressos = precoIngresso * ingressosVendidos; 
   const valorTaxaCliente = (faturamentoIngressos * taxaCliente) / 100; 
   const faturamentoTotal = faturamentoIngressos + valorTaxaCliente; 
   const valorTaxaProdutor = (faturamentoIngressos * taxaProdutor) / 100; 
   const valorPagoProdutor = faturamentoIngressos + valorTaxaProdutor; 
   const taxaPlataformaLiquida = valorTaxaCliente - valorTaxaProdutor;
-  // *****************************************
 
   return (
     <div key={evento.id} className="evento-card admin-card-estatisticas">
@@ -80,9 +78,7 @@ function EventoCardEstatisticas({ evento, aprovar, rejeitar }) {
         <p><strong>Local:</strong> {evento.local}</p>
         <p><strong>Produtor (ID):</strong> {evento.user_id}</p>
       </div>
-
       <hr/>
-
       <div className="card-faturamento">
         <h4>Resumo Financeiro (Simulação)</h4>
         <p>🎟️ Ingressos Vendidos: <strong>{ingressosVendidos}</strong></p>
@@ -91,7 +87,6 @@ function EventoCardEstatisticas({ evento, aprovar, rejeitar }) {
         <p>📈 Taxa Plataforma (Líquida): <strong>R$ {taxaPlataformaLiquida.toFixed(2)}</strong></p>
         <p>💸 **Pagar ao Produtor (Bruto):** <strong>R$ {valorPagoProdutor.toFixed(2)}</strong></p>
       </div>
-
       <div className="evento-actions">
         <Link href={`/admin/bokunohero/edit/${evento.id}`} legacyBehavior>
           <a className="btn-editar">✏️ Editar Evento</a>
@@ -99,7 +94,6 @@ function EventoCardEstatisticas({ evento, aprovar, rejeitar }) {
         <Link href={`/admin/bokunohero/detalhes/${evento.id}`} legacyBehavior>
           <a className="btn-detalhes">👁️ Detalhes Financeiros</a>
         </Link>
-
         <button 
           onClick={() => aprovar(evento.id)} 
           className="btn-aprovar"
@@ -120,7 +114,7 @@ function EventoCardEstatisticas({ evento, aprovar, rejeitar }) {
 }
 
 // ===================================================================
-// ETAPA 2: Conteúdo do Admin (Sem alterações significativas na lógica interna)
+// ETAPA 2: Conteúdo do Admin (Corrigido para usar a instância 'supabase')
 // ===================================================================
 function AdminContent() {
   const [eventos, setEventos] = useState([]);
@@ -130,20 +124,22 @@ function AdminContent() {
   const [filtroProdutor, setFiltroProdutor] = useState('');
   const [filtroDataRange, setFiltroDataRange] = useState(null); 
 
-  const supabase = createClient();
-  
+  // ===================================================================
+  // CORREÇÃO AQUI: 
+  // Removemos o 'const supabase = createClient();' 
+  // pois o 'supabase' já foi importado do client.js
+  // ===================================================================
+
   const carregarEventos = async (dataFiltro = null) => {
     setCarregando(true);
-    let query = supabase.from('eventos')
+    let query = supabase.from('eventos') // Usa o 'supabase' importado
       .select('*')
       .not('status', 'eq', 'rejeitado')
       .order('created_at', { ascending: false }); 
 
-    // Lógica para filtrar por data
     if (dataFiltro) {
         const hoje = new Date();
         const hojeISO = hoje.toISOString().split('T')[0];
-        
         if (dataFiltro === 'proximos_5_dias') {
           const cincoDiasFrente = new Date();
           cincoDiasFrente.setDate(hoje.getDate() + 5);
@@ -177,7 +173,6 @@ function AdminContent() {
     carregarEventos();
   }, []);
   
-  // Filtro de Produtor (Front-end)
   useEffect(() => {
       let tempEventos = eventos;
       if (filtroProdutor) {
@@ -186,16 +181,15 @@ function AdminContent() {
       setEventosFiltrados(tempEventos);
   }, [filtroProdutor, eventos]);
   
-  // Funções de Moderação (Aprovar / Rejeitar)
   const aprovarEvento = async (eventoId) => {
     try {
-      const { error } = await supabase
+      const { error } = await supabase // Usa o 'supabase' importado
         .from('eventos')
         .update({ status: 'aprovado' })
         .eq('id', eventoId);
       if (error) throw error;
       alert('Evento aprovado!');
-      carregarEventos(filtroDataRange); // Recarrega a lista mantendo o filtro de data
+      carregarEventos(filtroDataRange); 
     } catch (error) {
       alert('Erro: ' + error.message);
     }
@@ -203,13 +197,13 @@ function AdminContent() {
 
   const rejeitarEvento = async (eventoId) => {
     try {
-      const { error } = await supabase
+      const { error } = await supabase // Usa o 'supabase' importado
         .from('eventos')
         .update({ status: 'rejeitado' })
         .eq('id', eventoId);
       if (error) throw error;
       alert('Evento rejeitado!');
-      carregarEventos(filtroDataRange); // Recarrega a lista mantendo o filtro de data
+      carregarEventos(filtroDataRange); 
     } catch (error) {
       alert('Erro: ' + error.message);
     }
@@ -235,7 +229,7 @@ function AdminContent() {
         <h1>Área de Moderação (Super Admin)</h1>
         <div className="admin-stats">
           <span>Pendentes: {eventos.filter(e => e.status === 'pendente' || !e.status).length}</span>
-          <span>Aprovados: {eventos.filter(e => e.status === 'aprovado').length}</span>
+          <span>AprovADOS: {eventos.filter(e => e.status === 'aprovado').length}</span>
         </div>
         <button onClick={handleLogout} className="btn-logout">Sair</button>
       </header>
@@ -288,30 +282,25 @@ function AdminContent() {
 
 // ===================================================================
 // COMPONENTE PRINCIPAL: Decide se mostra o Login ou o Conteúdo
-// CORREÇÃO: Adicionado 'isLoading' e verificação de 'window'
+// (Mantido com a correção do 'typeof window' para o build)
 // ===================================================================
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loginError, setLoginError] = useState('');
-  const [isLoading, setIsLoading] = useState(true); // Estado de loading para verificar a sessão
+  const [isLoading, setIsLoading] = useState(true); 
 
   useEffect(() => {
-    // CORREÇÃO: 
-    // Acessa o sessionStorage SÓ DEPOIS que o componente montar no navegador.
-    // Isso impede o erro "sessionStorage is not defined" durante o build do Vercel.
     if (typeof window !== 'undefined') {
       const loggedIn = sessionStorage.getItem('admin_logged_in') === 'true';
       setIsAuthenticated(loggedIn);
     }
-    setIsLoading(false); // Termina a verificação
-  }, []); // O array vazio [] garante que isso só rode UMA VEZ no cliente.
+    setIsLoading(false); 
+  }, []); 
 
-  // Mostra um loading enquanto verifica o sessionStorage
   if (isLoading) {
     return <div className="admin-loading">Verificando sessão...</div>;
   }
   
-  // Se estiver autenticado, mostra o conteúdo do admin
   if (isAuthenticated) {
     return (
       <Suspense fallback={<div className="admin-loading">Carregando...</div>}>
@@ -320,10 +309,10 @@ export default function AdminPage() {
     );
   }
 
-  // Se não estiver autenticado, mostra o formulário de login
   return <LoginForm 
             onLoginSuccess={setIsAuthenticated} 
             setLoginError={setLoginError}
             loginError={loginError} 
           />;
 }
+
