@@ -2,26 +2,14 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 // ===================================================================
-// CORREÇÃO NA MARRA: 
-// Importando o 'createBrowserClient' e IGNORANDO o 'utils/supabase/client.js'
-import { createBrowserClient } from '@supabase/ssr';
+// Importando a *instância* 'supabase' (O jeito que você tinha)
+import { supabase } from '../../../utils/supabase/client';
 // ===================================================================
 import Link from 'next/link';
 import './admin.css';
 
 // ===================================================================
-// CORREÇÃO NA MARRA: 
-// Colocando as chaves direto aqui para matar o erro 'undefined'
-// Usei as chaves que você me mandou.
-// ===================================================================
-const supabase_url = 'https://ubqlygisnqigiqkzbamd.supabase.co';
-const supabase_key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVicWx5Z2lzbnFpZ2lxa3piYW1kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjE2ODI4NzgsImV4cCI6MjA3NzI1ODg3OH0.yXfhMk9intqcQs3xYBX2PcZzoPJp0iMy9RtHDMJpL7o';
-const supabase = createBrowserClient(supabase_url, supabase_key);
-// ===================================================================
-
-
-// ===================================================================
-// ETAPA 1: Tela de Login (Mantida)
+// ETAPA 1: Tela de Login (COM A CORREÇÃO DO typeD)
 // ===================================================================
 function LoginForm({ onLoginSuccess, setLoginError, loginError }) {
   const [password, setPassword] = useState('');
@@ -54,7 +42,10 @@ function LoginForm({ onLoginSuccess, setLoginError, loginError }) {
           />
         </div>
         {loginError && <p className="login-error">{loginError}</p>}
+        {/* =================================================================== */}
+        {/* CORREÇÃO AQUI: Era 'typeD', agora é 'type' */}
         <button type="submit" className="btn-submit-login">Entrar</button>
+        {/* =================================================================== */}
       </form>
     </div>
   );
@@ -125,7 +116,7 @@ function EventoCardEstatisticas({ evento, aprovar, rejeitar }) {
 }
 
 // ===================================================================
-// Conteúdo do Admin (Sem 'alert' e usando o 'supabase' criado acima)
+// Conteúdo do Admin (Mantido com filtros no front-end e sem 'alert')
 // ===================================================================
 function AdminContent() {
   const [eventos, setEventos] = useState([]); // A lista COMPLETA vinda do BD
@@ -135,7 +126,7 @@ function AdminContent() {
   const [filtroProdutor, setFiltroProdutor] = useState('');
   const [filtroDataRange, setFiltroDataRange] = useState(null); 
 
-  // USA a instância 'supabase' criada na marra acima
+  // USA a instância 'supabase' importada (NÃO tenta criar uma nova)
 
   const carregarEventos = async () => {
     setCarregando(true);
@@ -145,19 +136,19 @@ function AdminContent() {
       let { data: eventosData, error } = await supabase
         .from('eventos')
         .select('*')
-        .not('status', 'eq', 'rejeitado') 
-        .order('created_at', { ascending: false }); 
+        .not('status', 'eq', 'rejeitado') // Pega Pendentes e Aprovados
+        .order('created_at', { ascending: false }); // Mais recentes no topo
 
       if (error) throw error;
       
       console.log('Eventos recebidos do BD:', eventosData);
-      setEventos(eventosData || []); 
-      setEventosFiltrados(eventosData || []); 
+      setEventos(eventosData || []); // Salva a lista completa
+      setEventosFiltrados(eventosData || []); // Inicializa a lista filtrada
 
     } catch (error) {
       console.error('Erro ao carregar eventos:', error);
     } finally {
-      setCarregando(false); 
+      setCarregando(false); // Isso agora VAI rodar
     }
   };
 
