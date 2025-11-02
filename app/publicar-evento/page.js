@@ -1,13 +1,12 @@
 'use client';
 import React, { useState, useRef } from 'react';
-import { createClient } from '../../utils/supabase/client'; // Importação CORRETA do utilitário Supabase
+import { createClient } from '../../utils/supabase/client'; 
 import SetorManager from './components/SetorManager';
 import CategoriaSelector from './components/CategoriaSelector';
 import SelecionarTaxa from './components/SelecionarTaxa';
 import './PublicarEvento.css';
 
 const PublicarEvento = () => {
-  // Inicialização do Supabase Client
   const supabase = createClient();
 
   const [formData, setFormData] = useState({
@@ -15,8 +14,8 @@ const PublicarEvento = () => {
     descricao: '',
     data: '',
     hora: '',
-    localNome: '', // Campo do formulário para o NOME do local
-    localEndereco: '' // Campo do formulário para o ENDEREÇO
+    localNome: '', 
+    localEndereco: '' 
   });
   
   const [categorias, setCategorias] = useState([]);
@@ -28,17 +27,14 @@ const PublicarEvento = () => {
   
   const [imagem, setImagem] = useState(null); 
   const [imagemPreview, setImagemPreview] = useState(null); 
-  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef(null);
   
-  // Função para lidar com a mudança de estado do formulário (texto, data, hora, etc.)
   const handleFormChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({...prev, [name]: value}));
   };
 
-  // Função para lidar com a seleção de imagem
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -65,7 +61,6 @@ const PublicarEvento = () => {
     }
   };
 
-  // Funções utilitárias para o input de imagem
   const handleClickUpload = () => fileInputRef.current.click();
   const removeImage = () => {
     setImagem(null);
@@ -77,12 +72,10 @@ const PublicarEvento = () => {
     e.preventDefault();
     if (isSubmitting) return;
 
-    // 1. Validações de Pré-Envio
     if (!formData.titulo || !formData.descricao || !formData.data || !formData.hora || !formData.localNome || !imagem) {
       alert('Por favor, preencha todos os campos obrigatórios, incluindo a imagem!');
       return;
     }
-
     if (categorias.length === 0) {
       alert('Por favor, selecione pelo menos uma categoria!');
       return;
@@ -93,57 +86,44 @@ const PublicarEvento = () => {
     let uploadedFilePath = null; 
 
     try {
-      // --- PROCESSO DE UPLOAD DE IMAGEM ---
+      // --- UPLOAD DE IMAGEM ---
       if (imagem) {
         const fileExtension = imagem.name.split('.').pop();
         const slug = formData.titulo.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
         const filePath = `eventos/${slug}-${Date.now()}.${fileExtension}`;
         uploadedFilePath = filePath; 
-        
-        const bucketName = 'imagens_eventos'; // Nome correto do seu bucket
+        const bucketName = 'imagens_eventos'; 
 
-        console.log(`Iniciando upload para Storage no bucket: ${bucketName}...`);
         const { error: uploadError } = await supabase.storage
           .from(bucketName)
-          .upload(filePath, imagem, {
-            cacheControl: '3600',
-            upsert: false
-          });
+          .upload(filePath, imagem, { cacheControl: '3600', upsert: false });
 
-        if (uploadError) {
-          throw new Error(`Erro ao fazer upload da imagem: ${uploadError.message}`);
-        }
+        if (uploadError) throw new Error(`Erro ao fazer upload da imagem: ${uploadError.message}`);
 
         const { data: publicUrlData } = supabase.storage
           .from(bucketName)
           .getPublicUrl(filePath);
-
         publicUrl = publicUrlData.publicUrl;
-        console.log('URL da Imagem:', publicUrl);
       }
       
-      // --- INSERÇÃO DE DADOS NA TABELA 'eventos' ---
-
+      // ===================================================================
+      // CORREÇÃO FINAL COM BASE NOS SEUS PRINTS DO SUPABASE
+      // ===================================================================
       const eventData = {
-        titulo: formData.titulo,
-        descricao: formData.descricao,
-        data: formData.data,
-        hora: formData.hora,
-        local: formData.localNome, // Coluna 'local'
+        nome: formData.titulo,           // Coluna 'nome'
+        descricao: formData.descricao,   // Coluna 'descricao'
+        data: formData.data,             // Coluna 'data'
+        hora: formData.hora,             // Coluna 'hora'
+        local: formData.localNome,       // Coluna 'local'
         endereco: formData.localEndereco, // Coluna 'endereco'
-        categoria: categorias[0], // Coluna 'categoria' (singular)
-        
-        tem_lugar_marcado: temLugarMarcado, // <-- Vou manter este nome por enquanto
-        
-        // ===================================================================
-        // CORREÇÃO: Usando os nomes EXATOS das colunas que você criou:
-        TaxaCliente: taxa.taxaComprador,
-        TaxaProdutor: taxa.taxaProdutor,
-        // ===================================================================
-        
-        imagem_url: publicUrl, 
-        status: 'pendente', // Definindo o status para a moderação
+        categoria: categorias[0],        // Coluna 'categoria'
+        tem_lugar_marcado: temLugarMarcado, // Coluna 'tem_lugar_marcado'
+        TaxaCliente: taxa.taxaComprador,  // Coluna 'TaxaCliente'
+        TaxaProdutor: taxa.taxaProdutor, // Coluna 'TaxaProdutor'
+        imagem_url: publicUrl,           // Coluna 'imagem_url'
+        status: 'pendente',              // Coluna 'status'
       };
+      // ===================================================================
 
       console.log('Iniciando inserção no banco de dados...');
       const { error: insertError } = await supabase
@@ -152,8 +132,7 @@ const PublicarEvento = () => {
 
       if (insertError) {
         if (uploadedFilePath) {
-            const bucketName = 'imagens_eventos'; 
-            await supabase.storage.from(bucketName).remove([uploadedFilePath]);
+            await supabase.storage.from('imagens_eventos').remove([uploadedFilePath]);
         }
         throw new Error(`Erro ao inserir evento no BD: ${insertError.message}`);
       }
@@ -223,7 +202,7 @@ const PublicarEvento = () => {
                 accept="image/jpeg,image/png,image/gif"
                 onChange={handleImageChange}
                 className="image-input"
-                style={{ display: 'none' }} // Esconde o input original
+                style={{ display: 'none' }} 
               />
               
               {imagemPreview ? (
@@ -250,8 +229,6 @@ const PublicarEvento = () => {
 
           <CategoriaSelector onCategoriasChange={setCategorias} />
 
-          {/* Campos de Local e Endereço */}
-          {/* O name="localNome" atualiza o state. O handleSubmit fará o mapeamento correto. */}
           <div className="form-group">
             <label>Nome do Local *</label>
             <input
@@ -338,4 +315,3 @@ const PublicarEvento = () => {
 };
 
 export default PublicarEvento;
-
