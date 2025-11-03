@@ -1,14 +1,12 @@
 'use client';
 import React, { useState, useRef } from 'react';
-import { createClient } from '../../utils/supabase/client'; 
+import { supabase } from '../../utils/supabase/client';
 import SetorManager from './components/SetorManager';
 import CategoriaSelector from './components/CategoriaSelector';
 import SelecionarTaxa from './components/SelecionarTaxa';
 import './PublicarEvento.css';
 
 const PublicarEvento = () => {
-  const supabase = createClient();
-
   const [formData, setFormData] = useState({
     titulo: '',
     descricao: '',
@@ -92,47 +90,60 @@ const PublicarEvento = () => {
         const slug = formData.titulo.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
         const filePath = `eventos/${slug}-${Date.now()}.${fileExtension}`;
         uploadedFilePath = filePath; 
-        const bucketName = 'imagens_eventos'; 
 
+        console.log('📤 Iniciando upload da imagem...');
         const { error: uploadError } = await supabase.storage
-          .from(bucketName)
+          .from('imagens_eventos')
           .upload(filePath, imagem, { cacheControl: '3600', upsert: false });
 
-        if (uploadError) throw new Error(`Erro ao fazer upload da imagem: ${uploadError.message}`);
+        if (uploadError) {
+          console.error('❌ Erro no upload:', uploadError);
+          throw new Error(`Erro ao fazer upload da imagem: ${uploadError.message}`);
+        }
 
+        console.log('✅ Upload da imagem realizado com sucesso!');
+        
         const { data: publicUrlData } = supabase.storage
-          .from(bucketName)
+          .from('imagens_eventos')
           .getPublicUrl(filePath);
         publicUrl = publicUrlData.publicUrl;
+        console.log('🔗 URL pública:', publicUrl);
       }
       
-      // ===================================================================
-      // CORREÇÃO FINAL COM BASE NOS SEUS PRINTS DO SUPABASE
-      // ===================================================================
-      const eventData = {
-        nome: formData.titulo,           // Coluna 'nome'
-        descricao: formData.descricao,   // Coluna 'descricao'
-        data: formData.data,             // Coluna 'data'
-        hora: formData.hora,             // Coluna 'hora'
-        local: formData.localNome,       // Coluna 'local'
-        endereco: formData.localEndereco, // Coluna 'endereco'
-        categoria: categorias[0],        // Coluna 'categoria'
-        tem_lugar_marcado: temLugarMarcado, // Coluna 'tem_lugar_marcado'
-        TaxaCliente: taxa.taxaComprador,  // Coluna 'TaxaCliente'
-        TaxaProdutor: taxa.taxaProdutor, // Coluna 'TaxaProdutor'
-        imagem_url: publicUrl,           // Coluna 'imagem_url'
-        status: 'pendente',              // Coluna 'status'
-      };
-      // ===================================================================
+      // --- OBTER USER_ID ---
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError) throw new Error(`Erro ao obter usuário: ${userError.message}`);
+      
+      const userId = userData.user?.id;
+      if (!userId) throw new Error('Usuário não autenticado');
 
-      console.log('Iniciando inserção no banco de dados...');
+      // --- DADOS DO EVENTO (CORRIGIDOS) ---
+      const eventData = {
+        nome: formData.titulo,
+        descricao: formData.descricao,
+        data: formData.data,
+        hora: formData.hora,
+        local: formData.localNome,
+        endereco: formData.localEndereco,
+        categoria: categorias[0],
+        tem_lugar_ma: temLugarMarcado,
+        TaxaCliente: taxa.taxaComprador,
+        TaxaProdutor: taxa.taxaProdutor,
+        imagem_url: publicUrl,
+        status: 'pendente',
+        user_id: userId
+      };
+
+      console.log('📝 Inserindo evento no banco...', eventData);
+      
       const { error: insertError } = await supabase
-        .from('eventos') // Tabela 'eventos'
+        .from('eventos')
         .insert([eventData]);
 
       if (insertError) {
+        console.error('❌ Erro na inserção:', insertError);
         if (uploadedFilePath) {
-            await supabase.storage.from('imagens_eventos').remove([uploadedFilePath]);
+          await supabase.storage.from('imagens_eventos').remove([uploadedFilePath]);
         }
         throw new Error(`Erro ao inserir evento no BD: ${insertError.message}`);
       }
@@ -158,7 +169,6 @@ const PublicarEvento = () => {
       setIsSubmitting(false);
     }
   };
-
 
   return (
     <div className="publicar-evento-container">
@@ -207,7 +217,6 @@ const PublicarEvento = () => {
               
               {imagemPreview ? (
                 <div className="image-preview-container">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={imagemPreview} alt="Preview" className="image-preview" />
                   <div className="image-info">
                     <p>✅ {imagem?.name || 'Imagem selecionada'}</p>
