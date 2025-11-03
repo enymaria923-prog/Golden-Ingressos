@@ -1,11 +1,7 @@
 'use client';
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
-// ===================================================================
-// CORREÇÃO: 
-// Voltamos a importar a *instância* 'supabase'
 import { supabase } from '../../../utils/supabase/client';
-// ===================================================================
 import Link from 'next/link';
 import './admin.css';
 
@@ -88,12 +84,12 @@ function EventoCardEstatisticas({ evento, aprovar, rejeitar }) {
         <p>💸 **Pagar ao Produtor (Bruto):** <strong>R$ {valorPagoProdutor.toFixed(2)}</strong></p>
       </div>
       <div className="evento-actions">
-        <Link href={`/admin/bokunohero/edit/${evento.id}`} legacyBehavior>
-          <a className="btn-editar">✏️ Editar Evento</a>
-        </Link>
-        <Link href={`/admin/bokunohero/detalhes/${evento.id}`} legacyBehavior>
-          <a className="btn-detalhes">👁️ Detalhes Financeiros</a>
-        </Link>
+        <button className="btn-editar" disabled>
+          ✏️ Editar Evento (Em breve)
+        </button>
+        <button className="btn-detalhes" disabled>
+          👁️ Detalhes Financeiros (Em breve)
+        </button>
         <button 
           onClick={() => aprovar(evento.id)} 
           className="btn-aprovar"
@@ -114,37 +110,38 @@ function EventoCardEstatisticas({ evento, aprovar, rejeitar }) {
 }
 
 // ===================================================================
-// Conteúdo do Admin (Corrigido para usar a instância 'supabase')
+// Conteúdo do Admin (CORRIGIDO)
 // ===================================================================
 function AdminContent() {
   const [eventos, setEventos] = useState([]); 
   const [eventosFiltrados, setEventosFiltrados] = useState([]); 
   const [carregando, setCarregando] = useState(true);
-  
+  const [erro, setErro] = useState('');
+
   const [filtroProdutor, setFiltroProdutor] = useState('');
   const [filtroDataRange, setFiltroDataRange] = useState(null); 
 
-  // USA a instância 'supabase' importada (NÃO tenta criar uma nova)
-
   const carregarEventos = async () => {
     setCarregando(true);
+    setErro('');
     try {
-      console.log('Buscando eventos (pendentes e aprovados)...');
+      console.log('🔄 Buscando eventos...');
       
+      // BUSCA TODOS OS EVENTOS (não filtra por status inicialmente)
       let { data: eventosData, error } = await supabase
         .from('eventos')
         .select('*')
-        .not('status', 'eq', 'rejeitado') 
-        .order('created_at', { ascending: false }); 
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
       
-      console.log('Eventos recebidos do BD:', eventosData);
+      console.log('✅ Eventos carregados:', eventosData);
       setEventos(eventosData || []); 
       setEventosFiltrados(eventosData || []); 
 
     } catch (error) {
-      console.error('Erro ao carregar eventos:', error);
+      console.error('💥 Erro ao carregar eventos:', error);
+      setErro(`Erro ao carregar eventos: ${error.message}`);
     } finally {
       setCarregando(false); 
     }
@@ -157,18 +154,23 @@ function AdminContent() {
   useEffect(() => {
     let tempEventos = [...eventos]; 
     
+    // Filtro por produtor
     if (filtroProdutor) {
-      tempEventos = tempEventos.filter(e => e.user_id && e.user_id.includes(filtroProdutor));
+      tempEventos = tempEventos.filter(e => 
+        e.user_id && e.user_id.toLowerCase().includes(filtroProdutor.toLowerCase())
+      );
     }
 
+    // Filtro por data
     if (filtroDataRange) {
       const hoje = new Date();
-      hoje.setHours(0, 0, 0, 0); 
+      hoje.setHours(0, 0, 0, 0);
 
       if (filtroDataRange === 'proximos_5_dias') {
         const cincoDiasFrente = new Date(hoje);
         cincoDiasFrente.setDate(hoje.getDate() + 5);
         tempEventos = tempEventos.filter(e => {
+          if (!e.data) return false;
           const dataEvento = new Date(e.data);
           return dataEvento >= hoje && dataEvento <= cincoDiasFrente;
         });
@@ -177,6 +179,7 @@ function AdminContent() {
         const cincoDiasAtras = new Date(hoje);
         cincoDiasAtras.setDate(hoje.getDate() - 5);
         tempEventos = tempEventos.filter(e => {
+          if (!e.data) return false;
           const dataEvento = new Date(e.data);
           return dataEvento >= cincoDiasAtras && dataEvento <= hoje;
         });
@@ -192,11 +195,16 @@ function AdminContent() {
         .from('eventos')
         .update({ status: 'aprovado' })
         .eq('id', eventoId);
+      
       if (error) throw error;
-      console.log('Evento aprovado!');
-      carregarEventos(); 
+      
+      console.log('✅ Evento aprovado!');
+      alert('Evento aprovado! Agora está público para todos os usuários.');
+      carregarEventos(); // Recarrega a lista
+    
     } catch (error) {
       console.error('Erro ao aprovar:', error.message);
+      alert(`Erro ao aprovar: ${error.message}`);
     }
   };
 
@@ -206,11 +214,16 @@ function AdminContent() {
         .from('eventos')
         .update({ status: 'rejeitado' })
         .eq('id', eventoId);
+      
       if (error) throw error;
-      console.log('Evento rejeitado!');
-      carregarEventos(); 
+      
+      console.log('❌ Evento rejeitado!');
+      alert('Evento rejeitado! Foi movido para a lista de rejeitados.');
+      carregarEventos(); // Recarrega a lista
+    
     } catch (error) {
       console.error('Erro ao rejeitar:', error.message);
+      alert(`Erro ao rejeitar: ${error.message}`);
     }
   };
 
@@ -223,8 +236,24 @@ function AdminContent() {
     setFiltroDataRange(tipo); 
   };
 
+  // Calcular contadores
+  const pendentesCount = eventos.filter(e => e.status === 'pendente' || !e.status).length;
+  const aprovadosCount = eventos.filter(e => e.status === 'aprovado').length;
+
   if (carregando) {
     return <div className="admin-loading">Carregando eventos...</div>;
+  }
+
+  if (erro) {
+    return (
+      <div className="admin-error">
+        <h3>Erro ao carregar eventos</h3>
+        <p>{erro}</p>
+        <button onClick={carregarEventos} className="btn-recargar">
+          Tentar Novamente
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -232,18 +261,18 @@ function AdminContent() {
       <header className="admin-header">
         <h1>Área de Moderação (Super Admin)</h1>
         <div className="admin-stats">
-          <span>Pendentes: {eventos.filter(e => e.status === 'pendente' || !e.status).length}</span>
-          <span>Aprovados: {eventos.filter(e => e.status === 'aprovado').length}</span>
+          <span>Pendentes: {pendentesCount}</span>
+          <span>Aprovados: {aprovadosCount}</span>
         </div>
         <button onClick={handleLogout} className="btn-logout">Sair</button>
       </header>
 
       <div className="admin-action-bar">
         <button onClick={carregarEventos} className="btn-recargar">
-          Recarregar Eventos
+          🔄 Recarregar Eventos
         </button>
-        <Link href="/admin/rejeitados" legacyBehavior>
-          <a className="btn-rejeitados">Ver Rejeitados</a>
+        <Link href="/admin/bokunohero/rejeitados" legacyBehavior>
+          <a className="btn-rejeitados">📋 Ver Rejeitados</a>
         </Link>
       </div>
 
@@ -318,4 +347,3 @@ export default function AdminPage() {
             loginError={loginError} 
           />;
 }
-
