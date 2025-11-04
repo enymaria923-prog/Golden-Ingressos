@@ -1,7 +1,9 @@
 'use client';
-import { useState, useEffect } from 'react';
-import { supabase } from '../../../utils/supabase/client';
-import './admin.css';
+// IMPORTS CORRETOS - APENAS 3 níveis
+import SetorManager from '../../../publicar-evento/components/SetorManager';
+import CategoriaSelector from '../../../publicar-evento/components/CategoriaSelector';
+import SelecionarTaxa from '../../../publicar-evento/components/SelecionarTaxa';
+import '../../../publicar-evento/PublicarEvento.css';
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
