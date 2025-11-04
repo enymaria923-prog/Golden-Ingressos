@@ -1,18 +1,43 @@
-'use client';
+import { supabase } from './client';
 
-import { createClient } from '@supabase/supabase-js'; // Nome correto do pacote
+export async function getPendingEvents() {
+  try {
+    console.log('🔄 Buscando eventos pendentes...');
+    
+    const { data, error } = await supabase
+      .from('eventos') // Certifique-se que esta tabela existe
+      .select('*')
+      .eq('status', 'pendente') // Ou a coluna que você usa para status
+      .order('created_at', { ascending: false });
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (error) {
+      console.error('❌ Erro ao buscar eventos:', error);
+      return [];
+    }
 
-// Verificação para debug
-console.log('Supabase URL:', supabaseUrl ? 'Presente' : 'Faltando');
-console.log('Supabase Key:', supabaseKey ? 'Presente' : 'Faltando');
-
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error('Variáveis de ambiente do Supabase não encontradas');
+    console.log(`✅ ${data?.length || 0} eventos encontrados`);
+    return data || [];
+  } catch (error) {
+    console.error('❌ Erro inesperado:', error);
+    return [];
+  }
 }
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+export async function updateEventStatus(eventId, status) {
+  try {
+    const { error } = await supabase
+      .from('eventos')
+      .update({ status })
+      .eq('id', eventId);
 
-export { supabase };
+    if (error) {
+      console.error('Erro ao atualizar status:', error);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Erro inesperado ao atualizar:', error);
+    return false;
+  }
+}
