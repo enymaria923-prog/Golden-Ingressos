@@ -3,7 +3,7 @@ import SetorManager from '../../publicar-evento/components/SetorManager';
 import CategoriaSelector from '../../publicar-evento/components/CategoriaSelector';
 import SelecionarTaxa from '../../publicar-evento/components/SelecionarTaxa';
 import '../../publicar-evento/PublicarEvento.css';
-import { createClient } from '../../../utils/supabase/client';
+import { createClient } from '../../../utils/supabase/client'; // caralho
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
