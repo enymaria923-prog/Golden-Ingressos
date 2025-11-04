@@ -1,8 +1,8 @@
 'use client';
 // IMPORTS CORRETOS - APENAS 3 níveis
-import SetorManager from '../../../../publicar-evento/components/SetorManager';
-import CategoriaSelector from '../../../../publicar-evento/components/CategoriaSelector';
-import SelecionarTaxa from '../../../../publicar-evento/components/SelecionarTaxa';
+import SetorManager from '../../publicar-evento/components/SetorManager';
+import CategoriaSelector from '../../publicar-evento/components/CategoriaSelector';
+import SelecionarTaxa from '../../publicar-evento/components/SelecionarTaxa';
 import '../../../publicar-evento/PublicarEvento.css';
 
 export default function AdminPage() {
