@@ -1,15 +1,16 @@
 'use client';
 
-import { createClient } from '@supabase/supabase-js';
-
-// Corrigi o nome do pacote (supabase.js -> supabase-js)
+import { createClient } from '@supabase/supabase-js'; // Nome correto do pacote
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-// Adicione validação para evitar erros em build
+// Verificação para debug
+console.log('Supabase URL:', supabaseUrl ? 'Presente' : 'Faltando');
+console.log('Supabase Key:', supabaseKey ? 'Presente' : 'Faltando');
+
 if (!supabaseUrl || !supabaseKey) {
-  throw new Error('Missing Supabase environment variables');
+  throw new Error('Variáveis de ambiente do Supabase não encontradas');
 }
 
 const supabase = createClient(supabaseUrl, supabaseKey);
