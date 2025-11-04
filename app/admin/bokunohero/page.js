@@ -23,30 +23,41 @@ export default function AdminPage() {
   }, []);
 
   // CARREGA EVENTOS - FUNÇÃO SIMPLES
-  const carregarEventos = async () => {
-    try {
-      console.log('🔄 Tentando carregar eventos...');
-      
-      const { data, error } = await supabase
-        .from('eventos')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('❌ Erro do Supabase:', error);
-        throw error;
-      }
-
-      console.log('✅ Eventos carregados:', data);
-      setEventos(data || []);
-      
-    } catch (error) {
-      console.error('💥 Erro fatal:', error);
-      alert('Erro ao carregar eventos: ' + error.message);
-    } finally {
-      setCarregando(false);
+const carregarEventos = async () => {
+  setCarregando(true);
+  try {
+    console.log('🔄 Buscando eventos...');
+    
+    // VERIFICA SE O SUPABASE ESTÁ DEFINIDO
+    if (!supabase) {
+      console.error('❌ Supabase não está definido');
+      throw new Error('Supabase não está configurado');
     }
-  };
+
+    console.log('🔍 Supabase instance:', supabase);
+    
+    // BUSCA SIMPLES - TODOS OS EVENTOS
+    const { data: eventosData, error } = await supabase
+      .from('eventos')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('❌ Erro do Supabase:', error);
+      throw error;
+    }
+    
+    console.log('✅ Eventos carregados:', eventosData);
+    setEventos(eventosData || []); 
+    setEventosFiltrados(eventosData || []); 
+
+  } catch (error) {
+    console.error('💥 Erro ao carregar eventos:', error);
+    alert(`Erro ao carregar eventos: ${error.message}`);
+  } finally {
+    setCarregando(false); 
+  }
+};
 
   // LOGIN
   const handleLogin = (e) => {
