@@ -1,5 +1,6 @@
 'use client';
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '../../utils/supabase/client';
 import SetorManager from './components/SetorManager';
 import CategoriaSelector from './components/CategoriaSelector';
@@ -7,6 +8,10 @@ import SelecionarTaxa from './components/SelecionarTaxa';
 import './PublicarEvento.css';
 
 const PublicarEvento = () => {
+  const router = useRouter();
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  
   const [formData, setFormData] = useState({
     titulo: '',
     descricao: '',
@@ -27,6 +32,54 @@ const PublicarEvento = () => {
   const [imagemPreview, setImagemPreview] = useState(null); 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef(null);
+
+  // Verificar autenticação ao carregar a página
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          router.push('/login?redirect=/publicar-evento');
+          return;
+        }
+        setUser(user);
+      } catch (error) {
+        console.error('Erro ao verificar autenticação:', error);
+        router.push('/login?redirect=/publicar-evento');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, [router]);
+
+  // Se ainda está carregando, mostrar loading
+  if (loading) {
+    return (
+      <div className="publicar-evento-container">
+        <div className="loading">Carregando...</div>
+      </div>
+    );
+  }
+
+  // Se não está autenticado (mesmo após loading), mostrar mensagem
+  if (!user) {
+    return (
+      <div className="publicar-evento-container">
+        <div className="auth-required">
+          <h2>🔒 Acesso Restrito</h2>
+          <p>Você precisa estar logado para publicar eventos.</p>
+          <button 
+            onClick={() => router.push('/login?redirect=/publicar-evento')}
+            className="btn-login"
+          >
+            Fazer Login
+          </button>
+        </div>
+      </div>
+    );
+  }
   
   const handleFormChange = (e) => {
     const { name, value } = e.target;
@@ -84,15 +137,6 @@ const PublicarEvento = () => {
     let uploadedFilePath = null; 
 
     try {
-      // --- VERIFICAR AUTENTICAÇÃO PRIMEIRO ---
-      console.log('🔐 Verificando autenticação do usuário...');
-      const { data: userData, error: userError } = await supabase.auth.getUser();
-      if (userError) throw new Error(`Erro ao obter usuário: ${userError.message}`);
-      
-      const userId = userData.user?.id;
-      if (!userId) throw new Error('Usuário não autenticado. Faça login para publicar eventos.');
-      console.log('✅ Usuário autenticado:', userId);
-
       // --- UPLOAD DE IMAGEM ---
       if (imagem) {
         const fileExtension = imagem.name.split('.').pop();
@@ -123,7 +167,7 @@ const PublicarEvento = () => {
         console.log('🔗 URL pública:', publicUrl);
       }
       
-      // --- DADOS DO EVENTO (CORRIGIDOS) ---
+      // --- DADOS DO EVENTO ---
       const eventData = {
         nome: formData.titulo,
         descricao: formData.descricao,
@@ -137,7 +181,7 @@ const PublicarEvento = () => {
         TaxaProdutor: taxa.taxaProdutor,
         imagem_url: publicUrl,
         status: 'pendente',
-        user_id: userId
+        user_id: user.id  // Usa o user.id do estado
       };
 
       console.log('📝 Inserindo evento no banco...', eventData);
@@ -176,9 +220,11 @@ const PublicarEvento = () => {
     }
   };
 
+  // Só mostra o formulário se o usuário estiver autenticado
   return (
     <div className="publicar-evento-container">
       <h1>Publicar Novo Evento</h1>
+      <p className="user-welcome">Logado como: {user.email}</p>
       
       <form onSubmit={handleSubmit}>
         {/* Informações Básicas */}
