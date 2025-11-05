@@ -86,7 +86,7 @@ const PublicarEvento = () => {
    try {
   // --- VERIFICAR AUTENTICAÇÃO PRIMEIRO --- (ADICIONE ESTA PARTE)
   console.log('🔐 Verificando autenticação do usuário...');
-  const { data: userData, error: userError } = await supabase.auth.getUser();
+ const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError) throw new Error(`Erro ao obter usuário: ${userError.message}`);
   
   const userId = userData.user?.id;
