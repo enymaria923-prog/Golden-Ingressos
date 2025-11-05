@@ -8,6 +8,8 @@ import '../../publicar-evento/PublicarEvento.css';
 
 export default function AdminPage() {
   const supabase = createClient(); // 👈 ADICIONA AQUI
+   console.log('🔍 SUPABASE INSTANCE:', supabase); // 👈 ADICIONA ISSO
+  console.log('🔍 SUPABASE TYPE:', typeof supabase); // 👈 E ISSO
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
