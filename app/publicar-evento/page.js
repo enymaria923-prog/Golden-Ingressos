@@ -92,9 +92,13 @@ const PublicarEvento = () => {
         uploadedFilePath = filePath; 
 
         console.log('📤 Iniciando upload da imagem...');
-        const { error: uploadError } = await supabase.storage
-          .from('imagens_eventos')
-          .upload(filePath, imagem, { cacheControl: '3600', upsert: false });
+       const { error: uploadError } = await supabase.storage
+  .from('imagens_eventos')
+  .upload(filePath, imagem, { 
+    cacheControl: '3600', 
+    upsert: false,
+    contentType: imagem.type  // ADICIONE ESTA LINHA
+  });
 
         if (uploadError) {
           console.error('❌ Erro no upload:', uploadError);
