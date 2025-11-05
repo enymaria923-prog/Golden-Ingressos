@@ -1,17 +1,20 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { createClient } from '../../../utils/supabase/client'; // 👈 MUDA AQUI
 import SetorManager from '../../publicar-evento/components/SetorManager';
 import CategoriaSelector from '../../publicar-evento/components/CategoriaSelector';
 import SelecionarTaxa from '../../publicar-evento/components/SelecionarTaxa';
 import '../../publicar-evento/PublicarEvento.css';
-import supabase from '../../../utils/supabase/client'; // 👈 IMPORT DEFAULT
 
 export default function AdminPage() {
+  const supabase = createClient(); // 👈 ADICIONA AQUI
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [eventos, setEventos] = useState([]);
   const [carregando, setCarregando] = useState(true);
+
+  // ... resto do código continua igual
 
   useEffect(() => {
     const loggedIn = sessionStorage.getItem('admin_logged_in') === 'true';
