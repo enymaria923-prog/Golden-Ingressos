@@ -1,9 +1,11 @@
 'use client';
+import { useState, useEffect } from 'react';
 import SetorManager from '../../publicar-evento/components/SetorManager';
 import CategoriaSelector from '../../publicar-evento/components/CategoriaSelector';
 import SelecionarTaxa from '../../publicar-evento/components/SelecionarTaxa';
 import '../../publicar-evento/PublicarEvento.css';
-import { createClient } from '../../../utils/supabase/client'; // caralho
+import { supabase } from '../../utils/supabase/client';
+// Já importa a instância pronta!
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
