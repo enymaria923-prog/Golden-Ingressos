@@ -7,5 +7,7 @@ if (!supabaseUrl || !supabaseKey) {
   console.warn('⚠️ Variáveis de ambiente do Supabase não encontradas');
 }
 
-export const supabase = createClient(supabaseUrl || '', supabaseKey || '');
+const supabase = createClient(supabaseUrl || '', supabaseKey || '');
+
+export { supabase };
 export default supabase;
