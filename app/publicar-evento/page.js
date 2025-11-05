@@ -33,21 +33,38 @@ const PublicarEvento = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef(null);
 
-  // Verificar autenticação de forma não-intrusiva
+  // VERIFICAÇÃO NA ENTRADA DA PÁGINA
   useEffect(() => {
     const checkAuth = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        setUser(user);
-      } catch (error) {
-        console.error('Erro ao verificar autenticação:', error);
-      } finally {
-        setLoading(false);
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        // USUÁRIO NÃO LOGADO - VAI PARA LOGIN
+        router.push('/login');
+        return;
       }
+      
+      // USUÁRIO LOGADO - PODE CONTINUAR
+      setUser(user);
+      setLoading(false);
     };
 
     checkAuth();
-  }, []);
+  }, [router]);
+
+  // ENQUANTO VERIFICA, MOSTRA LOADING
+  if (loading) {
+    return (
+      <div className="publicar-evento-container">
+        <div className="loading">Verificando autenticação...</div>
+      </div>
+    );
+  }
+
+  // SE NÃO TEM USUÁRIO (e não está loading), NÃO MOSTRA NADA (já redirecionou)
+  if (!user) {
+    return null;
+  }
 
   const handleFormChange = (e) => {
     const { name, value } = e.target;
@@ -89,16 +106,6 @@ const PublicarEvento = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Verificar autenticação apenas no momento do envio
-    if (!user) {
-      const shouldLogin = confirm('Para publicar um evento, você precisa estar logado. Deseja fazer login agora?');
-      if (shouldLogin) {
-        router.push('/login?redirect=/publicar-evento');
-      }
-      return;
-    }
-
     if (isSubmitting) return;
 
     if (!formData.titulo || !formData.descricao || !formData.data || !formData.hora || !formData.localNome || !imagem) {
@@ -159,7 +166,7 @@ const PublicarEvento = () => {
         TaxaProdutor: taxa.taxaProdutor,
         imagem_url: publicUrl,
         status: 'pendente',
-        user_id: user.id
+        user_id: user.id  // USA O ID DO USUÁRIO LOGADO
       };
 
       console.log('📝 Inserindo evento no banco...', eventData);
@@ -198,29 +205,11 @@ const PublicarEvento = () => {
     }
   };
 
-  // Se ainda está carregando, mostrar loading leve
-  if (loading) {
-    return (
-      <div className="publicar-evento-container">
-        <div className="loading">Carregando...</div>
-      </div>
-    );
-  }
-
-  // SEMPRE mostra o formulário, independente de estar logado ou não
+  // SÓ CHEGA AQUI SE O USUÁRIO ESTIVER LOGADO
   return (
     <div className="publicar-evento-container">
       <h1>Publicar Novo Evento</h1>
-      
-      {user && (
-        <p className="user-welcome">Logado como: {user.email}</p>
-      )}
-      
-      {!user && (
-        <div className="auth-notice">
-          <p>💡 <strong>Você não está logado.</strong> Pode preencher o formulário, mas precisará fazer login antes de enviar.</p>
-        </div>
-      )}
+      <p className="user-welcome">Logado como: {user.email}</p>
       
       <form onSubmit={handleSubmit}>
         {/* Informações Básicas */}
