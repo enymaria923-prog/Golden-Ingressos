@@ -83,34 +83,31 @@ const PublicarEvento = () => {
     let publicUrl = '';
     let uploadedFilePath = null; 
 
-   try {
-  // --- VERIFICAR AUTENTICAÇÃO PRIMEIRO --- (ADICIONE ESTA PARTE)
-  console.log('🔐 Verificando autenticação do usuário...');
- const { data: userData, error: userError } = await supabase.auth.getUser();
-  if (userError) throw new Error(`Erro ao obter usuário: ${userError.message}`);
-  
-  const userId = userData.user?.id;
-  if (!userId) throw new Error('Usuário não autenticado. Faça login para publicar eventos.');
-  console.log('✅ Usuário autenticado:', userId);
+    try {
+      // --- VERIFICAR AUTENTICAÇÃO PRIMEIRO ---
+      console.log('🔐 Verificando autenticação do usuário...');
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError) throw new Error(`Erro ao obter usuário: ${userError.message}`);
+      
+      const userId = userData.user?.id;
+      if (!userId) throw new Error('Usuário não autenticado. Faça login para publicar eventos.');
+      console.log('✅ Usuário autenticado:', userId);
 
-  // --- UPLOAD DE IMAGEM --- (AGORA DEPOIS DA VERIFICAÇÃO)
-  if (imagem) {
-    const fileExtension = imagem.name.split('.').pop();
-    const slug = formData.titulo.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
-    const filePath = `eventos/${slug}-${Date.now()}.${fileExtension}`;
-    uploadedFilePath = filePath; 
+      // --- UPLOAD DE IMAGEM ---
+      if (imagem) {
+        const fileExtension = imagem.name.split('.').pop();
+        const slug = formData.titulo.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+        const filePath = `eventos/${slug}-${Date.now()}.${fileExtension}`;
+        uploadedFilePath = filePath; 
 
-    console.log('📤 Iniciando upload da imagem...');
-    const { error: uploadError } = await supabase.storage
-      .from('imagens_eventos')
-      .upload(filePath, imagem, { 
-        cacheControl: '3600', 
-        upsert: false,
-        contentType: imagem.type  // ADICIONE ESTA LINHA TAMBÉM
-      });
-
-    // ... resto do código do upload permanece igual
- 
+        console.log('📤 Iniciando upload da imagem...');
+        const { error: uploadError } = await supabase.storage
+          .from('imagens_eventos')
+          .upload(filePath, imagem, { 
+            cacheControl: '3600', 
+            upsert: false,
+            contentType: imagem.type
+          });
 
         if (uploadError) {
           console.error('❌ Erro no upload:', uploadError);
@@ -126,13 +123,6 @@ const PublicarEvento = () => {
         console.log('🔗 URL pública:', publicUrl);
       }
       
-      // --- OBTER USER_ID ---
-      const { data: userData, error: userError } = await supabase.auth.getUser();
-      if (userError) throw new Error(`Erro ao obter usuário: ${userError.message}`);
-      
-      const userId = userData.user?.id;
-      if (!userId) throw new Error('Usuário não autenticado');
-
       // --- DADOS DO EVENTO (CORRIGIDOS) ---
       const eventData = {
         nome: formData.titulo,
@@ -141,7 +131,7 @@ const PublicarEvento = () => {
         hora: formData.hora,
         local: formData.localNome,
         endereco: formData.localEndereco,
-        categoria: categorias[0],
+        categoria: categorias.length > 0 ? categorias[0] : 'Geral',
         tem_lugar_ma: temLugarMarcado,
         TaxaCliente: taxa.taxaComprador,
         TaxaProdutor: taxa.taxaProdutor,
