@@ -4,8 +4,7 @@ import SetorManager from '../../publicar-evento/components/SetorManager';
 import CategoriaSelector from '../../publicar-evento/components/CategoriaSelector';
 import SelecionarTaxa from '../../publicar-evento/components/SelecionarTaxa';
 import '../../publicar-evento/PublicarEvento.css';
-import { supabase } from '../../utils/supabase/client';
-// Já importa a instância pronta!
+import supabase from '../../../utils/supabase/client'; // 👈 IMPORT DEFAULT
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -14,7 +13,6 @@ export default function AdminPage() {
   const [eventos, setEventos] = useState([]);
   const [carregando, setCarregando] = useState(true);
 
-  // VERIFICA LOGIN AO CARREGAR
   useEffect(() => {
     const loggedIn = sessionStorage.getItem('admin_logged_in') === 'true';
     setIsAuthenticated(loggedIn);
@@ -23,44 +21,32 @@ export default function AdminPage() {
     }
   }, []);
 
-  // CARREGA EVENTOS - FUNÇÃO SIMPLES
-const carregarEventos = async () => {
-  setCarregando(true);
-  try {
-    console.log('🔄 Buscando eventos...');
-    
-    // VERIFICA SE O SUPABASE ESTÁ DEFINIDO
-    if (!supabase) {
-      console.error('❌ Supabase não está definido');
-      throw new Error('Supabase não está configurado');
+  const carregarEventos = async () => {
+    setCarregando(true);
+    try {
+      console.log('🔄 Buscando eventos...');
+      
+      const { data: eventosData, error } = await supabase
+        .from('eventos')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('❌ Erro do Supabase:', error);
+        throw error;
+      }
+      
+      console.log('✅ Eventos carregados:', eventosData);
+      setEventos(eventosData || []); 
+
+    } catch (error) {
+      console.error('💥 Erro ao carregar eventos:', error);
+      alert(`Erro ao carregar eventos: ${error.message}`);
+    } finally {
+      setCarregando(false); 
     }
+  };
 
-    console.log('🔍 Supabase instance:', supabase);
-    
-    // BUSCA SIMPLES - TODOS OS EVENTOS
-    const { data: eventosData, error } = await supabase
-      .from('eventos')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('❌ Erro do Supabase:', error);
-      throw error;
-    }
-    
-    console.log('✅ Eventos carregados:', eventosData);
-    setEventos(eventosData || []); 
-    setEventosFiltrados(eventosData || []); 
-
-  } catch (error) {
-    console.error('💥 Erro ao carregar eventos:', error);
-    alert(`Erro ao carregar eventos: ${error.message}`);
-  } finally {
-    setCarregando(false); 
-  }
-};
-
-  // LOGIN
   const handleLogin = (e) => {
     e.preventDefault();
     if (password === 'valtinho') {
@@ -72,7 +58,6 @@ const carregarEventos = async () => {
     }
   };
 
-  // APROVAR EVENTO
   const aprovarEvento = async (id) => {
     try {
       const { error } = await supabase
@@ -88,7 +73,6 @@ const carregarEventos = async () => {
     }
   };
 
-  // REJEITAR EVENTO
   const rejeitarEvento = async (id) => {
     try {
       const { error } = await supabase
@@ -104,17 +88,14 @@ const carregarEventos = async () => {
     }
   };
 
-  // LOGOUT
   const handleLogout = () => {
     sessionStorage.removeItem('admin_logged_in');
     setIsAuthenticated(false);
   };
 
-  // CALCULAR ESTATÍSTICAS
   const pendentesCount = eventos.filter(e => e.status === 'pendente' || !e.status).length;
   const aprovadosCount = eventos.filter(e => e.status === 'aprovado').length;
 
-  // SE NÃO ESTIVER LOGADO
   if (!isAuthenticated) {
     return (
       <div className="admin-login-container">
@@ -138,7 +119,6 @@ const carregarEventos = async () => {
     );
   }
 
-  // SE ESTIVER LOGADO
   return (
     <div className="admin-container">
       <header className="admin-header">
