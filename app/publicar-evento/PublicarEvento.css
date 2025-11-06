@@ -655,3 +655,21 @@ h3 {
   margin: 0;
   font-weight: bold;
 }
+.user-status-confirmed {
+  background: #4CAF50;
+  color: white;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.user-status-confirmed h3 {
+  margin: 0 0 10px 0;
+  font-size: 18px;
+}
+
+.user-status-confirmed p {
+  margin: 5px 0;
+  font-size: 14px;
+}
