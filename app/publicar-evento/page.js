@@ -1,7 +1,7 @@
 'use client';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '../../utils/supabase/client'; // Importe diretamente a instância
+import { supabase } from '../../utils/supabase/client';
 import SetorManager from './components/SetorManager';
 import CategoriaSelector from './components/CategoriaSelector';
 import SelecionarTaxa from './components/SelecionarTaxa';
@@ -9,8 +9,6 @@ import './PublicarEvento.css';
 
 const PublicarEvento = () => {
   const router = useRouter();
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
   
   const [formData, setFormData] = useState({
     titulo: '', descricao: '', data: '', hora: '', localNome: '', localEndereco: '' 
@@ -23,56 +21,6 @@ const PublicarEvento = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef(null);
 
-  // VERIFICAÇÃO SIMPLES E DIRETA
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        console.log('🔍 Verificando autenticação...');
-        
-        // Use getUser() em vez de getSession()
-        const { data: { user } } = await supabase.auth.getUser();
-        console.log('👤 Usuário encontrado:', user);
-        
-        if (user) {
-          setUser(user);
-        } else {
-          console.log('❌ Nenhum usuário logado - redirecionando para login');
-          router.push('/login');
-        }
-      } catch (error) {
-        console.error('💥 Erro na verificação:', error);
-        router.push('/login');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkAuth();
-  }, [router]);
-
-  // Enquanto carrega
-  if (loading) {
-    return (
-      <div className="publicar-evento-container" style={{ textAlign: 'center', padding: '50px' }}>
-        <h2>🔄 Verificando acesso...</h2>
-      </div>
-    );
-  }
-
-  // Se não tem usuário (já deveria ter redirecionado)
-  if (!user) {
-    return (
-      <div className="publicar-evento-container" style={{ textAlign: 'center', padding: '50px' }}>
-        <h2>❌ Acesso negado</h2>
-        <p>Você precisa estar logado para publicar eventos.</p>
-        <button onClick={() => router.push('/login')} className="btn-submit">
-          🔐 Fazer Login
-        </button>
-      </div>
-    );
-  }
-
-  // SE CHEGOU AQUI - USUÁRIO ESTÁ LOGADO
   const handleFormChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({...prev, [name]: value}));
@@ -106,6 +54,14 @@ const PublicarEvento = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (isSubmitting) return;
+
+    // Verifica se está logado no momento do envio
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      alert('Você precisa estar logado para publicar eventos!');
+      router.push('/login');
+      return;
+    }
 
     if (!formData.titulo || !formData.descricao || !formData.data || !formData.hora || !formData.localNome || !imagem) {
       alert('Preencha todos os campos obrigatórios!');
@@ -178,7 +134,7 @@ const PublicarEvento = () => {
       setFormData({ titulo: '', descricao: '', data: '', hora: '', localNome: '', localEndereco: '' });
       setCategorias([]);
       setTemLugarMarcado(false);
-      setTaxa({ taxaComprador: 15, taxaProdutor: 5 });
+      setTaxa({ taxaComprador: 15, taxaProdrador: 5 });
       setImagem(null);
       setImagemPreview(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -190,14 +146,8 @@ const PublicarEvento = () => {
     }
   };
 
-  console.log('✅ Renderizando formulário para usuário:', user.email);
-
   return (
     <div className="publicar-evento-container">
-      <div className="user-info-banner">
-        <p>👤 Logado como: <strong>{user.email}</strong></p>
-      </div>
-      
       <h1>Publicar Novo Evento</h1>
       
       <form onSubmit={handleSubmit}>
