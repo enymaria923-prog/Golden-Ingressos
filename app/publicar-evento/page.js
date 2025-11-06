@@ -1,14 +1,16 @@
 'use client';
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '../../utils/supabase/client';
+import { createClient } from '../../utils/supabase/client';
 import SetorManager from './components/SetorManager';
 import CategoriaSelector from './components/CategoriaSelector';
 import SelecionarTaxa from './components/SelecionarTaxa';
 import './PublicarEvento.css';
 
 const PublicarEvento = () => {
+  const supabase = createClient();
   const router = useRouter();
+  
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   
@@ -33,35 +35,32 @@ const PublicarEvento = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef(null);
 
-  // VERIFICAÇÃO SIMPLES E DIRETA
+  // VERIFICA SE O USUÁRIO ESTÁ LOGADO
   useEffect(() => {
-    const checkUser = async () => {
-      const { data, error } = await supabase.auth.getUser();
-      console.log('DEBUG - Usuário:', data.user);
-      console.log('DEBUG - Erro:', error);
+    checkUser();
+  }, []);
+
+  const checkUser = async () => {
+    try {
+      const { data: { user }, error } = await supabase.auth.getUser();
       
-      if (error || !data.user) {
-        console.log('DEBUG - Redirecionando para login');
-        router.push('/login');
+      if (error || !user) {
+        alert('⚠️ Você precisa estar logado para publicar eventos!');
+        router.push('/login'); // Redireciona para página de login
         return;
       }
       
-      setUser(data.user);
+      console.log('✅ Usuário autenticado:', user.id);
+      setUser(user);
+    } catch (error) {
+      console.error('Erro ao verificar usuário:', error);
+      alert('Erro ao verificar autenticação. Por favor, faça login novamente.');
+      router.push('/login');
+    } finally {
       setLoading(false);
-    };
-
-    checkUser();
-  }, [router]);
-
-  if (loading) {
-    return (
-      <div className="publicar-evento-container">
-        <div className="loading">Verificando acesso...</div>
-      </div>
-    );
-  }
-
-  // SE CHEGOU AQUI, O USUÁRIO ESTÁ LOGADO
+    }
+  };
+  
   const handleFormChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({...prev, [name]: value}));
@@ -94,6 +93,7 @@ const PublicarEvento = () => {
   };
 
   const handleClickUpload = () => fileInputRef.current.click();
+  
   const removeImage = () => {
     setImagem(null);
     setImagemPreview(null);
@@ -103,6 +103,13 @@ const PublicarEvento = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (isSubmitting) return;
+
+    // VERIFICA SE ESTÁ LOGADO ANTES DE ENVIAR
+    if (!user) {
+      alert('⚠️ Você precisa estar logado para publicar eventos!');
+      router.push('/login');
+      return;
+    }
 
     if (!formData.titulo || !formData.descricao || !formData.data || !formData.hora || !formData.localNome || !imagem) {
       alert('Por favor, preencha todos os campos obrigatórios, incluindo a imagem!');
@@ -118,63 +125,83 @@ const PublicarEvento = () => {
     let uploadedFilePath = null; 
 
     try {
-      // UPLOAD DA IMAGEM
+      console.log('👤 Publicando como usuário:', user.id);
+      console.log('📧 Email do usuário:', user.email);
+
+      // --- UPLOAD DE IMAGEM ---
       if (imagem) {
         const fileExtension = imagem.name.split('.').pop();
-        const slug = formData.titulo.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
-        const filePath = `eventos/${slug}-${Date.now()}.${fileExtension}`;
+        const timestamp = Date.now();
+        const randomStr = Math.random().toString(36).substring(7);
+        const filePath = `eventos/${user.id}/${timestamp}-${randomStr}.${fileExtension}`;
         uploadedFilePath = filePath; 
 
-        console.log('Fazendo upload da imagem...');
-        const { error: uploadError } = await supabase.storage
+        console.log('📤 Iniciando upload da imagem para:', filePath);
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
           .from('imagens_eventos')
           .upload(filePath, imagem, { 
             cacheControl: '3600', 
-            upsert: false,
-            contentType: imagem.type
+            upsert: false 
           });
 
-        if (uploadError) throw new Error(`Erro no upload da imagem: ${uploadError.message}`);
+        if (uploadError) {
+          console.error('❌ Erro no upload:', uploadError);
+          throw new Error(`Erro ao fazer upload da imagem: ${uploadError.message}`);
+        }
 
-        console.log('Upload da imagem realizado!');
+        console.log('✅ Upload realizado:', uploadData);
         
         const { data: publicUrlData } = supabase.storage
           .from('imagens_eventos')
           .getPublicUrl(filePath);
+        
         publicUrl = publicUrlData.publicUrl;
+        console.log('🔗 URL pública:', publicUrl);
       }
-      
-      // DADOS DO EVENTO
+
+      // --- DADOS DO EVENTO ---
       const eventData = {
         nome: formData.titulo,
         descricao: formData.descricao,
         data: formData.data,
         hora: formData.hora,
         local: formData.localNome,
-        endereco: formData.localEndereco,
-        categoria: categorias.length > 0 ? categorias[0] : 'Geral',
+        endereco: formData.localEndereco || null,
+        categoria: categorias[0],
         tem_lugar_ma: temLugarMarcado,
         TaxaCliente: taxa.taxaComprador,
         TaxaProdutor: taxa.taxaProdutor,
         imagem_url: publicUrl,
         status: 'pendente',
-        user_id: user.id  // ID DO USUÁRIO LOGADO
+        user_id: user.id, // ID DO USUÁRIO LOGADO
+        produtor_email: user.email, // EMAIL DO PRODUTOR
+        produtor_nome: user.user_metadata?.name || user.email, // NOME DO PRODUTOR
+        ingressos_vendidos: 0, // INICIA COM ZERO
+        preco_medio: 0 // SERÁ CALCULADO DEPOIS
       };
 
-      console.log('Inserindo evento no banco...', eventData);
+      console.log('📝 Inserindo evento no banco...', eventData);
       
-      const { error: insertError } = await supabase
+      const { data: insertedData, error: insertError } = await supabase
         .from('eventos')
-        .insert([eventData]);
+        .insert([eventData])
+        .select();
 
       if (insertError) {
+        console.error('❌ Erro na inserção:', insertError);
+        
+        // Remove a imagem se o evento não foi criado
         if (uploadedFilePath) {
+          console.log('🗑️ Removendo imagem do storage...');
           await supabase.storage.from('imagens_eventos').remove([uploadedFilePath]);
         }
+        
         throw new Error(`Erro ao inserir evento: ${insertError.message}`);
       }
       
-      alert('Evento enviado para moderação!');
+      console.log('✅ Evento criado com sucesso!', insertedData);
+      alert('🎉 Evento enviado para moderação! Em breve estará disponível no site.');
       
       // Limpar formulário
       setFormData({
@@ -187,20 +214,50 @@ const PublicarEvento = () => {
       setImagemPreview(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
 
+      // Redireciona para meus eventos (opcional)
+      // router.push('/meus-ingressos');
+
     } catch (error) {
-      console.error('Erro:', error.message);
-      alert(`Erro ao publicar evento: ${error.message}`);
+      console.error('💥 Erro no processo de publicação:', error);
+      alert(`❌ Erro ao publicar evento: ${error.message}\n\nSe o problema persistir, entre em contato com o suporte.`);
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  // MOSTRA LOADING ENQUANTO VERIFICA AUTH
+  if (loading) {
+    return (
+      <div className="publicar-evento-container" style={{ textAlign: 'center', padding: '50px' }}>
+        <h2>Verificando autenticação...</h2>
+        <p>Aguarde um momento...</p>
+      </div>
+    );
+  }
+
+  // SE NÃO ESTIVER LOGADO, NÃO MOSTRA O FORMULÁRIO
+  if (!user) {
+    return (
+      <div className="publicar-evento-container" style={{ textAlign: 'center', padding: '50px' }}>
+        <h2>⚠️ Acesso Negado</h2>
+        <p>Você precisa estar logado para publicar eventos.</p>
+        <button onClick={() => router.push('/login')} className="btn-submit">
+          Ir para Login
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="publicar-evento-container">
+      <div className="user-info-banner">
+        <p>👤 Publicando como: <strong>{user.email}</strong></p>
+      </div>
+      
       <h1>Publicar Novo Evento</h1>
-      <p className="user-welcome">Logado como: {user.email}</p>
       
       <form onSubmit={handleSubmit}>
+        {/* Informações Básicas */}
         <div className="form-section">
           <h2>Informações Básicas</h2>
           
@@ -227,6 +284,7 @@ const PublicarEvento = () => {
             />
           </div>
 
+          {/* Campo de Imagem */}
           <div className="form-group">
             <label>Imagem do Evento *</label>
             <div className="image-upload-container">
@@ -311,6 +369,7 @@ const PublicarEvento = () => {
           </div>
         </div>
 
+        {/* Configuração de Assentos */}
         <div className="form-section">
           <h2>Configuração de Assentos</h2>
           <div className="form-group">
@@ -326,18 +385,20 @@ const PublicarEvento = () => {
           </div>
         </div>
 
+        {/* Setores e Ingressos */}
         <div className="form-section">
           <h2>Setores e Ingressos</h2>
           <SetorManager />
         </div>
 
+        {/* Configuração de Taxas */}
         <div className="form-section">
           <h2>Configuração de Taxas</h2>
           <SelecionarTaxa onTaxaSelecionada={setTaxa} />
         </div>
 
         <button type="submit" className="btn-submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Enviando para Moderação...' : '🚀 Publicar Evento'}
+          {isSubmitting ? '⏳ Enviando para Moderação...' : '🚀 Publicar Evento'}
         </button>
       </form>
     </div>
