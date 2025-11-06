@@ -38,46 +38,69 @@ const PublicarEvento = () => {
   // VERIFICA SE O USUÁRIO ESTÁ LOGADO
   useEffect(() => {
     checkUser();
+    
+    // Listener para mudanças de autenticação
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      console.log('🔄 Auth state changed:', _event);
+      if (session?.user) {
+        console.log('✅ Usuário detectado no listener:', session.user.email);
+        setUser(session.user);
+        setLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const checkUser = async () => {
     try {
-      // Tenta pegar o usuário da sessão
+      console.log('🔍 Iniciando verificação de usuário...');
+      
+      // MÉTODO 1: Tenta pegar a sessão
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
-      if (sessionError) {
-        console.error('Erro ao pegar sessão:', sessionError);
-      }
+      console.log('📦 Sessão:', session);
+      console.log('❓ Erro de sessão:', sessionError);
 
-      if (session && session.user) {
-        console.log('✅ Usuário autenticado:', session.user.id);
-        console.log('📧 Email:', session.user.email);
+      if (session?.user) {
+        console.log('✅ SUCESSO! Usuário na sessão:', session.user.email);
         setUser(session.user);
         setLoading(false);
         return;
       }
 
-      // Se não tem sessão, tenta getUser como fallback
+      // MÉTODO 2: Tenta getUser
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       
+      console.log('👤 User via getUser:', user);
+      console.log('❓ Erro getUser:', userError);
+      
       if (user) {
-        console.log('✅ Usuário encontrado via getUser:', user.id);
+        console.log('✅ SUCESSO! Usuário via getUser:', user.email);
         setUser(user);
         setLoading(false);
         return;
       }
 
-      // Se chegou aqui, não está logado
-      console.log('❌ Nenhum usuário encontrado');
+      // MÉTODO 3: Aguarda um pouco e tenta de novo
+      console.log('⏳ Aguardando 1 segundo e tentando novamente...');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const { data: { session: retrySession } } = await supabase.auth.getSession();
+      if (retrySession?.user) {
+        console.log('✅ SUCESSO na retry! Usuário:', retrySession.user.email);
+        setUser(retrySession.user);
+        setLoading(false);
+        return;
+      }
+
+      // Se chegou aqui, realmente não está logado
+      console.error('❌ NENHUM USUÁRIO ENCONTRADO após todas as tentativas');
       setLoading(false);
-      alert('⚠️ Você precisa estar logado para publicar eventos!');
-      router.push('/login');
       
     } catch (error) {
-      console.error('Erro ao verificar usuário:', error);
+      console.error('💥 ERRO CRÍTICO ao verificar usuário:', error);
       setLoading(false);
-      alert('Erro ao verificar autenticação. Por favor, faça login novamente.');
-      router.push('/login');
     }
   };
   
@@ -252,25 +275,36 @@ const PublicarEvento = () => {
         <h2>🔄 Verificando autenticação...</h2>
         <p>Aguarde um momento...</p>
         <p style={{ fontSize: '12px', color: '#999', marginTop: '20px' }}>
-          Debug: Verificando se há usuário logado...
+          Checando sua sessão... Abra o console (F12) para ver detalhes.
         </p>
       </div>
     );
   }
 
-  // SE NÃO ESTIVER LOGADO, NÃO MOSTRA O FORMULÁRIO
+  // SE NÃO ESTIVER LOGADO, MOSTRA AVISO MAS NÃO REDIRECIONA AUTOMATICAMENTE
   if (!user) {
-    console.log('⚠️ Renderizando tela de acesso negado - user:', user);
+    console.log('⚠️ Renderizando tela de acesso negado');
     return (
       <div className="publicar-evento-container" style={{ textAlign: 'center', padding: '50px' }}>
-        <h2>⚠️ Acesso Negado</h2>
-        <p>Você precisa estar logado para publicar eventos.</p>
-        <p style={{ fontSize: '12px', color: '#999', marginTop: '10px' }}>
-          Debug: user = {user ? 'definido' : 'null/undefined'}
+        <h2>⚠️ Sessão não encontrada</h2>
+        <p>Não conseguimos verificar seu login.</p>
+        <p style={{ fontSize: '14px', color: '#666', margin: '20px 0' }}>
+          Isso pode acontecer se você acabou de fazer login. Tente:
         </p>
-        <button onClick={() => router.push('/login')} className="btn-submit">
-          Ir para Login
-        </button>
+        <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+          <button onClick={checkUser} className="btn-submit" style={{ background: '#2196F3' }}>
+            🔄 Tentar Novamente
+          </button>
+          <button onClick={() => router.push('/login')} className="btn-submit">
+            🔐 Ir para Login
+          </button>
+          <button onClick={() => router.push('/')} className="btn-submit" style={{ background: '#666' }}>
+            🏠 Voltar ao Início
+          </button>
+        </div>
+        <p style={{ fontSize: '12px', color: '#999', marginTop: '30px' }}>
+          Debug: Abra o console (F12) para ver os logs detalhados
+        </p>
       </div>
     );
   }
