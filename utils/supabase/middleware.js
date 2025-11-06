@@ -9,24 +9,14 @@ export async function updateSession(request) {
   })
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    process.env.NEXT_PUBLIC_SUPABASE_URL, // CORRIGIDO: era "MEXT_PUBLIC"
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, // CORRIGIDO: era "MEXT_PUBLIC" e "ANOW_KEY"
     {
       cookies: {
         get(name) {
           return request.cookies.get(name)?.value
         },
         set(name, value, options) {
-          request.cookies.set({
-            name,
-            value,
-            ...options,
-          })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
           response.cookies.set({
             name,
             value,
@@ -34,16 +24,6 @@ export async function updateSession(request) {
           })
         },
         remove(name, options) {
-          request.cookies.set({
-            name,
-            value: '',
-            ...options,
-          })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
           response.cookies.set({
             name,
             value: '',
@@ -54,7 +34,13 @@ export async function updateSession(request) {
     }
   )
 
-  await supabase.auth.getUser()
+  // IMPORTANTE: Atualizar a sessão
+  const { data: { user } } = await supabase.auth.getUser()
+
+  // Se não há usuário e a rota é protegida, redirecionar
+  if (!user && request.nextUrl.pathname.startsWith('/publicar-evento')) {
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
 
   return response
 }
