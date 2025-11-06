@@ -56,10 +56,14 @@ const PublicarEvento = () => {
     try {
       console.log('🔍 Iniciando verificação de usuário...');
       
+      // AGUARDA UM POUCO ANTES DE VERIFICAR (deixa o Supabase carregar)
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       // MÉTODO 1: Tenta pegar a sessão
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
-      console.log('📦 Sessão:', session);
+      console.log('📦 Sessão completa:', session);
+      console.log('👤 User na sessão:', session?.user);
       console.log('❓ Erro de sessão:', sessionError);
 
       if (session?.user) {
@@ -69,37 +73,28 @@ const PublicarEvento = () => {
         return;
       }
 
-      // MÉTODO 2: Tenta getUser
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      // MÉTODO 2: Força refresh da sessão
+      console.log('⏳ Tentando refresh da sessão...');
+      const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession();
       
-      console.log('👤 User via getUser:', user);
-      console.log('❓ Erro getUser:', userError);
+      console.log('🔄 Sessão refreshed:', refreshedSession);
+      console.log('❓ Erro refresh:', refreshError);
       
-      if (user) {
-        console.log('✅ SUCESSO! Usuário via getUser:', user.email);
-        setUser(user);
-        setLoading(false);
-        return;
-      }
-
-      // MÉTODO 3: Aguarda um pouco e tenta de novo
-      console.log('⏳ Aguardando 1 segundo e tentando novamente...');
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const { data: { session: retrySession } } = await supabase.auth.getSession();
-      if (retrySession?.user) {
-        console.log('✅ SUCESSO na retry! Usuário:', retrySession.user.email);
-        setUser(retrySession.user);
+      if (refreshedSession?.user) {
+        console.log('✅ SUCESSO no refresh! Usuário:', refreshedSession.user.email);
+        setUser(refreshedSession.user);
         setLoading(false);
         return;
       }
 
       // Se chegou aqui, realmente não está logado
       console.error('❌ NENHUM USUÁRIO ENCONTRADO após todas as tentativas');
+      console.error('🔍 Detalhes finais - Session:', session, 'RefreshedSession:', refreshedSession);
       setLoading(false);
       
     } catch (error) {
       console.error('💥 ERRO CRÍTICO ao verificar usuário:', error);
+      console.error('Stack trace:', error.stack);
       setLoading(false);
     }
   };
