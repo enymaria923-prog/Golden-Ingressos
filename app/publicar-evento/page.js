@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../utils/supabase/client';
 import SetorManager from './components/SetorManager';
@@ -9,6 +9,8 @@ import './PublicarEvento.css';
 
 const PublicarEvento = () => {
   const router = useRouter();
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
   
   const [formData, setFormData] = useState({
     titulo: '', descricao: '', data: '', hora: '', localNome: '', localEndereco: '' 
@@ -21,6 +23,75 @@ const PublicarEvento = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef(null);
 
+  // VERIFICAÇÃO IMEDIATA AO CARREGAR A PÁGINA
+  useEffect(() => {
+    const checkUserOnLoad = async () => {
+      console.log('🔄 Verificando usuário ao carregar...');
+      
+      const { data: { user }, error } = await supabase.auth.getUser();
+      
+      if (error) {
+        console.error('❌ Erro ao verificar usuário:', error);
+        alert('Erro de autenticação. Faça login novamente.');
+        router.push('/login');
+        return;
+      }
+      
+      if (!user) {
+        console.log('❌ Nenhum usuário encontrado - redirecionando para login');
+        alert('Você precisa estar logado para publicar eventos!');
+        router.push('/login');
+        return;
+      }
+      
+      console.log('✅ Usuário logado detectado:', user.email);
+      setUser(user);
+      setLoading(false);
+    };
+
+    checkUserOnLoad();
+  }, [router]);
+
+  // VERIFICAÇÃO CONTÍNUA A CADA 30 SEGUNDOS
+  useEffect(() => {
+    if (!user) return;
+    
+    const interval = setInterval(async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        console.log('⚠️ Sessão expirada durante o uso');
+        alert('Sua sessão expirou. Faça login novamente.');
+        router.push('/login');
+      }
+    }, 30000);
+    
+    return () => clearInterval(interval);
+  }, [user, router]);
+
+  // ENQUANTO CARREGA
+  if (loading) {
+    return (
+      <div className="publicar-evento-container" style={{ textAlign: 'center', padding: '50px' }}>
+        <h2>🔄 Verificando autenticação...</h2>
+        <p>Por favor, aguarde...</p>
+      </div>
+    );
+  }
+
+  // SE NÃO TEM USUÁRIO (não deveria chegar aqui se a verificação funcionou)
+  if (!user) {
+    return (
+      <div className="publicar-evento-container" style={{ textAlign: 'center', padding: '50px' }}>
+        <h2>❌ Acesso não autorizado</h2>
+        <p>Redirecionando para login...</p>
+        <button onClick={() => router.push('/login')} className="btn-submit">
+          🔐 Ir para Login
+        </button>
+      </div>
+    );
+  }
+
+  // SE CHEGOU AQUI - USUÁRIO ESTÁ LOGADO E VERIFICADO
   const handleFormChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({...prev, [name]: value}));
@@ -55,10 +126,10 @@ const PublicarEvento = () => {
     e.preventDefault();
     if (isSubmitting) return;
 
-    // Verifica se está logado no momento do envio
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      alert('Você precisa estar logado para publicar eventos!');
+    // VERIFICAÇÃO FINAL ANTES DO ENVIO
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (!currentUser) {
+      alert('❌ Sua sessão expirou! Faça login novamente.');
       router.push('/login');
       return;
     }
@@ -77,6 +148,8 @@ const PublicarEvento = () => {
     let uploadedFilePath = null; 
 
     try {
+      console.log('🚀 Iniciando publicação para usuário:', currentUser.email);
+
       // UPLOAD DA IMAGEM
       if (imagem) {
         const fileExtension = imagem.name.split('.').pop();
@@ -114,40 +187,55 @@ const PublicarEvento = () => {
         TaxaProdutor: taxa.taxaProdutor,
         imagem_url: publicUrl,
         status: 'pendente',
-        user_id: user.id  // ID DO USUÁRIO LOGADO
+        user_id: currentUser.id,  // ID DO USUÁRIO LOGADO
+        created_at: new Date().toISOString()
       };
 
-      const { error: insertError } = await supabase
+      console.log('📝 Inserindo evento:', eventData);
+
+      const { data, error: insertError } = await supabase
         .from('eventos')
-        .insert([eventData]);
+        .insert([eventData])
+        .select();
 
       if (insertError) {
+        console.error('❌ Erro na inserção:', insertError);
         if (uploadedFilePath) {
           await supabase.storage.from('imagens_eventos').remove([uploadedFilePath]);
         }
         throw new Error(`Erro ao salvar evento: ${insertError.message}`);
       }
       
-      alert('Evento enviado para moderação!');
+      console.log('✅ Evento criado com sucesso:', data);
+      alert('🎉 Evento enviado para moderação com sucesso!');
       
       // Limpar formulário
       setFormData({ titulo: '', descricao: '', data: '', hora: '', localNome: '', localEndereco: '' });
       setCategorias([]);
       setTemLugarMarcado(false);
-      setTaxa({ taxaComprador: 15, taxaProdrador: 5 });
+      setTaxa({ taxaComprador: 15, taxaProdutor: 5 });
       setImagem(null);
       setImagemPreview(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
 
     } catch (error) {
-      alert(`Erro: ${error.message}`);
+      console.error('💥 Erro no processo:', error);
+      alert(`❌ Erro: ${error.message}`);
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  console.log('✅ Renderizando formulário para:', user.email);
+
   return (
     <div className="publicar-evento-container">
+      <div className="user-status-confirmed">
+        <h3>✅ Status: Logado e Verificado</h3>
+        <p><strong>Usuário:</strong> {user.email}</p>
+        <p><strong>ID:</strong> {user.id.substring(0, 8)}...</p>
+      </div>
+      
       <h1>Publicar Novo Evento</h1>
       
       <form onSubmit={handleSubmit}>
@@ -227,7 +315,7 @@ const PublicarEvento = () => {
         </div>
 
         <button type="submit" className="btn-submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Enviando...' : 'Publicar Evento'}
+          {isSubmitting ? '⏳ Enviando para Moderação...' : '🚀 Publicar Evento'}
         </button>
       </form>
     </div>
