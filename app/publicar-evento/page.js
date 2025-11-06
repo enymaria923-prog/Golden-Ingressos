@@ -24,33 +24,34 @@ const PublicarEvento = () => {
   const fileInputRef = useRef(null);
 
   // VERIFICAÇÃO IMEDIATA AO CARREGAR A PÁGINA
-  useEffect(() => {
-    const checkUserOnLoad = async () => {
-      console.log('🔄 Verificando usuário ao carregar...');
-      
-      const { data: { user }, error } = await supabase.auth.getUser();
-      
-      if (error) {
-        console.error('❌ Erro ao verificar usuário:', error);
-        alert('Erro de autenticação. Faça login novamente.');
-        router.push('/login');
-        return;
-      }
-      
-      if (!user) {
-        console.log('❌ Nenhum usuário encontrado - redirecionando para login');
-        alert('Você precisa estar logado para publicar eventos!');
-        router.push('/login');
-        return;
-      }
-      
-      console.log('✅ Usuário logado detectado:', user.email);
-      setUser(user);
-      setLoading(false);
-    };
+useEffect(() => {
+  const checkUserOnLoad = async () => {
+    console.log('🔄 Verificando usuário ao carregar...');
+    
+    const { data: { session }, error } = await supabase.auth.getSession();
 
-    checkUserOnLoad();
-  }, [router]);
+    if (error) {
+      console.error('❌ Erro ao verificar sessão:', error);
+      alert('Erro de autenticação. Faça login novamente.');
+      router.push('/login');
+      return;
+    }
+
+    if (!session || !session.user) {
+      console.log('❌ Nenhuma sessão ativa - redirecionando para login');
+      alert('Você precisa estar logado para publicar eventos!');
+      router.push('/login');
+      return;
+    }
+
+    console.log('✅ Usuário logado detectado:', session.user.email);
+    setUser(session.user);
+    setLoading(false);
+  };
+
+  checkUserOnLoad();
+}, [router]);
+
 
   // VERIFICAÇÃO CONTÍNUA A CADA 30 SEGUNDOS
   useEffect(() => {
