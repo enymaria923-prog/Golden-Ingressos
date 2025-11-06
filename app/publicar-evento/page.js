@@ -42,22 +42,42 @@ const PublicarEvento = () => {
 
   const checkUser = async () => {
     try {
-      const { data: { user }, error } = await supabase.auth.getUser();
+      // Tenta pegar o usuário da sessão
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
-      if (error || !user) {
-        alert('⚠️ Você precisa estar logado para publicar eventos!');
-        router.push('/login'); // Redireciona para página de login
+      if (sessionError) {
+        console.error('Erro ao pegar sessão:', sessionError);
+      }
+
+      if (session && session.user) {
+        console.log('✅ Usuário autenticado:', session.user.id);
+        console.log('📧 Email:', session.user.email);
+        setUser(session.user);
+        setLoading(false);
         return;
       }
+
+      // Se não tem sessão, tenta getUser como fallback
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
       
-      console.log('✅ Usuário autenticado:', user.id);
-      setUser(user);
+      if (user) {
+        console.log('✅ Usuário encontrado via getUser:', user.id);
+        setUser(user);
+        setLoading(false);
+        return;
+      }
+
+      // Se chegou aqui, não está logado
+      console.log('❌ Nenhum usuário encontrado');
+      setLoading(false);
+      alert('⚠️ Você precisa estar logado para publicar eventos!');
+      router.push('/login');
+      
     } catch (error) {
       console.error('Erro ao verificar usuário:', error);
+      setLoading(false);
       alert('Erro ao verificar autenticação. Por favor, faça login novamente.');
       router.push('/login');
-    } finally {
-      setLoading(false);
     }
   };
   
@@ -229,24 +249,33 @@ const PublicarEvento = () => {
   if (loading) {
     return (
       <div className="publicar-evento-container" style={{ textAlign: 'center', padding: '50px' }}>
-        <h2>Verificando autenticação...</h2>
+        <h2>🔄 Verificando autenticação...</h2>
         <p>Aguarde um momento...</p>
+        <p style={{ fontSize: '12px', color: '#999', marginTop: '20px' }}>
+          Debug: Verificando se há usuário logado...
+        </p>
       </div>
     );
   }
 
   // SE NÃO ESTIVER LOGADO, NÃO MOSTRA O FORMULÁRIO
   if (!user) {
+    console.log('⚠️ Renderizando tela de acesso negado - user:', user);
     return (
       <div className="publicar-evento-container" style={{ textAlign: 'center', padding: '50px' }}>
         <h2>⚠️ Acesso Negado</h2>
         <p>Você precisa estar logado para publicar eventos.</p>
+        <p style={{ fontSize: '12px', color: '#999', marginTop: '10px' }}>
+          Debug: user = {user ? 'definido' : 'null/undefined'}
+        </p>
         <button onClick={() => router.push('/login')} className="btn-submit">
           Ir para Login
         </button>
       </div>
     );
   }
+
+  console.log('✅ Renderizando formulário - Usuário:', user.email);
 
   return (
     <div className="publicar-evento-container">
