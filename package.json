@@ -17,5 +17,5 @@
 }
 "dependencies": {
   "@supabase/ssr": "^0.5.2",
-  // ... resto das suas dependências
+
 }
