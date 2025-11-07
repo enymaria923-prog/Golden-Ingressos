@@ -36,31 +36,53 @@ const PublicarEvento = () => {
   const fileInputRef = useRef(null);
 
   // VERIFICA SE O USUÁRIO ESTÁ LOGADO
-  useEffect(() => {
-    checkUser();
-  }, []);
-
-  const checkUser = async () => {
-    try {
-      console.log('🔍 Verificando usuário...');
-      
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      console.log('📦 Sessão:', session);
-      
-      if (session?.user) {
-        console.log('✅ Usuário logado:', session.user.email);
-        setUser(session.user);
-      } else {
-        console.log('❌ Nenhum usuário logado');
-      }
-      
+useEffect(() => {
+  checkUser();
+  
+  // Escuta mudanças de autenticação
+  const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    console.log('🔄 Auth mudou:', event);
+    if (session?.user) {
+      console.log('✅ Usuário detectado:', session.user.email);
+      setUser(session.user);
       setLoading(false);
-    } catch (error) {
-      console.error('💥 Erro:', error);
+    } else if (event === 'SIGNED_OUT') {
+      setUser(null);
       setLoading(false);
     }
+  });
+
+  return () => {
+    subscription.unsubscribe();
   };
+}, []);
+
+const checkUser = async () => {
+  try {
+    console.log('🔍 Verificando usuário...');
+    
+    // Aguarda um pouquinho pro Supabase carregar
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    console.log('📦 Sessão:', session);
+    console.log('🍪 Cookies:', document.cookie); // Mostra os cookies
+    
+    if (session?.user) {
+      console.log('✅ Usuário logado:', session.user.email);
+      setUser(session.user);
+    } else {
+      console.log('❌ Nenhum usuário logado - Aguardando listener...');
+      // NÃO seta loading como false aqui, deixa o listener fazer isso
+    }
+    
+    setLoading(false);
+  } catch (error) {
+    console.error('💥 Erro:', error);
+    setLoading(false);
+  }
+};
   
   const handleFormChange = (e) => {
     const { name, value } = e.target;
