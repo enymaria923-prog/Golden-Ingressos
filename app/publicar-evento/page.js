@@ -201,7 +201,7 @@ const checkUser = async () => {
         produtor_email: user.email, // EMAIL DO PRODUTOR
         produtor_nome: user.user_metadata?.name || user.email, // NOME DO PRODUTOR
         ingressos_vendidos: 0, // INICIA COM ZERO
-        preco_medio: 0 // SERÁ CALCULADO DEPOIS
+   
       };
 
       console.log('📝 Inserindo evento no banco...', eventData);
