@@ -1,22 +1,118 @@
-import { createClient } from '../../utils/supabase/server';
+'use client';
+
+import { createClient } from '../../utils/supabase/client';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
+import { useState, useEffect } from 'react';
 
-export default async function PerfilPage() {
-  const supabase = createClient();
+export default function PerfilPage() {
+  const [user, setUser] = useState(null);
+  const [perfil, setPerfil] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState({
+    nome_completo: '',
+    telefone: '',
+    data_nascimento: '',
+    localizacao: ''
+  });
+  const [loading, setLoading] = useState(true);
 
-  // Verifica se o usuário está logado
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    redirect('/login');
+  useEffect(() => {
+    async function loadUserData() {
+      const supabase = createClient();
+      
+      // Verifica se o usuário está logado
+      const { data: { user: userData } } = await supabase.auth.getUser();
+      if (!userData) {
+        redirect('/login');
+        return;
+      }
+      setUser(userData);
+
+      // Busca informações do perfil
+      const { data: perfilData } = await supabase
+        .from('perfis')
+        .select('nome_completo, telefone, data_nascimento, localizacao')
+        .eq('id', userData.id)
+        .single();
+
+      setPerfil(perfilData);
+      
+      // Preenche o form com os dados existentes
+      if (perfilData) {
+        setFormData({
+          nome_completo: perfilData.nome_completo || '',
+          telefone: perfilData.telefone || '',
+          data_nascimento: perfilData.data_nascimento || '',
+          localizacao: perfilData.localizacao || ''
+        });
+      }
+      
+      setLoading(false);
+    }
+
+    loadUserData();
+  }, []);
+
+  const handleEditToggle = () => {
+    setIsEditing(!isEditing);
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSave = async () => {
+    try {
+      setLoading(true);
+      const supabase = createClient();
+      
+      const { error } = await supabase
+        .from('perfis')
+        .upsert({
+          id: user.id,
+          ...formData,
+          updated_at: new Date().toISOString()
+        });
+
+      if (error) throw error;
+
+      // Atualiza os dados locais
+      setPerfil(formData);
+      setIsEditing(false);
+      
+    } catch (error) {
+      console.error('Erro ao salvar perfil:', error);
+      alert('Erro ao salvar as alterações');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancel = () => {
+    // Restaura os dados originais
+    if (perfil) {
+      setFormData({
+        nome_completo: perfil.nome_completo || '',
+        telefone: perfil.telefone || '',
+        data_nascimento: perfil.data_nascimento || '',
+        localizacao: perfil.localizacao || ''
+      });
+    }
+    setIsEditing(false);
+  };
+
+  if (loading) {
+    return (
+      <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <div>Carregando...</div>
+      </div>
+    );
   }
-
-  // Busca informações adicionais do perfil (se existirem)
-  const { data: perfil } = await supabase
-    .from('perfis')
-    .select('nome_completo, telefone, data_nascimento, localizacao')
-    .eq('id', user.id)
-    .single();
 
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px' }}>
@@ -35,28 +131,123 @@ export default async function PerfilPage() {
           
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
             <div>
-              <p><strong>Nome:</strong> {perfil?.nome_completo || 'Não informado'}</p>
-              <p><strong>Email:</strong> {user.email}</p>
-              <p><strong>Telefone:</strong> {perfil?.telefone || 'Não informado'}</p>
+              <p>
+                <strong>Nome:</strong>{' '}
+                {isEditing ? (
+                  <input
+                    type="text"
+                    name="nome_completo"
+                    value={formData.nome_completo}
+                    onChange={handleInputChange}
+                    style={{ padding: '5px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    placeholder="Digite seu nome"
+                  />
+                ) : (
+                  perfil?.nome_completo || 'Não informado'
+                )}
+              </p>
+              <p><strong>Email:</strong> {user?.email}</p>
+              <p>
+                <strong>Telefone:</strong>{' '}
+                {isEditing ? (
+                  <input
+                    type="tel"
+                    name="telefone"
+                    value={formData.telefone}
+                    onChange={handleInputChange}
+                    style={{ padding: '5px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    placeholder="Digite seu telefone"
+                  />
+                ) : (
+                  perfil?.telefone || 'Não informado'
+                )}
+              </p>
             </div>
             <div>
-              <p><strong>Data de Nascimento:</strong> {perfil?.data_nascimento || 'Não informado'}</p>
-              <p><strong>Localização:</strong> {perfil?.localizacao || 'Não informado'}</p>
+              <p>
+                <strong>Data de Nascimento:</strong>{' '}
+                {isEditing ? (
+                  <input
+                    type="date"
+                    name="data_nascimento"
+                    value={formData.data_nascimento}
+                    onChange={handleInputChange}
+                    style={{ padding: '5px', border: '1px solid #ddd', borderRadius: '4px' }}
+                  />
+                ) : (
+                  perfil?.data_nascimento || 'Não informado'
+                )}
+              </p>
+              <p>
+                <strong>Localização:</strong>{' '}
+                {isEditing ? (
+                  <input
+                    type="text"
+                    name="localizacao"
+                    value={formData.localizacao}
+                    onChange={handleInputChange}
+                    style={{ padding: '5px', border: '1px solid #ddd', borderRadius: '4px' }}
+                    placeholder="Digite sua localização"
+                  />
+                ) : (
+                  perfil?.localizacao || 'Não informado'
+                )}
+              </p>
             </div>
           </div>
 
-          <button style={{ 
-            backgroundColor: '#f1c40f', 
-            color: 'black', 
-            padding: '10px 20px', 
-            border: 'none', 
-            borderRadius: '5px', 
-            fontWeight: 'bold', 
-            cursor: 'pointer',
-            marginTop: '10px'
-          }}>
-            Editar Perfil
-          </button>
+          <div style={{ marginTop: '15px' }}>
+            {isEditing ? (
+              <div>
+                <button 
+                  onClick={handleSave}
+                  style={{ 
+                    backgroundColor: '#2ecc71', 
+                    color: 'white', 
+                    padding: '10px 20px', 
+                    border: 'none', 
+                    borderRadius: '5px', 
+                    fontWeight: 'bold', 
+                    cursor: 'pointer',
+                    marginRight: '10px'
+                  }}
+                  disabled={loading}
+                >
+                  {loading ? 'Salvando...' : 'Salvar'}
+                </button>
+                <button 
+                  onClick={handleCancel}
+                  style={{ 
+                    backgroundColor: '#e74c3c', 
+                    color: 'white', 
+                    padding: '10px 20px', 
+                    border: 'none', 
+                    borderRadius: '5px', 
+                    fontWeight: 'bold', 
+                    cursor: 'pointer'
+                  }}
+                  disabled={loading}
+                >
+                  Cancelar
+                </button>
+              </div>
+            ) : (
+              <button 
+                onClick={handleEditToggle}
+                style={{ 
+                  backgroundColor: '#f1c40f', 
+                  color: 'black', 
+                  padding: '10px 20px', 
+                  border: 'none', 
+                  borderRadius: '5px', 
+                  fontWeight: 'bold', 
+                  cursor: 'pointer'
+                }}
+              >
+                Editar Perfil
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Cartão de Estatísticas */}
