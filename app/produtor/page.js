@@ -1,10 +1,10 @@
-// app/area-produtor/page.js
+// app/produtor/page.js
 
 import { createClient } from '../../utils/supabase/server';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 
-export default async function AreaProdutorPage() {
+export default async function ProdutorPage() {
   const supabase = createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -19,7 +19,7 @@ export default async function AreaProdutorPage() {
     .eq('id', user.id)
     .single();
 
-  // Buscar eventos do produtor (futuros)
+  // Buscar eventos futuros do produtor
   const { data: eventos } = await supabase
     .from('eventos')
     .select('*')
@@ -27,8 +27,21 @@ export default async function AreaProdutorPage() {
     .gte('data', new Date().toISOString())
     .order('data', { ascending: true });
 
-  // Calcular lucro total (exemplo - você precisará ajustar com sua lógica real)
-  const lucroTotal = 1250.75; // Este valor viria do cálculo real das taxas
+  // Buscar eventos passados para contar
+  const { data: eventosPassados } = await supabase
+    .from('eventos')
+    .select('id')
+    .eq('produtor_id', user.id)
+    .lt('data', new Date().toISOString());
+
+  // Buscar ingressos vendidos (você precisará implementar essa lógica)
+  const { data: ingressosVendidos } = await supabase
+    .from('ingressos')
+    .select('id')
+    .eq('produtor_id', user.id);
+
+  // Calcular lucro total (você precisará implementar essa lógica baseada nas taxas)
+  const lucroTotal = 0; // Implementar cálculo real
 
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px' }}>
@@ -42,25 +55,27 @@ export default async function AreaProdutorPage() {
 
       <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
 
-        {/* Cartão de Lucro */}
-        <div style={{ 
-          backgroundColor: 'white', 
-          padding: '30px', 
-          borderRadius: '12px', 
-          marginBottom: '25px',
-          textAlign: 'center',
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          color: 'white',
-          boxShadow: '0 4px 15px rgba(0,0,0,0.1)'
-        }}>
-          <h2 style={{ margin: '0 0 10px 0', fontSize: '24px' }}>💰 Quanto você já lucrou por vender com a Golden</h2>
-          <div style={{ fontSize: '48px', fontWeight: 'bold', margin: '15px 0' }}>
-            R$ {lucroTotal.toFixed(2)}
+        {/* Cartão de Lucro - Só mostra se houver lucro */}
+        {lucroTotal > 0 && (
+          <div style={{ 
+            backgroundColor: 'white', 
+            padding: '30px', 
+            borderRadius: '12px', 
+            marginBottom: '25px',
+            textAlign: 'center',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: 'white',
+            boxShadow: '0 4px 15px rgba(0,0,0,0.1)'
+          }}>
+            <h2 style={{ margin: '0 0 10px 0', fontSize: '24px' }}>💰 Quanto você já lucrou por vender com a Golden</h2>
+            <div style={{ fontSize: '48px', fontWeight: 'bold', margin: '15px 0' }}>
+              R$ {lucroTotal.toFixed(2)}
+            </div>
+            <p style={{ margin: '0', opacity: 0.9, fontSize: '14px' }}>
+              Este valor representa sua parte das taxas sobre as vendas dos seus eventos
+            </p>
           </div>
-          <p style={{ margin: '0', opacity: 0.9, fontSize: '14px' }}>
-            Este valor representa sua parte das taxas sobre as vendas dos seus eventos
-          </p>
-        </div>
+        )}
 
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '25px' }}>
 
@@ -73,7 +88,7 @@ export default async function AreaProdutorPage() {
                 <h2 style={{ color: '#5d34a4', margin: 0 }}>Meus Eventos</h2>
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <Link 
-                    href="/criar-evento" 
+                    href="/publicar-evento" 
                     style={{ 
                       backgroundColor: '#f1c40f', 
                       color: 'black', 
@@ -98,7 +113,7 @@ export default async function AreaProdutorPage() {
                       fontSize: '14px'
                     }}
                   >
-                    Eventos Passados
+                    Eventos Passados ({eventosPassados?.length || 0})
                   </Link>
                 </div>
               </div>
@@ -133,7 +148,7 @@ export default async function AreaProdutorPage() {
                       </div>
                       <div style={{ display: 'flex', gap: '10px' }}>
                         <Link 
-                          href={`/evento/${evento.id}/editar`}
+                          href={`/editar-evento/${evento.id}`}
                           style={{ 
                             backgroundColor: '#3498db', 
                             color: 'white', 
@@ -170,7 +185,7 @@ export default async function AreaProdutorPage() {
                     Você ainda não publicou nenhum evento futuro.
                   </p>
                   <Link 
-                    href="/criar-evento" 
+                    href="/publicar-evento" 
                     style={{ 
                       backgroundColor: '#f1c40f', 
                       color: 'black', 
@@ -186,7 +201,7 @@ export default async function AreaProdutorPage() {
               )}
             </div>
 
-            {/* Estatísticas Rápidas */}
+            {/* Estatísticas Reais */}
             <div style={{ 
               backgroundColor: 'white', 
               padding: '25px', 
@@ -196,16 +211,16 @@ export default async function AreaProdutorPage() {
               <h2 style={{ color: '#5d34a4', margin: '0 0 20px 0' }}>Estatísticas</h2>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px', textAlign: 'center' }}>
                 <div style={{ padding: '15px', backgroundColor: '#e8f6f3', borderRadius: '8px' }}>
-                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#16a085' }}>12</div>
+                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#16a085' }}>{eventos?.length || 0}</div>
                   <div style={{ fontSize: '14px', color: '#1abc9c' }}>Eventos Ativos</div>
                 </div>
                 <div style={{ padding: '15px', backgroundColor: '#e8f4fd', borderRadius: '8px' }}>
-                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#2980b9' }}>347</div>
+                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#2980b9' }}>{ingressosVendidos?.length || 0}</div>
                   <div style={{ fontSize: '14px', color: '#3498db' }}>Ingressos Vendidos</div>
                 </div>
                 <div style={{ padding: '15px', backgroundColor: '#fef9e7', borderRadius: '8px' }}>
-                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#f39c12' }}>92%</div>
-                  <div style={{ fontSize: '14px', color: '#f1c40f' }}>Taxa de Ocupação</div>
+                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#f39c12' }}>{eventosPassados?.length || 0}</div>
+                  <div style={{ fontSize: '14px', color: '#f1c40f' }}>Eventos Passados</div>
                 </div>
               </div>
             </div>
@@ -226,7 +241,7 @@ export default async function AreaProdutorPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <h2 style={{ color: '#5d34a4', margin: 0 }}>Seus Dados</h2>
                 <Link 
-                  href="/editar-perfil-produtor" 
+                  href="/editar-dados-produtor" 
                   style={{ 
                     backgroundColor: '#5d34a4', 
                     color: 'white', 
@@ -274,14 +289,16 @@ export default async function AreaProdutorPage() {
                 </div>
 
                 {/* Dados Bancários */}
-                <div>
-                  <h3 style={{ color: '#2c3e50', fontSize: '16px', margin: '0 0 10px 0', borderBottom: '1px solid #ecf0f1', paddingBottom: '5px' }}>
-                    Dados Bancários
-                  </h3>
-                  <p style={{ margin: '5px 0' }}>
-                    {produtor?.dados_bancarios || 'Não informado'}
-                  </p>
-                </div>
+                {produtor?.dados_bancarios && (
+                  <div>
+                    <h3 style={{ color: '#2c3e50', fontSize: '16px', margin: '0 0 10px 0', borderBottom: '1px solid #ecf0f1', paddingBottom: '5px' }}>
+                      Dados Bancários
+                    </h3>
+                    <p style={{ margin: '5px 0' }}>
+                      {produtor.dados_bancarios}
+                    </p>
+                  </div>
+                )}
 
                 {/* Preferências */}
                 <div>
@@ -290,7 +307,12 @@ export default async function AreaProdutorPage() {
                   </h3>
                   <p style={{ margin: '5px 0' }}>
                     <strong>Forma de Pagamento:</strong><br />
-                    {produtor?.forma_pagamento || 'Não informado'}
+                    {produtor?.forma_pagamento ? 
+                      (produtor.forma_pagamento === 'apenas_pix' ? 'Apenas PIX' :
+                       produtor.forma_pagamento === 'apenas_transferencia' ? 'Apenas Transferência' :
+                       produtor.forma_pagamento === 'ambos' ? 'Ambos (PIX e Transferência)' :
+                       produtor.forma_pagamento) 
+                      : 'Não informado'}
                   </p>
                 </div>
 
@@ -307,22 +329,22 @@ export default async function AreaProdutorPage() {
               <h2 style={{ color: '#5d34a4', margin: '0 0 20px 0' }}>Ações Rápidas</h2>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <Link 
-                  href="/relatorios"
+                  href="/publicar-evento"
                   style={{
                     display: 'block',
                     padding: '12px 15px',
-                    backgroundColor: '#e74c3c',
-                    color: 'white',
+                    backgroundColor: '#f1c40f',
+                    color: 'black',
                     textDecoration: 'none',
                     borderRadius: '6px',
                     fontWeight: 'bold',
                     textAlign: 'center'
                   }}
                 >
-                  📊 Relatórios de Vendas
+                  📝 Criar Novo Evento
                 </Link>
                 <Link 
-                  href="/ingressos-vendidos"
+                  href="/eventos-passados"
                   style={{
                     display: 'block',
                     padding: '12px 15px',
@@ -334,14 +356,14 @@ export default async function AreaProdutorPage() {
                     textAlign: 'center'
                   }}
                 >
-                  🎫 Ingressos Vendidos
+                  📊 Meus Eventos Passados
                 </Link>
                 <Link 
-                  href="/configuracoes"
+                  href="/editar-dados-produtor"
                   style={{
                     display: 'block',
                     padding: '12px 15px',
-                    backgroundColor: '#34495e',
+                    backgroundColor: '#3498db',
                     color: 'white',
                     textDecoration: 'none',
                     borderRadius: '6px',
@@ -349,7 +371,7 @@ export default async function AreaProdutorPage() {
                     textAlign: 'center'
                   }}
                 >
-                  ⚙️ Configurações
+                  ⚙️ Editar Meus Dados
                 </Link>
               </div>
             </div>
