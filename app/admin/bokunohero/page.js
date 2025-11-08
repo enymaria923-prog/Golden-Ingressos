@@ -366,6 +366,13 @@ export default function AdminPage() {
                   {/* AÇÕES */}
                   <div className="evento-actions">
                     <button 
+                      onClick={() => router.push(`/admin/bokunohero/edit/${evento.id}`)} 
+                      className="btn-editar"
+                      title="Editar evento"
+                    >
+                      ✏️ Editar
+                    </button>
+                    <button 
                       onClick={() => aprovarEvento(evento.id)} 
                       className="btn-aprovar"
                       disabled={evento.status === 'aprovado'}
