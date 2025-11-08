@@ -1,9 +1,130 @@
 // app/criar-conta-produtor/page.js
 
+'use client';
+
 import { signupProdutor } from '../actions-auth';
 import Link from 'next/link';
+import { useState } from 'react';
 
 export default function CriarContaProdutorPage() {
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (formData) => {
+    setIsLoading(true);
+    try {
+      await signupProdutor(formData);
+      setIsSubmitted(true);
+    } catch (error) {
+      console.error('Erro no cadastro:', error);
+      alert('Erro ao criar conta. Tente novamente.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isSubmitted) {
+    return (
+      <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px' }}>
+        
+        {/* Cabeçalho */}
+        <header style={{ backgroundColor: '#5d34a4', color: 'white', padding: '20px', textAlign: 'center', borderRadius: '8px', marginBottom: '40px' }}>
+          <Link href="/" style={{ color: 'white', textDecoration: 'none', float: 'left' }}>&larr; Voltar para a Home</Link>
+          <h1 style={{ margin: '0' }}>Golden Ingressos - Área do Produtor</h1>
+        </header>
+
+        {/* Mensagem de Sucesso */}
+        <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+          <div style={{ padding: '40px', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', textAlign: 'center' }}>
+            
+            <div style={{ fontSize: '48px', color: '#2ecc71', marginBottom: '20px' }}>✓</div>
+            
+            <h2 style={{ color: '#5d34a4', marginBottom: '20px' }}>Cadastro Realizado com Sucesso!</h2>
+            
+            <div style={{ backgroundColor: '#e8f5e8', padding: '20px', borderRadius: '8px', marginBottom: '30px', textAlign: 'left' }}>
+              <h3 style={{ color: '#2d5016', marginTop: '0' }}>⚠️ Verificação de Email Necessária</h3>
+              <p style={{ color: '#2d5016', marginBottom: '10px' }}>
+                <strong>Enviamos um email de verificação para o endereço informado.</strong>
+              </p>
+              <p style={{ color: '#2d5016', margin: '0' }}>
+                Para ativar sua conta de produtor, você precisa:
+              </p>
+              <ol style={{ color: '#2d5016', paddingLeft: '20px', margin: '15px 0 0 0' }}>
+                <li>Acessar sua caixa de entrada</li>
+                <li>Localizar o email da Golden Ingressos</li>
+                <li>Clicar no link de verificação</li>
+                <li>Fazer login com suas credenciais</li>
+              </ol>
+            </div>
+
+            <p style={{ color: '#666', marginBottom: '30px' }}>
+              Após a verificação do email, sua conta estará totalmente ativa e você poderá acessar a Área do Produtor.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', maxWidth: '300px', margin: '0 auto' }}>
+              <Link 
+                href="/area-produtor" 
+                style={{ 
+                  backgroundColor: '#f1c40f', 
+                  color: 'black', 
+                  padding: '15px', 
+                  fontWeight: 'bold', 
+                  border: 'none', 
+                  borderRadius: '5px',
+                  textDecoration: 'none',
+                  textAlign: 'center',
+                  fontSize: '16px'
+                }}
+              >
+                Ir para Área do Produtor
+              </Link>
+              
+              <Link 
+                href="/login" 
+                style={{ 
+                  backgroundColor: '#3498db', 
+                  color: 'white', 
+                  padding: '15px', 
+                  fontWeight: 'bold', 
+                  border: 'none', 
+                  borderRadius: '5px',
+                  textDecoration: 'none',
+                  textAlign: 'center',
+                  fontSize: '16px'
+                }}
+              >
+                Fazer Login
+              </Link>
+              
+              <Link 
+                href="/" 
+                style={{ 
+                  backgroundColor: '#95a5a6', 
+                  color: 'white', 
+                  padding: '15px', 
+                  fontWeight: 'bold', 
+                  border: 'none', 
+                  borderRadius: '5px',
+                  textDecoration: 'none',
+                  textAlign: 'center',
+                  fontSize: '16px'
+                }}
+              >
+                Voltar para Home
+              </Link>
+            </div>
+
+            <div style={{ marginTop: '25px', padding: '15px', backgroundColor: '#fff3cd', borderRadius: '5px' }}>
+              <p style={{ margin: '0', color: '#856404', fontSize: '14px' }}>
+                <strong>Dica:</strong> Se não encontrar o email de verificação, verifique sua pasta de spam/lixo eletrônico.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px' }}>
       
@@ -23,7 +144,15 @@ export default function CriarContaProdutorPage() {
             Cadastre-se como produtor para criar e gerenciar seus eventos na plataforma
           </p>
           
-          <form action={signupProdutor} style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
+          {/* Informação sobre verificação de email */}
+          <div style={{ backgroundColor: '#e3f2fd', padding: '15px', borderRadius: '5px', marginBottom: '20px', border: '1px solid #bbdefb' }}>
+            <p style={{ margin: '0', color: '#1565c0', fontSize: '14px' }}>
+              <strong>⚠️ Atenção:</strong> Após o cadastro, você receberá um email de verificação. 
+              Sua conta só estará ativa após confirmar o email.
+            </p>
+          </div>
+          
+          <form action={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
             
             {/* Dados Pessoais */}
             <div style={{ borderBottom: '1px solid #eee', paddingBottom: '20px' }}>
@@ -255,19 +384,20 @@ export default function CriarContaProdutorPage() {
             
             <button 
               type="submit"
+              disabled={isLoading}
               style={{ 
-                backgroundColor: '#f1c40f', 
+                backgroundColor: isLoading ? '#95a5a6' : '#f1c40f', 
                 color: 'black', 
                 padding: '15px', 
                 fontWeight: 'bold', 
                 border: 'none', 
                 borderRadius: '5px',
-                cursor: 'pointer',
+                cursor: isLoading ? 'not-allowed' : 'pointer',
                 fontSize: '16px',
                 marginTop: '10px'
               }}
             >
-              Criar Conta de Produtor
+              {isLoading ? 'Cadastrando...' : 'Criar Conta de Produtor'}
             </button>
           </form>
 
@@ -302,15 +432,6 @@ export default function CriarContaProdutorPage() {
             </p>
           </div>
         </div>
-
-        {/* Mensagem após cadastro */}
-        <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#e8f5e8', borderRadius: '5px', textAlign: 'center' }}>
-          <p style={{ margin: '0', color: '#2d5016' }}>
-            <strong>Após criar sua conta:</strong> Você terá acesso à Área do Produtor para gerenciar seus eventos, 
-            acompanhar vendas e muito mais!
-          </p>
-        </div>
-
       </div>
     </div>
   );
