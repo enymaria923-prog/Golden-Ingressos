@@ -352,7 +352,7 @@
   margin-top: 15px;
 }
 
-.btn-aprovar, .btn-rejeitar {
+.btn-editar, .btn-aprovar, .btn-rejeitar {
   flex: 1;
   padding: 12px 20px;
   border: none;
@@ -361,6 +361,16 @@
   font-weight: bold;
   font-size: 16px;
   transition: all 0.3s;
+}
+
+.btn-editar {
+  background: #ff9800;
+  color: white;
+}
+
+.btn-editar:hover {
+  background: #f57c00;
+  transform: scale(1.05);
 }
 
 .btn-aprovar {
