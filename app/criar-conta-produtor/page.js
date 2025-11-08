@@ -66,22 +66,22 @@ export default function CriarContaProdutorPage() {
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', maxWidth: '300px', margin: '0 auto' }}>
-              <Link 
-                href="/area-produtor" 
-                style={{ 
-                  backgroundColor: '#f1c40f', 
-                  color: 'black', 
-                  padding: '15px', 
-                  fontWeight: 'bold', 
-                  border: 'none', 
-                  borderRadius: '5px',
-                  textDecoration: 'none',
-                  textAlign: 'center',
-                  fontSize: '16px'
-                }}
-              >
-                Ir para Área do Produtor
-              </Link>
+        <Link 
+  href="/produtor" 
+  style={{ 
+    backgroundColor: '#f1c40f', 
+    color: 'black', 
+    padding: '15px', 
+    fontWeight: 'bold', 
+    border: 'none', 
+    borderRadius: '5px',
+    textDecoration: 'none',
+    textAlign: 'center',
+    fontSize: '16px'
+  }}
+>
+  Ir para Área do Produtor
+</Link>
               
               <Link 
                 href="/login" 
