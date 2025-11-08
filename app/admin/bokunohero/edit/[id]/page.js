@@ -48,7 +48,13 @@ export default function EditarEventoPage() {
 
   const carregarEvento = async () => {
     try {
-      console.log('📥 Carregando evento:', eventoId);
+      console.log('📥 Carregando evento ID:', eventoId);
+      console.log('🔍 Tipo do ID:', typeof eventoId);
+      
+      // Valida se o ID é válido
+      if (!eventoId || eventoId === '[id]' || eventoId.includes('[')) {
+        throw new Error('ID de evento inválido');
+      }
       
       const { data, error } = await supabase
         .from('eventos')
@@ -56,7 +62,14 @@ export default function EditarEventoPage() {
         .eq('id', eventoId)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('❌ Erro do Supabase:', error);
+        throw error;
+      }
+
+      if (!data) {
+        throw new Error('Evento não encontrado');
+      }
 
       console.log('✅ Evento carregado:', data);
       setEvento(data);
