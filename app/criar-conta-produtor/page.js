@@ -1,5 +1,4 @@
 // app/criar-conta-produtor/page.js
-
 'use client';
 
 import { signupProdutor } from '../actions-auth';
@@ -9,15 +8,20 @@ import { useState } from 'react';
 export default function CriarContaProdutorPage() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (formData) => {
     setIsLoading(true);
+    setError('');
+    
     try {
-      await signupProdutor(formData);
-      setIsSubmitted(true);
+      const result = await signupProdutor(formData);
+      if (result.success) {
+        setIsSubmitted(true);
+      }
     } catch (error) {
       console.error('Erro no cadastro:', error);
-      alert('Erro ao criar conta. Tente novamente.');
+      setError(error.message || 'Erro ao criar conta. Tente novamente.');
     } finally {
       setIsLoading(false);
     }
@@ -42,7 +46,7 @@ export default function CriarContaProdutorPage() {
             <h2 style={{ color: '#5d34a4', marginBottom: '20px' }}>Cadastro Realizado com Sucesso!</h2>
             
             <div style={{ backgroundColor: '#e8f5e8', padding: '20px', borderRadius: '8px', marginBottom: '30px', textAlign: 'left' }}>
-              <h3 style={{ color: '#2d5016', marginTop: '0' }}>⚠️ Verificação de Email Necessária</h3>
+              <h3 style={{ color: '#2d5016', marginTop: '0' }}>📧 Verificação de Email Necessária</h3>
               <p style={{ color: '#2d5016', marginBottom: '10px' }}>
                 <strong>Enviamos um email de verificação para o endereço informado.</strong>
               </p>
@@ -151,6 +155,15 @@ export default function CriarContaProdutorPage() {
               Sua conta só estará ativa após confirmar o email.
             </p>
           </div>
+
+          {/* Mensagem de erro */}
+          {error && (
+            <div style={{ backgroundColor: '#ffebee', padding: '15px', borderRadius: '5px', marginBottom: '20px', border: '1px solid #ffcdd2' }}>
+              <p style={{ margin: '0', color: '#c62828', fontSize: '14px' }}>
+                <strong>Erro:</strong> {error}
+              </p>
+            </div>
+          )}
           
           <form action={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
             
