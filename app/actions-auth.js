@@ -56,3 +56,66 @@ export async function logout() {
   revalidatePath('/');
   return redirect('/');
 }
+// Adicione esta função ao arquivo actions-auth.js existente
+
+export async function signupProdutor(formData) {
+  const supabase = createClient();
+  
+  const email = formData.get('email');
+  const password = formData.get('password');
+  const nome_completo = formData.get('nome_completo');
+  const nome_empresa = formData.get('nome_empresa');
+  const chave_pix = formData.get('chave_pix');
+  const tipo_chave_pix = formData.get('tipo_chave_pix');
+  const dados_bancarios = formData.get('dados_bancarios');
+  const forma_pagamento = formData.get('forma_pagamento');
+
+  // Verificar se as senhas coincidem
+  const confirm_password = formData.get('confirm_password');
+  if (password !== confirm_password) {
+    throw new Error('As senhas não coincidem');
+  }
+
+  try {
+    // Criar usuário no Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          user_type: 'produtor',
+          nome_completo,
+        },
+      },
+    });
+
+    if (authError) {
+      throw authError;
+    }
+
+    // Inserir dados na tabela 'produtores'
+    const { error: profileError } = await supabase
+      .from('produtores')
+      .insert([
+        {
+          id: authData.user.id,
+          nome_completo,
+          nome_empresa,
+          chave_pix,
+          tipo_chave_pix,
+          dados_bancarios,
+          forma_pagamento,
+          created_at: new Date().toISOString(),
+        },
+      ]);
+
+    if (profileError) {
+      throw profileError;
+    }
+
+    return { success: true, user: authData.user };
+  } catch (error) {
+    console.error('Erro no cadastro:', error);
+    throw error;
+  }
+}
