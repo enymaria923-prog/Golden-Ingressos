@@ -8,26 +8,19 @@ import './admin.css';
 
 export default function AdminPage() {
   const supabase = createClient();
-  export default function AdminPage() {
-  const supabase = createClient();
+  const router = useRouter();
   
-  // ESTADOS DE AUTENTICAÇÃO
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
-  
-  // ESTADOS DE DADOS
   const [eventos, setEventos] = useState([]);
   const [eventosFiltrados, setEventosFiltrados] = useState([]);
   const [carregando, setCarregando] = useState(true);
-  
-  // ESTADOS DE FILTROS
-  const [filtroData, setFiltroData] = useState('todos'); // 'todos', 'ultimos5', 'proximos5'
+  const [filtroData, setFiltroData] = useState('todos');
   const [buscaNome, setBuscaNome] = useState('');
   const [buscaProdutor, setBuscaProdutor] = useState('');
   const [eventoExpandido, setEventoExpandido] = useState(null);
 
-  // VERIFICA LOGIN AO CARREGAR
   useEffect(() => {
     const loggedIn = sessionStorage.getItem('admin_logged_in') === 'true';
     setIsAuthenticated(loggedIn);
@@ -36,12 +29,10 @@ export default function AdminPage() {
     }
   }, []);
 
-  // APLICA FILTROS QUANDO DADOS OU FILTROS MUDAM
   useEffect(() => {
     aplicarFiltros();
   }, [eventos, filtroData, buscaNome, buscaProdutor]);
 
-  // CARREGA EVENTOS DO BANCO
   const carregarEventos = async () => {
     setCarregando(true);
     try {
@@ -61,11 +52,9 @@ export default function AdminPage() {
     }
   };
 
-  // APLICA TODOS OS FILTROS
   const aplicarFiltros = () => {
     let resultado = [...eventos];
     
-    // FILTRO POR DATA
     if (filtroData === 'ultimos5') {
       const hoje = new Date();
       const ultimos5Dias = new Date(hoje.getTime() - 5 * 24 * 60 * 60 * 1000);
@@ -82,14 +71,12 @@ export default function AdminPage() {
       });
     }
     
-    // FILTRO POR NOME DO EVENTO
     if (buscaNome.trim()) {
       resultado = resultado.filter(e => 
         e.nome?.toLowerCase().includes(buscaNome.toLowerCase())
       );
     }
     
-    // FILTRO POR PRODUTOR (ID ou Nome)
     if (buscaProdutor.trim()) {
       resultado = resultado.filter(e => 
         e.user_id?.toLowerCase().includes(buscaProdutor.toLowerCase()) ||
@@ -100,9 +87,7 @@ export default function AdminPage() {
     setEventosFiltrados(resultado);
   };
 
-  // CALCULA ESTATÍSTICAS DO EVENTO
   const calcularEstatisticas = (evento) => {
-    // Valores padrão se não houver dados
     const ingressosVendidos = evento.ingressos_vendidos || 0;
     const precoMedio = evento.preco_medio || 0;
     const taxaCliente = evento.TaxaCliente || 15;
@@ -124,7 +109,6 @@ export default function AdminPage() {
     };
   };
 
-  // LOGIN
   const handleLogin = (e) => {
     e.preventDefault();
     if (password === 'valtinho') {
@@ -136,7 +120,6 @@ export default function AdminPage() {
     }
   };
 
-  // APROVAR EVENTO
   const aprovarEvento = async (id) => {
     try {
       const { error } = await supabase
@@ -152,7 +135,6 @@ export default function AdminPage() {
     }
   };
 
-  // REJEITAR EVENTO
   const rejeitarEvento = async (id) => {
     try {
       const { error } = await supabase
@@ -168,25 +150,21 @@ export default function AdminPage() {
     }
   };
 
-  // LOGOUT
   const handleLogout = () => {
     sessionStorage.removeItem('admin_logged_in');
     setIsAuthenticated(false);
   };
 
-  // LIMPAR FILTROS
   const limparFiltros = () => {
     setFiltroData('todos');
     setBuscaNome('');
     setBuscaProdutor('');
   };
 
-  // CALCULAR ESTATÍSTICAS GERAIS
   const pendentesCount = eventos.filter(e => e.status === 'pendente' || !e.status).length;
   const aprovadosCount = eventos.filter(e => e.status === 'aprovado').length;
   const rejeitadosCount = eventos.filter(e => e.status === 'rejeitado').length;
 
-  // TELA DE LOGIN
   if (!isAuthenticated) {
     return (
       <div className="admin-login-container">
@@ -210,10 +188,8 @@ export default function AdminPage() {
     );
   }
 
-  // TELA PRINCIPAL DO ADMIN
   return (
     <div className="admin-container">
-      {/* HEADER */}
       <header className="admin-header">
         <h1>Área de Moderação</h1>
         <div className="admin-stats">
@@ -224,7 +200,6 @@ export default function AdminPage() {
         <button onClick={handleLogout} className="btn-logout">Sair</button>
       </header>
 
-      {/* BARRA DE AÇÕES */}
       <div className="admin-action-bar">
         <button onClick={carregarEventos} className="btn-recargar">
           🔄 Recarregar
@@ -234,12 +209,10 @@ export default function AdminPage() {
         </Link>
       </div>
 
-      {/* FILTROS DE BUSCA */}
       <div className="filtros-container">
         <h2>🔍 Filtros de Busca</h2>
         
         <div className="filtros-grid">
-          {/* FILTRO POR DATA */}
           <div className="filtro-group">
             <label>📅 Filtro Rápido de Data:</label>
             <div className="filtro-botoes">
@@ -264,7 +237,6 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {/* BUSCA POR NOME */}
           <div className="filtro-group">
             <label>🎭 Buscar por Nome do Evento:</label>
             <input
@@ -276,7 +248,6 @@ export default function AdminPage() {
             />
           </div>
 
-          {/* BUSCA POR PRODUTOR */}
           <div className="filtro-group">
             <label>👤 Buscar por Produtor (ID ou Nome):</label>
             <input
@@ -298,7 +269,6 @@ export default function AdminPage() {
         </p>
       </div>
 
-      {/* LISTA DE EVENTOS */}
       {carregando ? (
         <div className="admin-loading">Carregando eventos...</div>
       ) : (
@@ -326,7 +296,6 @@ export default function AdminPage() {
                     <p><strong>🆔 ID do Evento:</strong> {evento.id}</p>
                   </div>
 
-                  {/* BOTÃO EXPANDIR ESTATÍSTICAS */}
                   <button 
                     onClick={() => setEventoExpandido(isExpanded ? null : evento.id)}
                     className="btn-toggle-stats"
@@ -334,7 +303,6 @@ export default function AdminPage() {
                     {isExpanded ? '▲ Ocultar Estatísticas' : '▼ Ver Estatísticas'}
                   </button>
 
-                  {/* ESTATÍSTICAS (MOSTRA QUANDO EXPANDIDO) */}
                   {isExpanded && (
                     <div className="estatisticas-evento">
                       <h4>📊 Estatísticas Financeiras</h4>
@@ -366,7 +334,6 @@ export default function AdminPage() {
                     </div>
                   )}
 
-                  {/* AÇÕES */}
                   <div className="evento-actions">
                     <button 
                       onClick={() => router.push(`/admin/bokunohero/edit/${evento.id}`)} 
