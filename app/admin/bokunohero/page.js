@@ -8,6 +8,8 @@ import './admin.css';
 
 export default function AdminPage() {
   const supabase = createClient();
+  export default function AdminPage() {
+  const supabase = createClient();
   
   // ESTADOS DE AUTENTICAÇÃO
   const [isAuthenticated, setIsAuthenticated] = useState(false);
