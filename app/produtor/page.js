@@ -1,47 +1,124 @@
-// app/produtor/page.js
-
-import { createClient } from '../../utils/supabase/server';
-import { redirect } from 'next/navigation';
+'use client';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { createClient } from '../../utils/supabase/client';
 import Link from 'next/link';
 
-export default async function ProdutorPage() {
+export default function ProdutorPage() {
   const supabase = createClient();
+  const router = useRouter();
+  
+  const [user, setUser] = useState(null);
+  const [produtor, setProdutor] = useState(null);
+  const [eventos, setEventos] = useState([]);
+  const [eventosPassados, setEventosPassados] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [lucroTotal, setLucroTotal] = useState(0);
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    redirect('/login');
+  useEffect(() => {
+    carregarDados();
+  }, []);
+
+  const carregarDados = async () => {
+    try {
+      // Verifica usuário
+      const { data: { user: userData }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !userData) {
+        router.push('/login');
+        return;
+      }
+      
+      setUser(userData);
+
+      // Busca dados do produtor
+      const { data: produtorData } = await supabase
+        .from('produtores')
+        .select('*')
+        .eq('id', userData.id)
+        .single();
+      
+      setProdutor(produtorData);
+
+      // Busca eventos futuros
+      const dataHoje = new Date().toISOString().split('T')[0];
+      const { data: eventosFuturos } = await supabase
+        .from('eventos')
+        .select('*')
+        .eq('user_id', userData.id)
+        .gte('data', dataHoje)
+        .order('data', { ascending: true });
+
+      setEventos(eventosFuturos || []);
+
+      // Busca eventos passados
+      const { data: eventosPass } = await supabase
+        .from('eventos')
+        .select('*')
+        .eq('user_id', userData.id)
+        .lt('data', dataHoje)
+        .order('data', { ascending: false });
+
+      setEventosPassados(eventosPass || []);
+
+      // Calcula lucro total
+      const todosEventos = [...(eventosFuturos || []), ...(eventosPass || [])];
+      const lucro = calcularLucroTotal(todosEventos);
+      setLucroTotal(lucro);
+
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const calcularBonusGolden = (evento) => {
+    const taxaCliente = evento.TaxaCliente || 0;
+    const ingressosVendidos = evento.ingressos_vendidos || 0;
+    const precoMedio = evento.preco_medio || 0;
+    
+    const valorTotal = ingressosVendidos * precoMedio;
+    
+    // Lógica: 15% = 5%, 10% = 3%, 8% = 0%
+    let percentualBonus = 0;
+    if (taxaCliente === 15) percentualBonus = 5;
+    else if (taxaCliente === 10) percentualBonus = 3;
+    else if (taxaCliente === 8) percentualBonus = 0;
+    
+    return valorTotal * (percentualBonus / 100);
+  };
+
+  const calcularLucroTotal = (todosEventos) => {
+    return todosEventos.reduce((total, evento) => {
+      return total + calcularBonusGolden(evento);
+    }, 0);
+  };
+
+  const calcularDadosEvento = (evento) => {
+    const ingressosVendidos = evento.ingressos_vendidos || 0;
+    const ingressosDisponiveis = (evento.total_ingressos || 0) - ingressosVendidos;
+    const precoMedio = evento.preco_medio || 0;
+    const valorTotalIngressos = ingressosVendidos * precoMedio;
+    const bonusGolden = calcularBonusGolden(evento);
+    const totalReceber = valorTotalIngressos + bonusGolden;
+
+    return {
+      ingressosVendidos,
+      ingressosDisponiveis,
+      valorTotalIngressos,
+      bonusGolden,
+      totalReceber
+    };
+  };
+
+  if (loading) {
+    return (
+      <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px', textAlign: 'center', paddingTop: '100px' }}>
+        <h2>Carregando...</h2>
+      </div>
+    );
   }
-
-  // Buscar dados do produtor
-  const { data: produtor } = await supabase
-    .from('produtores')
-    .select('*')
-    .eq('id', user.id)
-    .single();
-
-  // Buscar eventos futuros do produtor
-  const { data: eventos } = await supabase
-    .from('eventos')
-    .select('*')
-    .eq('produtor_id', user.id)
-    .gte('data', new Date().toISOString())
-    .order('data', { ascending: true });
-
-  // Buscar eventos passados para contar
-  const { data: eventosPassados } = await supabase
-    .from('eventos')
-    .select('id')
-    .eq('produtor_id', user.id)
-    .lt('data', new Date().toISOString());
-
-  // Buscar ingressos vendidos (você precisará implementar essa lógica)
-  const { data: ingressosVendidos } = await supabase
-    .from('ingressos')
-    .select('id')
-    .eq('produtor_id', user.id);
-
-  // Calcular lucro total (você precisará implementar essa lógica baseada nas taxas)
-  const lucroTotal = 0; // Implementar cálculo real
 
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px' }}>
@@ -53,331 +130,236 @@ export default async function ProdutorPage() {
         <p style={{ margin: '5px 0 0 0', opacity: 0.9 }}>Gerencie seus eventos e acompanhe suas vendas</p>
       </header>
 
-      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+      <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
 
-        {/* Cartão de Lucro - Só mostra se houver lucro */}
-        {lucroTotal > 0 && (
+        {/* Cartão de Lucro */}
+        <div style={{ 
+          backgroundColor: 'white', 
+          padding: '30px', 
+          borderRadius: '12px', 
+          marginBottom: '25px',
+          textAlign: 'center',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          color: 'white',
+          boxShadow: '0 4px 15px rgba(0,0,0,0.1)'
+        }}>
+          <h2 style={{ margin: '0 0 10px 0', fontSize: '24px' }}>💰 Quanto você já lucrou por vender com a Golden</h2>
+          <div style={{ fontSize: '48px', fontWeight: 'bold', margin: '15px 0' }}>
+            R$ {lucroTotal.toFixed(2)}
+          </div>
+          <p style={{ margin: '0', opacity: 0.9, fontSize: '14px' }}>
+            Este valor representa seu bônus sobre as vendas dos seus eventos (5% no plano padrão, 3% no plano intermediário)
+          </p>
+        </div>
+
+        {/* Botões de Ação */}
+        <div style={{ display: 'flex', gap: '15px', marginBottom: '25px', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', gap: '15px' }}>
+            <Link 
+              href="/publicar-evento" 
+              style={{ 
+                backgroundColor: '#f1c40f', 
+                color: 'black', 
+                padding: '12px 25px', 
+                borderRadius: '8px', 
+                textDecoration: 'none',
+                fontWeight: 'bold',
+                fontSize: '16px'
+              }}
+            >
+              + Novo Evento
+            </Link>
+            <Link 
+              href="/eventos-passados" 
+              style={{ 
+                backgroundColor: '#9b59b6', 
+                color: 'white', 
+                padding: '12px 25px', 
+                borderRadius: '8px', 
+                textDecoration: 'none',
+                fontWeight: 'bold',
+                fontSize: '16px'
+              }}
+            >
+              📊 Eventos Passados ({eventosPassados.length})
+            </Link>
+          </div>
+          
+          <Link 
+            href="/editar-dados-produtor" 
+            style={{ 
+              backgroundColor: '#3498db', 
+              color: 'white', 
+              padding: '12px 25px', 
+              borderRadius: '8px', 
+              textDecoration: 'none',
+              fontWeight: 'bold',
+              fontSize: '16px'
+            }}
+          >
+            ⚙️ Editar Meus Dados
+          </Link>
+        </div>
+
+        {/* Tabela de Eventos */}
+        <div style={{ backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+          <div style={{ padding: '25px', borderBottom: '2px solid #f0f0f0' }}>
+            <h2 style={{ color: '#5d34a4', margin: 0 }}>Meus Eventos Futuros</h2>
+          </div>
+
+          {eventos.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '60px 20px' }}>
+              <div style={{ fontSize: '64px', marginBottom: '20px' }}>📅</div>
+              <h3 style={{ color: '#7f8c8d', marginBottom: '10px' }}>Nenhum evento futuro</h3>
+              <p style={{ color: '#95a5a6', marginBottom: '30px' }}>
+                Comece criando seu primeiro evento!
+              </p>
+              <Link 
+                href="/publicar-evento" 
+                style={{ 
+                  backgroundColor: '#f1c40f', 
+                  color: 'black', 
+                  padding: '15px 30px', 
+                  borderRadius: '8px', 
+                  textDecoration: 'none',
+                  fontWeight: 'bold',
+                  display: 'inline-block'
+                }}
+              >
+                Criar Primeiro Evento
+              </Link>
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#f8f9fa', borderBottom: '2px solid #dee2e6' }}>
+                    <th style={{ padding: '15px', textAlign: 'left', fontWeight: 'bold', color: '#495057' }}>Nome do Evento</th>
+                    <th style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', color: '#495057' }}>Ingressos Vendidos</th>
+                    <th style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', color: '#495057' }}>Ingressos Disponíveis</th>
+                    <th style={{ padding: '15px', textAlign: 'right', fontWeight: 'bold', color: '#495057' }}>Total Ingressos</th>
+                    <th style={{ padding: '15px', textAlign: 'right', fontWeight: 'bold', color: '#495057' }}>Bônus Golden</th>
+                    <th style={{ padding: '15px', textAlign: 'right', fontWeight: 'bold', color: '#495057' }}>Total a Receber</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {eventos.map((evento) => {
+                    const dados = calcularDadosEvento(evento);
+                    return (
+                      <tr 
+                        key={evento.id}
+                        onClick={() => router.push(`/produtor/evento/${evento.id}`)}
+                        style={{ 
+                          borderBottom: '1px solid #e9ecef',
+                          cursor: 'pointer',
+                          transition: 'background-color 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                      >
+                        <td style={{ padding: '20px' }}>
+                          <div>
+                            <div style={{ fontWeight: 'bold', color: '#2c3e50', marginBottom: '5px' }}>
+                              {evento.nome}
+                            </div>
+                            <div style={{ fontSize: '13px', color: '#7f8c8d' }}>
+                              📅 {new Date(evento.data).toLocaleDateString('pt-BR')} às {evento.hora}
+                            </div>
+                            <div style={{ fontSize: '13px', color: '#7f8c8d' }}>
+                              📍 {evento.local}
+                            </div>
+                          </div>
+                        </td>
+                        <td style={{ padding: '20px', textAlign: 'center', fontSize: '18px', fontWeight: 'bold', color: '#27ae60' }}>
+                          {dados.ingressosVendidos}
+                        </td>
+                        <td style={{ padding: '20px', textAlign: 'center', fontSize: '18px', fontWeight: 'bold', color: '#e67e22' }}>
+                          {dados.ingressosDisponiveis}
+                        </td>
+                        <td style={{ padding: '20px', textAlign: 'right', fontSize: '16px', fontWeight: 'bold', color: '#2980b9' }}>
+                          R$ {dados.valorTotalIngressos.toFixed(2)}
+                        </td>
+                        <td style={{ padding: '20px', textAlign: 'right', fontSize: '16px', fontWeight: 'bold', color: '#9b59b6' }}>
+                          R$ {dados.bonusGolden.toFixed(2)}
+                        </td>
+                        <td style={{ padding: '20px', textAlign: 'right', fontSize: '18px', fontWeight: 'bold', color: '#16a085' }}>
+                          R$ {dados.totalReceber.toFixed(2)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Estatísticas Resumidas */}
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(4, 1fr)', 
+          gap: '20px', 
+          marginTop: '25px' 
+        }}>
           <div style={{ 
             backgroundColor: 'white', 
-            padding: '30px', 
-            borderRadius: '12px', 
-            marginBottom: '25px',
+            padding: '20px', 
+            borderRadius: '10px', 
             textAlign: 'center',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            color: 'white',
-            boxShadow: '0 4px 15px rgba(0,0,0,0.1)'
+            boxShadow: '0 2px 10px rgba(0,0,0,0.05)'
           }}>
-            <h2 style={{ margin: '0 0 10px 0', fontSize: '24px' }}>💰 Quanto você já lucrou por vender com a Golden</h2>
-            <div style={{ fontSize: '48px', fontWeight: 'bold', margin: '15px 0' }}>
-              R$ {lucroTotal.toFixed(2)}
+            <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#16a085' }}>
+              {eventos.length}
             </div>
-            <p style={{ margin: '0', opacity: 0.9, fontSize: '14px' }}>
-              Este valor representa sua parte das taxas sobre as vendas dos seus eventos
-            </p>
+            <div style={{ fontSize: '14px', color: '#7f8c8d', marginTop: '5px' }}>
+              Eventos Ativos
+            </div>
           </div>
-        )}
-
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '25px' }}>
-
-          {/* Coluna Esquerda - Eventos */}
-          <div>
-
-            {/* Seção Meus Eventos */}
-            <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '12px', marginBottom: '25px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <h2 style={{ color: '#5d34a4', margin: 0 }}>Meus Eventos</h2>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <Link 
-                    href="/publicar-evento" 
-                    style={{ 
-                      backgroundColor: '#f1c40f', 
-                      color: 'black', 
-                      padding: '10px 20px', 
-                      borderRadius: '6px', 
-                      textDecoration: 'none',
-                      fontWeight: 'bold',
-                      fontSize: '14px'
-                    }}
-                  >
-                    + Novo Evento
-                  </Link>
-                  <Link 
-                    href="/eventos-passados" 
-                    style={{ 
-                      backgroundColor: '#95a5a6', 
-                      color: 'white', 
-                      padding: '10px 20px', 
-                      borderRadius: '6px', 
-                      textDecoration: 'none',
-                      fontWeight: 'bold',
-                      fontSize: '14px'
-                    }}
-                  >
-                    Eventos Passados ({eventosPassados?.length || 0})
-                  </Link>
-                </div>
-              </div>
-
-              {eventos && eventos.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                  {eventos.map((evento) => (
-                    <div key={evento.id} style={{ 
-                      border: '1px solid #e1e8ed', 
-                      borderRadius: '8px', 
-                      padding: '20px',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      transition: 'all 0.3s ease'
-                    }}>
-                      <div style={{ flex: 1 }}>
-                        <h3 style={{ margin: '0 0 8px 0', color: '#2c3e50', fontSize: '18px' }}>
-                          {evento.nome}
-                        </h3>
-                        <div style={{ display: 'flex', gap: '20px', fontSize: '14px', color: '#7f8c8d' }}>
-                          <span>
-                            <strong>Data:</strong> {new Date(evento.data).toLocaleDateString('pt-BR')}
-                          </span>
-                          <span>
-                            <strong>Local:</strong> {evento.local || 'Online'}
-                          </span>
-                          <span>
-                            <strong>Ingressos vendidos:</strong> {evento.ingressos_vendidos || 0}
-                          </span>
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', gap: '10px' }}>
-                        <Link 
-                          href={`/editar-evento/${evento.id}`}
-                          style={{ 
-                            backgroundColor: '#3498db', 
-                            color: 'white', 
-                            padding: '8px 15px', 
-                            borderRadius: '5px', 
-                            textDecoration: 'none',
-                            fontSize: '14px'
-                          }}
-                        >
-                          Editar
-                        </Link>
-                        <Link 
-                          href={`/evento/${evento.id}`}
-                          style={{ 
-                            backgroundColor: '#2ecc71', 
-                            color: 'white', 
-                            padding: '8px 15px', 
-                            borderRadius: '5px', 
-                            textDecoration: 'none',
-                            fontSize: '14px'
-                          }}
-                        >
-                          Ver Detalhes
-                        </Link>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{ textAlign: 'center', padding: '40px' }}>
-                  <div style={{ fontSize: '48px', color: '#bdc3c7', marginBottom: '15px' }}>📅</div>
-                  <h3 style={{ color: '#7f8c8d', marginBottom: '10px' }}>Nenhum evento futuro</h3>
-                  <p style={{ color: '#95a5a6', marginBottom: '25px' }}>
-                    Você ainda não publicou nenhum evento futuro.
-                  </p>
-                  <Link 
-                    href="/publicar-evento" 
-                    style={{ 
-                      backgroundColor: '#f1c40f', 
-                      color: 'black', 
-                      padding: '12px 25px', 
-                      borderRadius: '6px', 
-                      textDecoration: 'none',
-                      fontWeight: 'bold'
-                    }}
-                  >
-                    Criar Primeiro Evento
-                  </Link>
-                </div>
-              )}
+          
+          <div style={{ 
+            backgroundColor: 'white', 
+            padding: '20px', 
+            borderRadius: '10px', 
+            textAlign: 'center',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.05)'
+          }}>
+            <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#9b59b6' }}>
+              {eventosPassados.length}
             </div>
-
-            {/* Estatísticas Reais */}
-            <div style={{ 
-              backgroundColor: 'white', 
-              padding: '25px', 
-              borderRadius: '12px',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.05)'
-            }}>
-              <h2 style={{ color: '#5d34a4', margin: '0 0 20px 0' }}>Estatísticas</h2>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px', textAlign: 'center' }}>
-                <div style={{ padding: '15px', backgroundColor: '#e8f6f3', borderRadius: '8px' }}>
-                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#16a085' }}>{eventos?.length || 0}</div>
-                  <div style={{ fontSize: '14px', color: '#1abc9c' }}>Eventos Ativos</div>
-                </div>
-                <div style={{ padding: '15px', backgroundColor: '#e8f4fd', borderRadius: '8px' }}>
-                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#2980b9' }}>{ingressosVendidos?.length || 0}</div>
-                  <div style={{ fontSize: '14px', color: '#3498db' }}>Ingressos Vendidos</div>
-                </div>
-                <div style={{ padding: '15px', backgroundColor: '#fef9e7', borderRadius: '8px' }}>
-                  <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#f39c12' }}>{eventosPassados?.length || 0}</div>
-                  <div style={{ fontSize: '14px', color: '#f1c40f' }}>Eventos Passados</div>
-                </div>
-              </div>
+            <div style={{ fontSize: '14px', color: '#7f8c8d', marginTop: '5px' }}>
+              Eventos Passados
             </div>
-
           </div>
-
-          {/* Coluna Direita - Dados do Produtor */}
-          <div>
-
-            {/* Dados do Produtor */}
-            <div style={{ 
-              backgroundColor: 'white', 
-              padding: '25px', 
-              borderRadius: '12px',
-              marginBottom: '25px',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.05)'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <h2 style={{ color: '#5d34a4', margin: 0 }}>Seus Dados</h2>
-                <Link 
-                  href="/editar-dados-produtor" 
-                  style={{ 
-                    backgroundColor: '#5d34a4', 
-                    color: 'white', 
-                    padding: '8px 15px', 
-                    borderRadius: '5px', 
-                    textDecoration: 'none',
-                    fontSize: '14px',
-                    fontWeight: 'bold'
-                  }}
-                >
-                  Editar
-                </Link>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-
-                {/* Dados Pessoais */}
-                <div>
-                  <h3 style={{ color: '#2c3e50', fontSize: '16px', margin: '0 0 10px 0', borderBottom: '1px solid #ecf0f1', paddingBottom: '5px' }}>
-                    Dados Pessoais
-                  </h3>
-                  <p style={{ margin: '5px 0' }}>
-                    <strong>Nome Completo:</strong><br />
-                    {produtor?.nome_completo || 'Não informado'}
-                  </p>
-                  <p style={{ margin: '5px 0' }}>
-                    <strong>Empresa:</strong><br />
-                    {produtor?.nome_empresa || 'Não informado'}
-                  </p>
-                </div>
-
-                {/* Recebimento PIX */}
-                <div>
-                  <h3 style={{ color: '#2c3e50', fontSize: '16px', margin: '0 0 10px 0', borderBottom: '1px solid #ecf0f1', paddingBottom: '5px' }}>
-                    Recebimento via PIX
-                  </h3>
-                  <p style={{ margin: '5px 0' }}>
-                    <strong>Chave PIX:</strong><br />
-                    {produtor?.chave_pix || 'Não informado'}
-                  </p>
-                  <p style={{ margin: '5px 0' }}>
-                    <strong>Tipo:</strong><br />
-                    {produtor?.tipo_chave_pix || 'Não informado'}
-                  </p>
-                </div>
-
-                {/* Dados Bancários */}
-                {produtor?.dados_bancarios && (
-                  <div>
-                    <h3 style={{ color: '#2c3e50', fontSize: '16px', margin: '0 0 10px 0', borderBottom: '1px solid #ecf0f1', paddingBottom: '5px' }}>
-                      Dados Bancários
-                    </h3>
-                    <p style={{ margin: '5px 0' }}>
-                      {produtor.dados_bancarios}
-                    </p>
-                  </div>
-                )}
-
-                {/* Preferências */}
-                <div>
-                  <h3 style={{ color: '#2c3e50', fontSize: '16px', margin: '0 0 10px 0', borderBottom: '1px solid #ecf0f1', paddingBottom: '5px' }}>
-                    Preferências
-                  </h3>
-                  <p style={{ margin: '5px 0' }}>
-                    <strong>Forma de Pagamento:</strong><br />
-                    {produtor?.forma_pagamento ? 
-                      (produtor.forma_pagamento === 'apenas_pix' ? 'Apenas PIX' :
-                       produtor.forma_pagamento === 'apenas_transferencia' ? 'Apenas Transferência' :
-                       produtor.forma_pagamento === 'ambos' ? 'Ambos (PIX e Transferência)' :
-                       produtor.forma_pagamento) 
-                      : 'Não informado'}
-                  </p>
-                </div>
-
-              </div>
+          
+          <div style={{ 
+            backgroundColor: 'white', 
+            padding: '20px', 
+            borderRadius: '10px', 
+            textAlign: 'center',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.05)'
+          }}>
+            <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#2980b9' }}>
+              {eventos.reduce((sum, e) => sum + (e.ingressos_vendidos || 0), 0)}
             </div>
-
-            {/* Ações Rápidas */}
-            <div style={{ 
-              backgroundColor: 'white', 
-              padding: '25px', 
-              borderRadius: '12px',
-              boxShadow: '0 2px 10px rgba(0,0,0,0.05)'
-            }}>
-              <h2 style={{ color: '#5d34a4', margin: '0 0 20px 0' }}>Ações Rápidas</h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <Link 
-                  href="/publicar-evento"
-                  style={{
-                    display: 'block',
-                    padding: '12px 15px',
-                    backgroundColor: '#f1c40f',
-                    color: 'black',
-                    textDecoration: 'none',
-                    borderRadius: '6px',
-                    fontWeight: 'bold',
-                    textAlign: 'center'
-                  }}
-                >
-                  📝 Criar Novo Evento
-                </Link>
-                <Link 
-                  href="/eventos-passados"
-                  style={{
-                    display: 'block',
-                    padding: '12px 15px',
-                    backgroundColor: '#9b59b6',
-                    color: 'white',
-                    textDecoration: 'none',
-                    borderRadius: '6px',
-                    fontWeight: 'bold',
-                    textAlign: 'center'
-                  }}
-                >
-                  📊 Meus Eventos Passados
-                </Link>
-                <Link 
-                  href="/editar-dados-produtor"
-                  style={{
-                    display: 'block',
-                    padding: '12px 15px',
-                    backgroundColor: '#3498db',
-                    color: 'white',
-                    textDecoration: 'none',
-                    borderRadius: '6px',
-                    fontWeight: 'bold',
-                    textAlign: 'center'
-                  }}
-                >
-                  ⚙️ Editar Meus Dados
-                </Link>
-              </div>
+            <div style={{ fontSize: '14px', color: '#7f8c8d', marginTop: '5px' }}>
+              Total de Ingressos Vendidos
             </div>
-
           </div>
-
+          
+          <div style={{ 
+            backgroundColor: 'white', 
+            padding: '20px', 
+            borderRadius: '10px', 
+            textAlign: 'center',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.05)'
+          }}>
+            <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#e74c3c' }}>
+              {eventos.reduce((sum, e) => sum + ((e.total_ingressos || 0) - (e.ingressos_vendidos || 0)), 0)}
+            </div>
+            <div style={{ fontSize: '14px', color: '#7f8c8d', marginTop: '5px' }}>
+              Ingressos Disponíveis
+            </div>
+          </div>
         </div>
 
       </div>
