@@ -1,62 +1,138 @@
-// app/editar-dados-produtor/page.js
-
-import { createClient } from '../../utils/supabase/server';
-import { redirect } from 'next/navigation';
+'use client';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { createClient } from '../../utils/supabase/client';
 import Link from 'next/link';
 
-export default async function EditarDadosProdutorPage() {
+export default function EditarDadosProdutorPage() {
   const supabase = createClient();
+  const router = useRouter();
+  
+  const [user, setUser] = useState(null);
+  const [produtor, setProdutor] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  
+  const [formData, setFormData] = useState({
+    nome_completo: '',
+    nome_empresa: '',
+    chave_pix: '',
+    tipo_chave_pix: '',
+    dados_bancarios: '',
+    forma_pagamento: ''
+  });
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    redirect('/login');
-  }
+  useEffect(() => {
+    carregarDados();
+  }, []);
 
-  // Buscar dados atuais do produtor
-  const { data: produtor } = await supabase
-    .from('produtores')
-    .select('*')
-    .eq('id', user.id)
-    .single();
+  const carregarDados = async () => {
+    try {
+      // Verifica usuário
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
+        alert('Você precisa estar logado!');
+        router.push('/login');
+        return;
+      }
+      
+      setUser(user);
 
-  async function handleSubmit(formData) {
-    'use server';
+      // Busca dados do produtor
+      const { data: produtorData, error: produtorError } = await supabase
+        .from('produtores')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (produtorError) {
+        console.log('Produtor não encontrado, será criado ao salvar');
+      } else {
+        setProdutor(produtorData);
+        setFormData({
+          nome_completo: produtorData.nome_completo || '',
+          nome_empresa: produtorData.nome_empresa || '',
+          chave_pix: produtorData.chave_pix || '',
+          tipo_chave_pix: produtorData.tipo_chave_pix || '',
+          dados_bancarios: produtorData.dados_bancarios || '',
+          forma_pagamento: produtorData.forma_pagamento || ''
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+      alert('Erro ao carregar dados: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     
-    const supabase = createClient();
-    
-    // Verificar usuário novamente
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      redirect('/login');
+    if (!formData.nome_completo || !formData.chave_pix || !formData.tipo_chave_pix || !formData.forma_pagamento) {
+      alert('Por favor, preencha todos os campos obrigatórios!');
+      return;
     }
 
-    const nome_completo = formData.get('nome_completo');
-    const nome_empresa = formData.get('nome_empresa');
-    const chave_pix = formData.get('chave_pix');
-    const tipo_chave_pix = formData.get('tipo_chave_pix');
-    const dados_bancarios = formData.get('dados_bancarios');
-    const forma_pagamento = formData.get('forma_pagamento');
+    setSaving(true);
 
-    // Atualizar dados
-    const { error } = await supabase
-      .from('produtores')
-      .update({
-        nome_completo,
-        nome_empresa,
-        chave_pix,
-        tipo_chave_pix,
-        dados_bancarios,
-        forma_pagamento,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', user.id);
+    try {
+      const dadosAtualizar = {
+        id: user.id,
+        nome_completo: formData.nome_completo,
+        nome_empresa: formData.nome_empresa || null,
+        chave_pix: formData.chave_pix,
+        tipo_chave_pix: formData.tipo_chave_pix,
+        dados_bancarios: formData.dados_bancarios || null,
+        forma_pagamento: formData.forma_pagamento,
+        updated_at: new Date().toISOString()
+      };
 
-    if (error) {
-      console.error('Erro ao atualizar:', error);
-      redirect('/editar-dados-produtor?error=Erro ao salvar alterações');
+      // Tenta atualizar primeiro
+      const { error: updateError } = await supabase
+        .from('produtores')
+        .update(dadosAtualizar)
+        .eq('id', user.id);
+
+      // Se não existe, cria
+      if (updateError && updateError.code === 'PGRST116') {
+        const { error: insertError } = await supabase
+          .from('produtores')
+          .insert([dadosAtualizar]);
+
+        if (insertError) {
+          throw insertError;
+        }
+      } else if (updateError) {
+        throw updateError;
+      }
+
+      alert('✅ Dados atualizados com sucesso!');
+      router.push('/produtor');
+      
+    } catch (error) {
+      console.error('Erro ao salvar:', error);
+      alert('❌ Erro ao salvar alterações: ' + error.message);
+    } finally {
+      setSaving(false);
     }
+  };
 
-    redirect('/produtor?success=Dados atualizados com sucesso');
+  if (loading) {
+    return (
+      <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px', textAlign: 'center', paddingTop: '100px' }}>
+        <h2>Carregando...</h2>
+      </div>
+    );
   }
 
   return (
@@ -69,10 +145,9 @@ export default async function EditarDadosProdutorPage() {
       </header>
 
       <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-
         <div style={{ padding: '30px', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
           
-          <form action={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
             
             {/* Dados Pessoais */}
             <div style={{ borderBottom: '1px solid #eee', paddingBottom: '20px' }}>
@@ -87,7 +162,8 @@ export default async function EditarDadosProdutorPage() {
                   name="nome_completo" 
                   type="text" 
                   required 
-                  defaultValue={produtor?.nome_completo || ''}
+                  value={formData.nome_completo}
+                  onChange={handleChange}
                   style={{ 
                     width: '100%', 
                     padding: '12px', 
@@ -107,7 +183,8 @@ export default async function EditarDadosProdutorPage() {
                   id="nome_empresa" 
                   name="nome_empresa" 
                   type="text" 
-                  defaultValue={produtor?.nome_empresa || ''}
+                  value={formData.nome_empresa}
+                  onChange={handleChange}
                   style={{ 
                     width: '100%', 
                     padding: '12px', 
@@ -133,7 +210,8 @@ export default async function EditarDadosProdutorPage() {
                   name="chave_pix" 
                   type="text" 
                   required 
-                  defaultValue={produtor?.chave_pix || ''}
+                  value={formData.chave_pix}
+                  onChange={handleChange}
                   style={{ 
                     width: '100%', 
                     padding: '12px', 
@@ -153,7 +231,8 @@ export default async function EditarDadosProdutorPage() {
                   id="tipo_chave_pix" 
                   name="tipo_chave_pix" 
                   required 
-                  defaultValue={produtor?.tipo_chave_pix || ''}
+                  value={formData.tipo_chave_pix}
+                  onChange={handleChange}
                   style={{ 
                     width: '100%', 
                     padding: '12px', 
@@ -184,7 +263,8 @@ export default async function EditarDadosProdutorPage() {
                   id="dados_bancarios" 
                   name="dados_bancarios" 
                   rows="3"
-                  defaultValue={produtor?.dados_bancarios || ''}
+                  value={formData.dados_bancarios}
+                  onChange={handleChange}
                   style={{ 
                     width: '100%', 
                     padding: '12px', 
@@ -213,7 +293,8 @@ export default async function EditarDadosProdutorPage() {
                       name="forma_pagamento" 
                       value="apenas_pix" 
                       required 
-                      defaultChecked={produtor?.forma_pagamento === 'apenas_pix'}
+                      checked={formData.forma_pagamento === 'apenas_pix'}
+                      onChange={handleChange}
                     />
                     Apenas PIX
                   </label>
@@ -222,7 +303,8 @@ export default async function EditarDadosProdutorPage() {
                       type="radio" 
                       name="forma_pagamento" 
                       value="apenas_transferencia" 
-                      defaultChecked={produtor?.forma_pagamento === 'apenas_transferencia'}
+                      checked={formData.forma_pagamento === 'apenas_transferencia'}
+                      onChange={handleChange}
                     />
                     Apenas Transferência
                   </label>
@@ -231,7 +313,8 @@ export default async function EditarDadosProdutorPage() {
                       type="radio" 
                       name="forma_pagamento" 
                       value="ambos" 
-                      defaultChecked={produtor?.forma_pagamento === 'ambos'}
+                      checked={formData.forma_pagamento === 'ambos'}
+                      onChange={handleChange}
                     />
                     Ambos (PIX e Transferência)
                   </label>
@@ -242,19 +325,20 @@ export default async function EditarDadosProdutorPage() {
             <div style={{ display: 'flex', gap: '15px' }}>
               <button 
                 type="submit"
+                disabled={saving}
                 style={{ 
-                  backgroundColor: '#f1c40f', 
+                  backgroundColor: saving ? '#95a5a6' : '#f1c40f', 
                   color: 'black', 
                   padding: '15px', 
                   fontWeight: 'bold', 
                   border: 'none', 
                   borderRadius: '5px',
-                  cursor: 'pointer',
+                  cursor: saving ? 'not-allowed' : 'pointer',
                   fontSize: '16px',
                   flex: 1
                 }}
               >
-                Salvar Alterações
+                {saving ? 'Salvando...' : 'Salvar Alterações'}
               </button>
               
               <Link 
@@ -269,7 +353,10 @@ export default async function EditarDadosProdutorPage() {
                   textDecoration: 'none',
                   textAlign: 'center',
                   fontSize: '16px',
-                  flex: 1
+                  flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
                 }}
               >
                 Cancelar
