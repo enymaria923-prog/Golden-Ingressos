@@ -4,7 +4,50 @@ import { createClient } from '../../utils/supabase/server';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 
-export default async function EditarDadosProdutorPage() {
+// Server Action para atualizar os dados
+async function updateProdutor(formData) {
+  'use server';
+  
+  const supabase = createClient();
+  
+  // Primeiro verifica o usuário
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    redirect('/login');
+  }
+
+  const nome_completo = formData.get('nome_completo');
+  const nome_empresa = formData.get('nome_empresa');
+  const chave_pix = formData.get('chave_pix');
+  const tipo_chave_pix = formData.get('tipo_chave_pix');
+  const dados_bancarios = formData.get('dados_bancarios');
+  const forma_pagamento = formData.get('forma_pagamento');
+
+  // Atualiza os dados
+  const { error } = await supabase
+    .from('produtores')
+    .update({
+      nome_completo,
+      nome_empresa,
+      chave_pix,
+      tipo_chave_pix,
+      dados_bancarios,
+      forma_pagamento,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', user.id);
+
+  if (error) {
+    console.error('Erro ao atualizar:', error);
+    // Redireciona com mensagem de erro
+    redirect('/editar-dados-produtor?error=Erro ao salvar alterações');
+  }
+
+  // Redireciona com mensagem de sucesso
+  redirect('/produtor?success=Dados atualizados com sucesso');
+}
+
+export default async function EditarDadosProdutorPage({ searchParams }) {
   const supabase = createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
@@ -19,39 +62,8 @@ export default async function EditarDadosProdutorPage() {
     .eq('id', user.id)
     .single();
 
-  async function updateProdutor(formData) {
-    'use server';
-    
-    const supabase = createClient();
-    
-    const nome_completo = formData.get('nome_completo');
-    const nome_empresa = formData.get('nome_empresa');
-    const chave_pix = formData.get('chave_pix');
-    const tipo_chave_pix = formData.get('tipo_chave_pix');
-    const dados_bancarios = formData.get('dados_bancarios');
-    const forma_pagamento = formData.get('forma_pagamento');
-
-    const { error } = await supabase
-      .from('produtores')
-      .update({
-        nome_completo,
-        nome_empresa,
-        chave_pix,
-        tipo_chave_pix,
-        dados_bancarios,
-        forma_pagamento,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', user.id);
-
-    if (error) {
-      console.error('Erro ao atualizar produtor:', error);
-      // Você pode adicionar tratamento de erro aqui
-      return;
-    }
-
-    redirect('/produtor?message=Dados atualizados com sucesso');
-  }
+  const error = searchParams.error;
+  const success = searchParams.success;
 
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px' }}>
@@ -63,6 +75,33 @@ export default async function EditarDadosProdutorPage() {
       </header>
 
       <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+
+        {/* Mensagens de erro/sucesso */}
+        {error && (
+          <div style={{ 
+            backgroundColor: '#ffebee', 
+            color: '#c62828', 
+            padding: '15px', 
+            borderRadius: '8px', 
+            marginBottom: '20px',
+            border: '1px solid #ffcdd2'
+          }}>
+            {error}
+          </div>
+        )}
+
+        {success && (
+          <div style={{ 
+            backgroundColor: '#e8f5e8', 
+            color: '#2e7d32', 
+            padding: '15px', 
+            borderRadius: '8px', 
+            marginBottom: '20px',
+            border: '1px solid #c8e6c9'
+          }}>
+            {success}
+          </div>
+        )}
 
         <div style={{ padding: '30px', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
           
