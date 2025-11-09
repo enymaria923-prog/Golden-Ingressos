@@ -112,6 +112,19 @@ export default function ProdutorPage() {
     };
   };
 
+  const extrairCidade = (endereco) => {
+    if (!endereco) return 'Não informado';
+    
+    // Tenta extrair cidade do formato "Rua X, 123 - Bairro - Cidade/Estado"
+    const partes = endereco.split('-');
+    if (partes.length >= 2) {
+      const ultimaParte = partes[partes.length - 1].trim();
+      return ultimaParte.split('/')[0].trim();
+    }
+    
+    return endereco.split(',')[0].trim();
+  };
+
   if (loading) {
     return (
       <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px', textAlign: 'center', paddingTop: '100px' }}>
