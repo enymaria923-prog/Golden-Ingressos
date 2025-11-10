@@ -11,6 +11,8 @@ export default function EventoDetalhesPage() {
   const eventoId = params.id;
   
   const [evento, setEvento] = useState(null);
+  const [setores, setSetores] = useState([]);
+  const [tiposIngresso, setTiposIngresso] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mostrarModalSessao, setMostrarModalSessao] = useState(false);
   const [mostrarModalIngressos, setMostrarModalIngressos] = useState(false);
@@ -21,6 +23,7 @@ export default function EventoDetalhesPage() {
 
   const carregarEvento = async () => {
     try {
+      // Carrega evento
       const { data, error } = await supabase
         .from('eventos')
         .select('*')
@@ -29,6 +32,23 @@ export default function EventoDetalhesPage() {
 
       if (error) throw error;
       setEvento(data);
+
+      // Carrega setores do evento (se existir a tabela)
+      const { data: setoresData } = await supabase
+        .from('setores')
+        .select('*')
+        .eq('evento_id', eventoId);
+      
+      setSetores(setoresData || []);
+
+      // Carrega tipos de ingresso (se existir a tabela)
+      const { data: tiposData } = await supabase
+        .from('tipos_ingresso')
+        .select('*')
+        .eq('evento_id', eventoId);
+      
+      setTiposIngresso(tiposData || []);
+
     } catch (error) {
       console.error('Erro ao carregar evento:', error);
       alert('Erro ao carregar evento');
