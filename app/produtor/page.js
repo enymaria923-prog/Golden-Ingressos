@@ -97,7 +97,8 @@ export default function ProdutorPage() {
 
   const calcularDadosEvento = (evento) => {
     const ingressosVendidos = evento.ingressos_vendidos || 0;
-    const ingressosDisponiveis = (evento.total_ingressos || 0) - ingressosVendidos;
+    const totalIngressos = evento.total_ingressos || 0;
+    const ingressosDisponiveis = Math.max(0, totalIngressos - ingressosVendidos); // Nunca negativo
     const precoMedio = evento.preco_medio || 0;
     const valorTotalIngressos = ingressosVendidos * precoMedio;
     const bonusGolden = calcularBonusGolden(evento);
@@ -248,6 +249,7 @@ export default function ProdutorPage() {
                 <thead>
                   <tr style={{ backgroundColor: '#f8f9fa', borderBottom: '2px solid #dee2e6' }}>
                     <th style={{ padding: '15px', textAlign: 'left', fontWeight: 'bold', color: '#495057' }}>Nome do Evento</th>
+                    <th style={{ padding: '15px', textAlign: 'left', fontWeight: 'bold', color: '#495057' }}>Cidade</th>
                     <th style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', color: '#495057' }}>Ingressos Vendidos</th>
                     <th style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', color: '#495057' }}>Ingressos Disponíveis</th>
                     <th style={{ padding: '15px', textAlign: 'right', fontWeight: 'bold', color: '#495057' }}>Total Ingressos</th>
@@ -282,6 +284,9 @@ export default function ProdutorPage() {
                               📍 {evento.local}
                             </div>
                           </div>
+                        </td>
+                        <td style={{ padding: '20px', color: '#7f8c8d' }}>
+                          {extrairCidade(evento.endereco)}
                         </td>
                         <td style={{ padding: '20px', textAlign: 'center', fontSize: '18px', fontWeight: 'bold', color: '#27ae60' }}>
                           {dados.ingressosVendidos}
