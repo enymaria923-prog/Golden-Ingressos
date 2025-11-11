@@ -9,8 +9,6 @@ function AtualizarSenhaContent() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [verificando, setVerificando] = useState(true);
-  const [tokenValido, setTokenValido] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const supabase = createClient();
@@ -18,67 +16,20 @@ function AtualizarSenhaContent() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    verificarToken();
-  }, [searchParams]);
-
-  const verificarToken = async () => {
-    try {
-      console.log('🔍 Verificando token de recuperação...');
-      
-      // Pega os parâmetros da URL
-      const token = searchParams.get('token');
-      const type = searchParams.get('type');
-      const access_token = searchParams.get('access_token');
-      const refresh_token = searchParams.get('refresh_token');
-      
-      console.log('📝 Parâmetros da URL:', { token, type, access_token, refresh_token });
-
-      // Se tem access_token, usa ele pra autenticar
-      if (access_token && refresh_token) {
-        console.log('✅ Tokens encontrados! Estabelecendo sessão...');
-        
-        const { data, error } = await supabase.auth.setSession({
-          access_token,
-          refresh_token
-        });
-
-        if (error) {
-          console.error('❌ Erro ao estabelecer sessão:', error);
-          setError('Link inválido ou expirado. Solicite um novo link de recuperação.');
-          setTokenValido(false);
-        } else {
-          console.log('✅ Sessão estabelecida! Usuário pode alterar senha.');
-          setTokenValido(true);
-        }
-      } 
-      // Se tem token mas não tem access_token (formato antigo)
-      else if (token && type === 'recovery') {
-        console.log('⚠️ Formato de token antigo detectado');
-        setTokenValido(true);
-      }
-      // Sem token - verifica se já tem sessão ativa
-      else {
-        console.log('🔍 Verificando sessão existente...');
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (session) {
-          console.log('✅ Sessão ativa encontrada');
-          setTokenValido(true);
-        } else {
-          console.log('❌ Nenhum token ou sessão encontrado');
-          setError('Link inválido ou expirado. Solicite um novo link de recuperação.');
-          setTokenValido(false);
-        }
-      }
-      
-    } catch (err) {
-      console.error('💥 Erro ao verificar token:', err);
-      setError('Erro ao verificar link. Tente novamente.');
-      setTokenValido(false);
-    } finally {
-      setVerificando(false);
+    // Apenas loga os parâmetros, o Supabase já cuida da autenticação
+    const params = {
+      token: searchParams.get('token'),
+      type: searchParams.get('type'),
+      access_token: searchParams.get('access_token'),
+      refresh_token: searchParams.get('refresh_token')
+    };
+    
+    console.log('📋 Parâmetros recebidos:', params);
+    
+    if (params.type === 'recovery') {
+      console.log('✅ Link de recuperação detectado');
     }
-  };
+  }, [searchParams]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -99,24 +50,82 @@ function AtualizarSenhaContent() {
     }
 
     try {
-      const { error } = await supabase.auth.updateUser({
+      console.log('💾 Atualizando senha...');
+
+      const { data, error } = await supabase.auth.updateUser({
         password: password
       });
 
       if (error) {
+        console.error('❌ Erro ao atualizar senha:', error);
         setError('Erro ao atualizar a senha: ' + error.message);
       } else {
-        setMessage('Senha atualizada com sucesso! Redirecionando...');
+        console.log('✅ Senha atualizada com sucesso!', data);
+        setMessage('✅ Senha atualizada com sucesso! Redirecionando para o login...');
+        
+        // Faz logout para forçar novo login com a senha nova
+        await supabase.auth.signOut();
+        
         setTimeout(() => {
-          router.push('/login?message=Senha alterada com sucesso');
+          router.push('/login?message=Senha%20alterada%20com%20sucesso');
         }, 2000);
       }
     } catch (err) {
+      console.error('💥 Erro inesperado:', err);
       setError('Erro inesperado: ' + err.message);
     } finally {
       setLoading(false);
     }
   };
+
+  // MOSTRA LOADING ENQUANTO VERIFICA TOKEN
+  if (verificando) {
+    return (
+      <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <div style={{ textAlign: 'center', backgroundColor: 'white', padding: '40px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
+          <div style={{ fontSize: '48px', marginBottom: '20px' }}>🔍</div>
+          <h2 style={{ color: '#5d34a4', marginBottom: '10px' }}>Verificando link...</h2>
+          <p style={{ color: '#666' }}>Aguarde um momento</p>
+        </div>
+      </div>
+    );
+  }
+
+  // SE TOKEN INVÁLIDO, MOSTRA ERRO
+  if (!tokenValido) {
+    return (
+      <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px' }}>
+        <header style={{ backgroundColor: '#5d34a4', color: 'white', padding: '20px', textAlign: 'center', borderRadius: '8px', marginBottom: '40px' }}>
+          <Link href="/" style={{ color: 'white', textDecoration: 'none', float: 'left' }}>&larr; Voltar para a Home</Link>
+          <h1 style={{ margin: '0' }}>Golden Ingressos</h1>
+        </header>
+
+        <div style={{ maxWidth: '400px', margin: '0 auto' }}>
+          <div style={{ padding: '30px', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', textAlign: 'center' }}>
+            <div style={{ fontSize: '64px', marginBottom: '20px' }}>⚠️</div>
+            <h2 style={{ color: '#e74c3c', marginBottom: '15px' }}>Link Inválido ou Expirado</h2>
+            <p style={{ color: '#666', marginBottom: '25px' }}>
+              {error || 'Este link de recuperação não é mais válido.'}
+            </p>
+            <Link 
+              href="/esqueci-senha"
+              style={{
+                display: 'inline-block',
+                backgroundColor: '#5d34a4',
+                color: 'white',
+                padding: '12px 25px',
+                borderRadius: '5px',
+                textDecoration: 'none',
+                fontWeight: 'bold'
+              }}
+            >
+              Solicitar Novo Link
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px' }}>
