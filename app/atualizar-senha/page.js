@@ -1,13 +1,11 @@
-// app/atualizar-senha/page.js
-
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { createClient } from '../../utils/supabase/client';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
-export default function AtualizarSenhaPage() {
+function AtualizarSenhaContent() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -17,13 +15,11 @@ export default function AtualizarSenhaPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Verificar se há um token de recuperação na URL
   useEffect(() => {
     const token = searchParams.get('token');
     const type = searchParams.get('type');
     
     if (token && type === 'recovery') {
-      // O Supabase automaticamente detecta o token e permite a redefinição
       console.log('Token de recuperação detectado');
     }
   }, [searchParams]);
@@ -181,5 +177,19 @@ export default function AtualizarSenhaPage() {
 
       </div>
     </div>
+  );
+}
+
+export default function AtualizarSenhaPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <div style={{ textAlign: 'center' }}>
+          <h2>Carregando...</h2>
+        </div>
+      </div>
+    }>
+      <AtualizarSenhaContent />
+    </Suspense>
   );
 }
