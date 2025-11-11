@@ -1,15 +1,84 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { createClient } from '../../utils/supabase/client';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
-export default function EsqueciSenhaPage() {
-  const [email, setEmail] = useState('');
+function AtualizarSenhaContent() {
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [verificando, setVerificando] = useState(true);
+  const [tokenValido, setTokenValido] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const supabase = createClient();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    verificarToken();
+  }, [searchParams]);
+
+  const verificarToken = async () => {
+    try {
+      console.log('🔍 Verificando token de recuperação...');
+      
+      // Pega os parâmetros da URL
+      const token = searchParams.get('token');
+      const type = searchParams.get('type');
+      const access_token = searchParams.get('access_token');
+      const refresh_token = searchParams.get('refresh_token');
+      
+      console.log('📝 Parâmetros da URL:', { token, type, access_token, refresh_token });
+
+      // Se tem access_token, usa ele pra autenticar
+      if (access_token && refresh_token) {
+        console.log('✅ Tokens encontrados! Estabelecendo sessão...');
+        
+        const { data, error } = await supabase.auth.setSession({
+          access_token,
+          refresh_token
+        });
+
+        if (error) {
+          console.error('❌ Erro ao estabelecer sessão:', error);
+          setError('Link inválido ou expirado. Solicite um novo link de recuperação.');
+          setTokenValido(false);
+        } else {
+          console.log('✅ Sessão estabelecida! Usuário pode alterar senha.');
+          setTokenValido(true);
+        }
+      } 
+      // Se tem token mas não tem access_token (formato antigo)
+      else if (token && type === 'recovery') {
+        console.log('⚠️ Formato de token antigo detectado');
+        setTokenValido(true);
+      }
+      // Sem token - verifica se já tem sessão ativa
+      else {
+        console.log('🔍 Verificando sessão existente...');
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session) {
+          console.log('✅ Sessão ativa encontrada');
+          setTokenValido(true);
+        } else {
+          console.log('❌ Nenhum token ou sessão encontrado');
+          setError('Link inválido ou expirado. Solicite um novo link de recuperação.');
+          setTokenValido(false);
+        }
+      }
+      
+    } catch (err) {
+      console.error('💥 Erro ao verificar token:', err);
+      setError('Erro ao verificar link. Tente novamente.');
+      setTokenValido(false);
+    } finally {
+      setVerificando(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -17,29 +86,32 @@ export default function EsqueciSenhaPage() {
     setError('');
     setMessage('');
 
-    if (!email || !email.includes('@')) {
-      setError('Por favor, digite um email válido');
+    if (password !== confirmPassword) {
+      setError('As senhas não coincidem');
+      setLoading(false);
+      return;
+    }
+
+    if (password.length < 6) {
+      setError('A senha deve ter pelo menos 6 caracteres');
       setLoading(false);
       return;
     }
 
     try {
-      console.log('📧 Enviando email de recuperação para:', email);
-
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/atualizar-senha`,
+      const { error } = await supabase.auth.updateUser({
+        password: password
       });
 
       if (error) {
-        console.error('❌ Erro do Supabase:', error);
-        setError('Erro ao enviar email: ' + error.message);
+        setError('Erro ao atualizar a senha: ' + error.message);
       } else {
-        console.log('✅ Email enviado com sucesso!');
-        setMessage('✅ Email de recuperação enviado! Verifique sua caixa de entrada e pasta de spam.');
-        setEmail(''); // Limpa o campo
+        setMessage('Senha atualizada com sucesso! Redirecionando...');
+        setTimeout(() => {
+          router.push('/login?message=Senha alterada com sucesso');
+        }, 2000);
       }
     } catch (err) {
-      console.error('💥 Erro inesperado:', err);
       setError('Erro inesperado: ' + err.message);
     } finally {
       setLoading(false);
@@ -50,60 +122,78 @@ export default function EsqueciSenhaPage() {
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px' }}>
       
       <header style={{ backgroundColor: '#5d34a4', color: 'white', padding: '20px', textAlign: 'center', borderRadius: '8px', marginBottom: '40px' }}>
-        <Link href="/login" style={{ color: 'white', textDecoration: 'none', float: 'left' }}>&larr; Voltar para o Login</Link>
+        <Link href="/" style={{ color: 'white', textDecoration: 'none', float: 'left' }}>&larr; Voltar para a Home</Link>
         <h1 style={{ margin: '0' }}>Golden Ingressos</h1>
       </header>
 
       <div style={{ maxWidth: '400px', margin: '0 auto' }}>
 
         <div style={{ padding: '30px', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
-          <h2 style={{ textAlign: 'center', color: '#5d34a4', marginBottom: '15px' }}>Recuperar Senha</h2>
-          <p style={{ textAlign: 'center', color: '#666', marginBottom: '25px', fontSize: '14px' }}>
-            Digite seu email para receber um link de redefinição de senha.
+          <h2 style={{ textAlign: 'center', color: '#5d34a4', marginBottom: '25px' }}>Nova Senha</h2>
+          <p style={{ textAlign: 'center', color: '#666', marginBottom: '25px' }}>
+            Digite sua nova senha abaixo.
           </p>
           
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div>
-              <label htmlFor="email" style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Email:</label>
+              <label htmlFor="password" style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Nova Senha:</label>
               <input 
-                id="email" 
-                type="email" 
+                id="password" 
+                type="password" 
                 required 
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 style={{ 
                   width: '100%', 
                   padding: '12px', 
                   border: '1px solid #ddd', 
                   borderRadius: '5px',
-                  boxSizing: 'border-box',
-                  fontSize: '16px'
+                  boxSizing: 'border-box'
                 }} 
-                placeholder="seu@email.com"
+                placeholder="Mínimo 6 caracteres"
+                minLength="6"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="confirmPassword" style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Confirmar Nova Senha:</label>
+              <input 
+                id="confirmPassword" 
+                type="password" 
+                required 
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                style={{ 
+                  width: '100%', 
+                  padding: '12px', 
+                  border: '1px solid #ddd', 
+                  borderRadius: '5px',
+                  boxSizing: 'border-box'
+                }} 
+                placeholder="Digite a senha novamente"
+                minLength="6"
               />
             </div>
 
             {error && (
               <div style={{ 
-                padding: '12px', 
+                padding: '10px', 
                 borderRadius: '5px', 
                 backgroundColor: '#ffebee', 
                 color: '#c62828',
-                textAlign: 'center',
-                fontSize: '14px'
+                textAlign: 'center'
               }}>
-                ❌ {error}
+                {error}
               </div>
             )}
 
             {message && (
               <div style={{ 
-                padding: '12px', 
+                padding: '10px', 
                 borderRadius: '5px', 
                 backgroundColor: '#e8f5e8', 
                 color: '#2e7d32',
-                textAlign: 'center',
-                fontSize: '14px'
+                textAlign: 'center'
               }}>
                 {message}
               </div>
@@ -120,11 +210,10 @@ export default function EsqueciSenhaPage() {
                 border: 'none', 
                 borderRadius: '5px',
                 cursor: loading ? 'not-allowed' : 'pointer',
-                fontSize: '16px',
-                transition: 'all 0.3s'
+                fontSize: '16px'
               }}
             >
-              {loading ? '⏳ Enviando...' : '📧 Enviar Link de Redefinição'}
+              {loading ? 'Atualizando...' : 'Atualizar Senha'}
             </button>
           </form>
 
@@ -140,20 +229,23 @@ export default function EsqueciSenhaPage() {
               Voltar para o Login
             </Link>
           </div>
-
-          <div style={{ 
-            marginTop: '20px', 
-            padding: '15px', 
-            backgroundColor: '#e3f2fd', 
-            borderRadius: '5px',
-            fontSize: '13px',
-            color: '#1565c0'
-          }}>
-            <strong>💡 Dica:</strong> Se não encontrar o email, verifique sua pasta de spam.
-          </div>
         </div>
 
       </div>
     </div>
+  );
+}
+
+export default function AtualizarSenhaPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <div style={{ textAlign: 'center' }}>
+          <h2>Carregando...</h2>
+        </div>
+      </div>
+    }>
+      <AtualizarSenhaContent />
+    </Suspense>
   );
 }
