@@ -49,7 +49,15 @@ export default function ProdutorPage() {
         .gte('data', dataHoje)
         .order('data', { ascending: true });
 
-      setEventos(eventosFuturos || []);
+      // Para cada evento, busca os ingressos
+      const eventosComIngressos = await Promise.all(
+        (eventosFuturos || []).map(async (evento) => {
+          const dadosIngressos = await buscarDadosIngressos(evento.id);
+          return { ...evento, ...dadosIngressos };
+        })
+      );
+
+      setEventos(eventosComIngressos);
 
       // Busca eventos passados
       const { data: eventosPass } = await supabase
@@ -59,10 +67,17 @@ export default function ProdutorPage() {
         .lt('data', dataHoje)
         .order('data', { ascending: false });
 
-      setEventosPassados(eventosPass || []);
+      const eventosPassadosComIngressos = await Promise.all(
+        (eventosPass || []).map(async (evento) => {
+          const dadosIngressos = await buscarDadosIngressos(evento.id);
+          return { ...evento, ...dadosIngressos };
+        })
+      );
+
+      setEventosPassados(eventosPassadosComIngressos);
 
       // Calcula lucro total
-      const todosEventos = [...(eventosFuturos || []), ...(eventosPass || [])];
+      const todosEventos = [...eventosComIngressos, ...eventosPassadosComIngressos];
       const lucro = calcularLucroTotal(todosEventos);
       setLucroTotal(lucro);
 
@@ -70,6 +85,46 @@ export default function ProdutorPage() {
       console.error('Erro ao carregar dados:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const buscarDadosIngressos = async (eventoId) => {
+    try {
+      // Busca todos os ingressos do evento
+      const { data: ingressos } = await supabase
+        .from('ingressos')
+        .select('preco, status')
+        .eq('evento_id', eventoId);
+
+      if (!ingressos || ingressos.length === 0) {
+        return {
+          total_ingressos: 0,
+          ingressos_vendidos: 0,
+          preco_medio: 0
+        };
+      }
+
+      // Calcula totais
+      const totalIngressos = ingressos.length;
+      const ingressosVendidos = ingressos.filter(i => i.status === 'vendido').length;
+      
+      // Calcula preço médio
+      const somaPrecos = ingressos.reduce((sum, i) => sum + (parseFloat(i.preco) || 0), 0);
+      const precoMedio = totalIngressos > 0 ? somaPrecos / totalIngressos : 0;
+
+      return {
+        total_ingressos: totalIngressos,
+        ingressos_vendidos: ingressosVendidos,
+        preco_medio: precoMedio
+      };
+
+    } catch (error) {
+      console.error('Erro ao buscar ingressos:', error);
+      return {
+        total_ingressos: 0,
+        ingressos_vendidos: 0,
+        preco_medio: 0
+      };
     }
   };
 
@@ -98,7 +153,7 @@ export default function ProdutorPage() {
   const calcularDadosEvento = (evento) => {
     const ingressosVendidos = evento.ingressos_vendidos || 0;
     const totalIngressos = evento.total_ingressos || 0;
-    const ingressosDisponiveis = Math.max(0, totalIngressos - ingressosVendidos); // Nunca negativo
+    const ingressosDisponiveis = Math.max(0, totalIngressos - ingressosVendidos);
     const precoMedio = evento.preco_medio || 0;
     const valorTotalIngressos = ingressosVendidos * precoMedio;
     const bonusGolden = calcularBonusGolden(evento);
@@ -116,7 +171,6 @@ export default function ProdutorPage() {
   const extrairCidade = (endereco) => {
     if (!endereco) return 'Não informado';
     
-    // Tenta extrair cidade do formato "Rua X, 123 - Bairro - Cidade/Estado"
     const partes = endereco.split('-');
     if (partes.length >= 2) {
       const ultimaParte = partes[partes.length - 1].trim();
@@ -137,7 +191,6 @@ export default function ProdutorPage() {
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px' }}>
       
-      {/* Cabeçalho */}
       <header style={{ backgroundColor: '#5d34a4', color: 'white', padding: '20px', textAlign: 'center', borderRadius: '8px', marginBottom: '20px' }}>
         <Link href="/" style={{ color: 'white', textDecoration: 'none', float: 'left' }}>&larr; Voltar</Link>
         <h1 style={{ margin: '0' }}>Área do Produtor</h1>
@@ -146,7 +199,6 @@ export default function ProdutorPage() {
 
       <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
 
-        {/* Cartão de Lucro */}
         <div style={{ 
           backgroundColor: 'white', 
           padding: '30px', 
@@ -162,11 +214,10 @@ export default function ProdutorPage() {
             R$ {lucroTotal.toFixed(2)}
           </div>
           <p style={{ margin: '0', opacity: 0.9, fontSize: '14px' }}>
-            Este valor representa seu bônus sobre as vendas dos seus eventos (5% no plano padrão, 3% no plano intermediário)
+            Este valor representa seu bônus sobre as vendas dos seus eventos
           </p>
         </div>
 
-        {/* Botões de Ação */}
         <div style={{ display: 'flex', gap: '15px', marginBottom: '25px', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', gap: '15px' }}>
             <Link 
@@ -215,7 +266,6 @@ export default function ProdutorPage() {
           </Link>
         </div>
 
-        {/* Tabela de Eventos */}
         <div style={{ backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
           <div style={{ padding: '25px', borderBottom: '2px solid #f0f0f0' }}>
             <h2 style={{ color: '#5d34a4', margin: 0 }}>Meus Eventos Futuros</h2>
@@ -312,7 +362,6 @@ export default function ProdutorPage() {
           )}
         </div>
 
-        {/* Estatísticas Resumidas */}
         <div style={{ 
           display: 'grid', 
           gridTemplateColumns: 'repeat(4, 1fr)', 
