@@ -1,46 +1,73 @@
-// app/esqueci-senha/page.js
+'use client';
 
-import { createClient } from '../../utils/supabase/server';
-import { redirect } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { createClient } from '../../utils/supabase/client';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-export default async function EsqueciSenhaPage({ searchParams }) {
+export default function EsqueciSenhaPage() {
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const router = useRouter();
   const supabase = createClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
-  // Se o usuário já estiver logado, redireciona para a home
-  if (user) {
-    redirect('/');
-  }
+  useEffect(() => {
+    // Verifica se usuário já está logado
+    checkUser();
+  }, []);
 
-  async function resetPassword(formData) {
-    'use server';
+  const checkUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      router.push('/');
+    }
+  };
 
-    const email = formData.get('email');
-    const supabase = createClient();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    setSuccess('');
 
-    // URL para onde o usuário será redirecionado após clicar no link de reset
-    const redirectTo = `${process.env.NEXT_PUBLIC_SITE_URL}/atualizar-senha`;
-
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: redirectTo,
-    });
-
-    if (error) {
-      console.error('Erro ao enviar email de redefinição:', error);
-      redirect('/esqueci-senha?error=Erro ao enviar email de redefinição');
+    if (!email) {
+      setError('Por favor, digite seu email');
+      setLoading(false);
+      return;
     }
 
-    redirect('/esqueci-senha?success=Email de redefinição enviado com sucesso. Verifique sua caixa de entrada.');
-  }
+    try {
+      console.log('📧 Enviando email de recuperação para:', email);
 
-  const error = searchParams.error;
-  const success = searchParams.success;
+      // URL para onde o usuário será redirecionado
+      const redirectTo = `${window.location.origin}/atualizar-senha`;
+      
+      console.log('🔗 URL de redirecionamento:', redirectTo);
+
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: redirectTo,
+      });
+
+      if (resetError) {
+        console.error('❌ Erro ao enviar email:', resetError);
+        setError('Erro ao enviar email: ' + resetError.message);
+      } else {
+        console.log('✅ Email enviado com sucesso!');
+        setSuccess('✅ Email de redefinição enviado com sucesso! Verifique sua caixa de entrada.');
+        setEmail('');
+      }
+    } catch (err) {
+      console.error('💥 Erro inesperado:', err);
+      setError('Erro inesperado: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px' }}>
       
-      {/* Cabeçalho */}
       <header style={{ backgroundColor: '#5d34a4', color: 'white', padding: '20px', textAlign: 'center', borderRadius: '8px', marginBottom: '40px' }}>
         <Link href="/login" style={{ color: 'white', textDecoration: 'none', float: 'left' }}>&larr; Voltar para o Login</Link>
         <h1 style={{ margin: '0' }}>Golden Ingressos</h1>
@@ -48,7 +75,6 @@ export default async function EsqueciSenhaPage({ searchParams }) {
 
       <div style={{ maxWidth: '400px', margin: '0 auto' }}>
 
-        {/* Mensagens */}
         {error && (
           <div style={{ 
             backgroundColor: '#ffebee', 
@@ -56,9 +82,10 @@ export default async function EsqueciSenhaPage({ searchParams }) {
             padding: '15px', 
             borderRadius: '8px', 
             marginBottom: '20px',
-            border: '1px solid #ffcdd2'
+            border: '1px solid #ffcdd2',
+            textAlign: 'center'
           }}>
-            {error}
+            ❌ {error}
           </div>
         )}
 
@@ -69,7 +96,8 @@ export default async function EsqueciSenhaPage({ searchParams }) {
             padding: '15px', 
             borderRadius: '8px', 
             marginBottom: '20px',
-            border: '1px solid #c8e6c9'
+            border: '1px solid #c8e6c9',
+            textAlign: 'center'
           }}>
             {success}
           </div>
@@ -81,7 +109,7 @@ export default async function EsqueciSenhaPage({ searchParams }) {
             Digite seu email para receber um link de redefinição de senha.
           </p>
           
-          <form action={resetPassword} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div>
               <label htmlFor="email" style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Email:</label>
               <input 
@@ -89,12 +117,17 @@ export default async function EsqueciSenhaPage({ searchParams }) {
                 name="email" 
                 type="email" 
                 required 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={loading}
                 style={{ 
                   width: '100%', 
                   padding: '12px', 
                   border: '1px solid #ddd', 
                   borderRadius: '5px',
-                  boxSizing: 'border-box'
+                  boxSizing: 'border-box',
+                  backgroundColor: loading ? '#f5f5f5' : 'white',
+                  cursor: loading ? 'not-allowed' : 'text'
                 }} 
                 placeholder="seu@email.com"
               />
@@ -102,18 +135,20 @@ export default async function EsqueciSenhaPage({ searchParams }) {
             
             <button 
               type="submit"
+              disabled={loading}
               style={{ 
-                backgroundColor: '#5d34a4', 
+                backgroundColor: loading ? '#95a5a6' : '#5d34a4', 
                 color: 'white', 
                 padding: '15px', 
                 fontWeight: 'bold', 
                 border: 'none', 
                 borderRadius: '5px',
-                cursor: 'pointer',
-                fontSize: '16px'
+                cursor: loading ? 'not-allowed' : 'pointer',
+                fontSize: '16px',
+                transition: 'background-color 0.3s'
               }}
             >
-              Enviar Link de Redefinição
+              {loading ? '📧 Enviando...' : 'Enviar Link de Redefinição'}
             </button>
           </form>
 
@@ -131,7 +166,6 @@ export default async function EsqueciSenhaPage({ searchParams }) {
           </div>
         </div>
 
-        {/* Informações adicionais */}
         <div style={{ marginTop: '20px', padding: '15px', backgroundColor: '#e3f2fd', borderRadius: '5px' }}>
           <p style={{ margin: '0', color: '#1565c0', fontSize: '14px' }}>
             <strong>Dica:</strong> Se não encontrar o email, verifique sua pasta de spam.
