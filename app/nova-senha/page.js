@@ -17,62 +17,62 @@ function NovaSenhaContent() {
   const router = useRouter();
 
   useEffect(() => {
-    verificarToken();
+    verificarSessao();
   }, []);
 
-  const verificarToken = async () => {
+  const verificarSessao = async () => {
     try {
-      console.log('🔍 Verificando tokens de recuperação...');
+      console.log('🔍 Verificando sessão de recuperação...');
       console.log('📋 URL completa:', window.location.href);
       
-      // Pega o hash da URL (tudo depois do #)
-      const hash = window.location.hash;
-      console.log('📋 Hash:', hash);
+      // Verifica se há erro na URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const errorParam = urlParams.get('error');
+      const errorCode = urlParams.get('error_code');
+      const errorDescription = urlParams.get('error_description');
       
-      if (!hash) {
-        console.log('❌ Nenhum hash encontrado');
-        setError('Link inválido ou expirado. Solicite um novo link de recuperação.');
+      console.log('Error:', errorParam);
+      console.log('Error Code:', errorCode);
+      console.log('Error Description:', errorDescription);
+
+      if (errorParam || errorCode) {
+        console.log('❌ Erro detectado na URL');
+        
+        if (errorCode === 'otp_expired') {
+          setError('⏰ Link expirado! Os links de recuperação expiram em alguns minutos por segurança. Clique mais rápido no próximo ou solicite um novo link.');
+        } else {
+          setError('Link inválido ou expirado. Solicite um novo link de recuperação.');
+        }
+        
         setTokenValido(false);
         setVerificando(false);
         return;
       }
 
-      // Extrai os parâmetros do hash
-      const params = new URLSearchParams(hash.substring(1));
-      const access_token = params.get('access_token');
-      const refresh_token = params.get('refresh_token');
-      const type = params.get('type');
-
-      console.log('🔑 Type:', type);
-      console.log('🔑 Access token:', access_token ? 'Encontrado' : 'Não encontrado');
-      console.log('🔑 Refresh token:', refresh_token ? 'Encontrado' : 'Não encontrado');
-
-      if (!access_token) {
-        console.log('❌ Token de acesso não encontrado');
-        setError('Link inválido ou expirado. Solicite um novo link.');
-        setTokenValido(false);
-        setVerificando(false);
-        return;
-      }
-
-      // Estabelece a sessão com os tokens do link
-      console.log('✅ Estabelecendo sessão com tokens...');
-      const { data, error: sessionError } = await supabase.auth.setSession({
-        access_token,
-        refresh_token: refresh_token || ''
-      });
+      // O Supabase automaticamente gerencia a sessão quando o usuário clica no link
+      // Vamos apenas verificar se há uma sessão ativa
+      console.log('🔍 Verificando sessão atual...');
+      
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      console.log('Session:', session);
+      console.log('Session Error:', sessionError);
 
       if (sessionError) {
-        console.error('❌ Erro ao estabelecer sessão:', sessionError);
-        setError('Link inválido ou expirado. Solicite um novo link de recuperação.');
+        console.error('❌ Erro ao obter sessão:', sessionError);
+        setError('Erro ao verificar sessão. Solicite um novo link.');
         setTokenValido(false);
-      } else {
-        console.log('✅ Sessão estabelecida com sucesso!', data);
+      } else if (session) {
+        console.log('✅ Sessão ativa encontrada!');
         setTokenValido(true);
+      } else {
+        console.log('❌ Nenhuma sessão ativa');
+        setError('Sessão não encontrada. Clique novamente no link do email ou solicite um novo link.');
+        setTokenValido(false);
       }
 
     } catch (err) {
-      console.error('💥 Erro ao processar token:', err);
+      console.error('💥 Erro ao verificar sessão:', err);
       setError('Erro ao processar link. Tente novamente.');
       setTokenValido(false);
     } finally {
@@ -126,7 +126,7 @@ function NovaSenhaContent() {
     }
   };
 
-  // Loading enquanto verifica o token
+  // Loading enquanto verifica
   if (verificando) {
     return (
       <div style={{ 
@@ -152,7 +152,7 @@ function NovaSenhaContent() {
     );
   }
 
-  // Se o token é inválido, mostra erro
+  // Se inválido, mostra erro
   if (!tokenValido) {
     return (
       <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px' }}>
@@ -160,11 +160,24 @@ function NovaSenhaContent() {
           <h1 style={{ margin: '0' }}>Golden Ingressos</h1>
         </header>
 
-        <div style={{ maxWidth: '400px', margin: '0 auto' }}>
+        <div style={{ maxWidth: '450px', margin: '0 auto' }}>
           <div style={{ padding: '30px', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', textAlign: 'center' }}>
             <div style={{ fontSize: '64px', marginBottom: '20px' }}>⚠️</div>
-            <h2 style={{ color: '#e74c3c', marginBottom: '15px' }}>Link Inválido</h2>
-            <p style={{ color: '#666', marginBottom: '25px' }}>{error}</p>
+            <h2 style={{ color: '#e74c3c', marginBottom: '15px' }}>Link Inválido ou Expirado</h2>
+            <p style={{ color: '#666', marginBottom: '15px', lineHeight: '1.6' }}>
+              {error}
+            </p>
+            <div style={{ 
+              backgroundColor: '#fff3cd', 
+              color: '#856404', 
+              padding: '15px', 
+              borderRadius: '5px', 
+              marginBottom: '25px',
+              fontSize: '14px',
+              lineHeight: '1.5'
+            }}>
+              <strong>💡 Dica:</strong> Os links de recuperação expiram em poucos minutos. Quando receber o próximo email, clique no link imediatamente!
+            </div>
             <Link 
               href="/esqueci-senha"
               style={{
