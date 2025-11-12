@@ -40,8 +40,8 @@ export default function EsqueciSenhaPage() {
     try {
       console.log('📧 Enviando email de recuperação para:', email);
 
-      // URL para onde o usuário será redirecionado
-      const redirectTo = `${window.location.origin}/atualizar-senha`;
+      // URL para onde o usuário será redirecionado (direto para nova-senha)
+      const redirectTo = `${window.location.origin}/nova-senha`;
       
       console.log('🔗 URL de redirecionamento:', redirectTo);
 
