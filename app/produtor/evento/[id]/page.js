@@ -11,8 +11,11 @@ export default function EventoDetalhesPage() {
   const eventoId = params.id;
   
   const [evento, setEvento] = useState(null);
-  const [setores, setSetores] = useState([]);
-  const [tiposIngresso, setTiposIngresso] = useState([]);
+  const [dadosIngressos, setDadosIngressos] = useState({
+    total_ingressos: 0,
+    ingressos_vendidos: 0,
+    preco_medio: 0
+  });
   const [loading, setLoading] = useState(true);
   const [mostrarModalSessao, setMostrarModalSessao] = useState(false);
   const [mostrarModalIngressos, setMostrarModalIngressos] = useState(false);
@@ -33,21 +36,9 @@ export default function EventoDetalhesPage() {
       if (error) throw error;
       setEvento(data);
 
-      // Carrega setores do evento (se existir a tabela)
-      const { data: setoresData } = await supabase
-        .from('setores')
-        .select('*')
-        .eq('evento_id', eventoId);
-      
-      setSetores(setoresData || []);
-
-      // Carrega tipos de ingresso (se existir a tabela)
-      const { data: tiposData } = await supabase
-        .from('tipos_ingresso')
-        .select('*')
-        .eq('evento_id', eventoId);
-      
-      setTiposIngresso(tiposData || []);
+      // Busca dados dos ingressos
+      const dadosIngs = await buscarDadosIngressos(eventoId);
+      setDadosIngressos(dadosIngs);
 
     } catch (error) {
       console.error('Erro ao carregar evento:', error);
@@ -58,11 +49,59 @@ export default function EventoDetalhesPage() {
     }
   };
 
+  const buscarDadosIngressos = async (eventoId) => {
+    try {
+      // Busca todos os ingressos do evento
+      const { data: ingressos } = await supabase
+        .from('ingressos')
+        .select('preco, status')
+        .eq('evento_id', eventoId);
+
+      console.log('📊 Ingressos encontrados:', ingressos);
+
+      if (!ingressos || ingressos.length === 0) {
+        return {
+          total_ingressos: 0,
+          ingressos_vendidos: 0,
+          preco_medio: 0
+        };
+      }
+
+      // Calcula totais
+      const totalIngressos = ingressos.length;
+      const ingressosVendidos = ingressos.filter(i => i.status === 'vendido').length;
+      
+      // Calcula preço médio
+      const somaPrecos = ingressos.reduce((sum, i) => sum + (parseFloat(i.preco) || 0), 0);
+      const precoMedio = totalIngressos > 0 ? somaPrecos / totalIngressos : 0;
+
+      console.log('📈 Estatísticas:', {
+        totalIngressos,
+        ingressosVendidos,
+        precoMedio
+      });
+
+      return {
+        total_ingressos: totalIngressos,
+        ingressos_vendidos: ingressosVendidos,
+        preco_medio: precoMedio
+      };
+
+    } catch (error) {
+      console.error('Erro ao buscar ingressos:', error);
+      return {
+        total_ingressos: 0,
+        ingressos_vendidos: 0,
+        preco_medio: 0
+      };
+    }
+  };
+
   const calcularBonusGolden = () => {
     if (!evento) return 0;
     const taxaCliente = evento.TaxaCliente || 0;
-    const ingressosVendidos = evento.ingressos_vendidos || 0;
-    const precoMedio = evento.preco_medio || 0;
+    const ingressosVendidos = dadosIngressos.ingressos_vendidos || 0;
+    const precoMedio = dadosIngressos.preco_medio || 0;
     const valorTotal = ingressosVendidos * precoMedio;
     
     let percentualBonus = 0;
@@ -97,10 +136,10 @@ export default function EventoDetalhesPage() {
     );
   }
 
-  const ingressosVendidos = evento.ingressos_vendidos || 0;
-  const totalIngressos = evento.total_ingressos || 0;
-  const ingressosDisponiveis = totalIngressos - ingressosVendidos;
-  const precoMedio = evento.preco_medio || 0;
+  const ingressosVendidos = dadosIngressos.ingressos_vendidos || 0;
+  const totalIngressos = dadosIngressos.total_ingressos || 0;
+  const ingressosDisponiveis = Math.max(0, totalIngressos - ingressosVendidos);
+  const precoMedio = dadosIngressos.preco_medio || 0;
   const valorTotalIngressos = ingressosVendidos * precoMedio;
   const bonusGolden = calcularBonusGolden();
   const totalReceber = valorTotalIngressos + bonusGolden;
@@ -109,7 +148,6 @@ export default function EventoDetalhesPage() {
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px' }}>
       
-      {/* Cabeçalho */}
       <header style={{ 
         backgroundColor: eventoPassado ? '#95a5a6' : '#5d34a4', 
         color: 'white', 
@@ -128,7 +166,6 @@ export default function EventoDetalhesPage() {
 
       <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
 
-        {/* Informações Básicas */}
         <div style={{ 
           display: 'grid', 
           gridTemplateColumns: 'repeat(2, 1fr)', 
@@ -136,7 +173,6 @@ export default function EventoDetalhesPage() {
           marginBottom: '25px' 
         }}>
           
-          {/* Card Esquerdo - Info do Evento */}
           <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
             <h2 style={{ color: '#5d34a4', marginTop: 0 }}>📋 Informações do Evento</h2>
             
@@ -165,7 +201,7 @@ export default function EventoDetalhesPage() {
               
               <div>
                 <strong>💺 Tipo de Evento:</strong><br />
-                {evento.tem_lugar_ma ? 'Com lugar marcado' : 'Sem lugar marcado'}
+                {evento.tem_lugar_marcado ? 'Com lugar marcado' : 'Sem lugar marcado'}
               </div>
               
               <div>
@@ -184,7 +220,6 @@ export default function EventoDetalhesPage() {
             </div>
           </div>
 
-          {/* Card Direito - Plano e Taxas */}
           <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
             <h2 style={{ color: '#5d34a4', marginTop: 0 }}>💳 Plano e Taxas</h2>
             
@@ -221,7 +256,6 @@ export default function EventoDetalhesPage() {
           </div>
         </div>
 
-        {/* Cards Financeiros */}
         <div style={{ 
           display: 'grid', 
           gridTemplateColumns: 'repeat(4, 1fr)', 
@@ -294,7 +328,6 @@ export default function EventoDetalhesPage() {
           </div>
         </div>
 
-        {/* Botões de Ação */}
         {!eventoPassado && (
           <div style={{ 
             display: 'flex', 
@@ -315,8 +348,6 @@ export default function EventoDetalhesPage() {
                 cursor: 'pointer',
                 transition: 'all 0.3s'
               }}
-              onMouseEnter={(e) => e.target.style.transform = 'scale(1.02)'}
-              onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
             >
               ➕ Adicionar Mais Ingressos
             </button>
@@ -335,15 +366,12 @@ export default function EventoDetalhesPage() {
                 cursor: 'pointer',
                 transition: 'all 0.3s'
               }}
-              onMouseEnter={(e) => e.target.style.transform = 'scale(1.02)'}
-              onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
             >
               🎬 Abrir Nova Sessão
             </button>
           </div>
         )}
 
-        {/* Seção de Ingressos por Tipo/Setor */}
         <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '25px' }}>
           <h2 style={{ color: '#5d34a4', marginTop: 0 }}>🎫 Detalhamento de Ingressos</h2>
           
@@ -364,7 +392,6 @@ export default function EventoDetalhesPage() {
           </div>
         </div>
 
-        {/* Imagem do Evento */}
         {evento.imagem_url && (
           <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
             <h2 style={{ color: '#5d34a4', marginTop: 0 }}>🖼️ Imagem do Evento</h2>
@@ -385,7 +412,7 @@ export default function EventoDetalhesPage() {
 
       </div>
 
-      {/* MODAL: Adicionar Mais Ingressos */}
+      {/* Modais (sem alteração) */}
       {mostrarModalIngressos && (
         <div style={{
           position: 'fixed',
@@ -404,9 +431,7 @@ export default function EventoDetalhesPage() {
             padding: '30px',
             borderRadius: '12px',
             maxWidth: '600px',
-            width: '90%',
-            maxHeight: '80vh',
-            overflowY: 'auto'
+            width: '90%'
           }}>
             <h2 style={{ color: '#5d34a4', marginTop: 0 }}>➕ Adicionar Mais Ingressos</h2>
             
@@ -419,12 +444,7 @@ export default function EventoDetalhesPage() {
               marginBottom: '20px'
             }}>
               <p style={{ fontSize: '48px', margin: '0 0 15px 0' }}>🚧</p>
-              <p style={{ margin: 0, fontSize: '16px' }}>
-                Funcionalidade em desenvolvimento
-              </p>
-              <p style={{ margin: '10px 0 0 0', fontSize: '14px', color: '#bdc3c7' }}>
-                Em breve você poderá adicionar mais ingressos com setores, tipos e lotes
-              </p>
+              <p>Funcionalidade em desenvolvimento</p>
             </div>
             
             <button
@@ -446,7 +466,6 @@ export default function EventoDetalhesPage() {
         </div>
       )}
 
-      {/* MODAL: Abrir Nova Sessão */}
       {mostrarModalSessao && (
         <div style={{
           position: 'fixed',
@@ -465,9 +484,7 @@ export default function EventoDetalhesPage() {
             padding: '30px',
             borderRadius: '12px',
             maxWidth: '600px',
-            width: '90%',
-            maxHeight: '80vh',
-            overflowY: 'auto'
+            width: '90%'
           }}>
             <h2 style={{ color: '#9b59b6', marginTop: 0 }}>🎬 Abrir Nova Sessão</h2>
             
@@ -480,12 +497,7 @@ export default function EventoDetalhesPage() {
               marginBottom: '20px'
             }}>
               <p style={{ fontSize: '48px', margin: '0 0 15px 0' }}>🚧</p>
-              <p style={{ margin: 0, fontSize: '16px' }}>
-                Funcionalidade em desenvolvimento
-              </p>
-              <p style={{ margin: '10px 0 0 0', fontSize: '14px', color: '#bdc3c7' }}>
-                Em breve você poderá criar novas sessões com datas, horários e ingressos específicos
-              </p>
+              <p>Funcionalidade em desenvolvimento</p>
             </div>
             
             <button
