@@ -1,42 +1,31 @@
 'use client';
 
 import { useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 function AtualizarSenhaContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   useEffect(() => {
-    // Verifica se há parâmetros na URL (query params)
-    const hasQueryParams = searchParams.get('token') || 
-                          searchParams.get('type') || 
-                          searchParams.get('access_token');
-    
-    // Verifica se há hash na URL
-    const hasHash = window.location.hash;
+    console.log('🔍 Página atualizar-senha carregada');
+    console.log('📋 URL completa:', window.location.href);
+    console.log('📋 Search:', window.location.search);
+    console.log('📋 Hash:', window.location.hash);
 
-    console.log('🔍 Verificando redirecionamento...');
-    console.log('📋 Query params:', hasQueryParams ? 'Encontrados' : 'Não encontrados');
-    console.log('📋 Hash:', hasHash ? 'Encontrado' : 'Não encontrado');
+    // Aguarda um pouco para garantir que a página carregou
+    const timer = setTimeout(() => {
+      const currentUrl = window.location.href;
+      
+      // Substitui atualizar-senha por nova-senha mantendo TUDO
+      if (currentUrl.includes('/atualizar-senha')) {
+        const newUrl = currentUrl.replace('/atualizar-senha', '/nova-senha');
+        console.log('✅ Redirecionando para:', newUrl);
+        window.location.replace(newUrl);
+      }
+    }, 100);
 
-    // Se tem query params OU hash, redireciona para nova-senha
-    if (hasQueryParams || hasHash) {
-      console.log('✅ Redirecionando para /nova-senha');
-      
-      // Redireciona mantendo os parâmetros e o hash
-      const fullUrl = window.location.href;
-      const newUrl = fullUrl.replace('/atualizar-senha', '/nova-senha');
-      
-      window.location.href = newUrl;
-    } else {
-      console.log('❌ Nenhum token encontrado, usuário acessou diretamente');
-      // Opcional: redirecionar para página de erro ou esqueci-senha
-      setTimeout(() => {
-        router.push('/esqueci-senha');
-      }, 3000);
-    }
-  }, [searchParams, router]);
+    return () => clearTimeout(timer);
+  }, [router]);
 
   return (
     <div style={{ 
@@ -56,7 +45,7 @@ function AtualizarSenhaContent() {
       }}>
         <div style={{ fontSize: '48px', marginBottom: '20px' }}>🔄</div>
         <h2 style={{ color: '#5d34a4', marginBottom: '10px' }}>Redirecionando...</h2>
-        <p style={{ color: '#666' }}>Aguarde um momento</p>
+        <p style={{ color: '#666' }}>Você será redirecionado para criar sua nova senha</p>
       </div>
     </div>
   );
