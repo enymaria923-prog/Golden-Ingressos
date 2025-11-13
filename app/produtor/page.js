@@ -89,43 +89,9 @@ export default function ProdutorPage() {
   };
 
   const buscarDadosIngressos = async (eventoId) => {
-    try {
-      // Busca todos os ingressos do evento
-      const { data: ingressos } = await supabase
-        .from('ingressos')
-        .select('preco, status')
-        .eq('evento_id', eventoId);
-
-      if (!ingressos || ingressos.length === 0) {
-        return {
-          total_ingressos: 0,
-          ingressos_vendidos: 0,
-          preco_medio: 0
-        };
-      }
-
-      // Calcula totais
-      const totalIngressos = ingressos.length;
-      const ingressosVendidos = ingressos.filter(i => i.status === 'vendido').length;
-      
-      // Calcula preço médio
-      const somaPrecos = ingressos.reduce((sum, i) => sum + (parseFloat(i.preco) || 0), 0);
-      const precoMedio = totalIngressos > 0 ? somaPrecos / totalIngressos : 0;
-
-      return {
-        total_ingressos: totalIngressos,
-        ingressos_vendidos: ingressosVendidos,
-        preco_medio: precoMedio
-      };
-
-    } catch (error) {
-      console.error('Erro ao buscar ingressos:', error);
-      return {
-        total_ingressos: 0,
-        ingressos_vendidos: 0,
-        preco_medio: 0
-      };
-    }
+    // Os dados já vêm direto do evento, não precisa buscar separadamente
+    // A tabela eventos já tem: total_ingressos, ingressos_vendidos, preco_medio
+    return {};
   };
 
   const calcularBonusGolden = (evento) => {
