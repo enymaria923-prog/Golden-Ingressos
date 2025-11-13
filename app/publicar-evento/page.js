@@ -30,59 +30,56 @@ const PublicarEvento = () => {
     taxaProdutor: 5 
   });
   
+  // ESTADO PARA GUARDAR OS SETORES E INGRESSOS
+  const [setoresIngressos, setSetoresIngressos] = useState([]);
+  
   const [imagem, setImagem] = useState(null); 
   const [imagemPreview, setImagemPreview] = useState(null); 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef(null);
 
-  // VERIFICA SE O USUÁRIO ESTÁ LOGADO
-useEffect(() => {
-  checkUser();
-  
-  // Escuta mudanças de autenticação
-  const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-    console.log('🔄 Auth mudou:', event);
-    if (session?.user) {
-      console.log('✅ Usuário detectado:', session.user.email);
-      setUser(session.user);
+  useEffect(() => {
+    checkUser();
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('🔄 Auth mudou:', event);
+      if (session?.user) {
+        console.log('✅ Usuário detectado:', session.user.email);
+        setUser(session.user);
+        setLoading(false);
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setLoading(false);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const checkUser = async () => {
+    try {
+      console.log('🔍 Verificando usuário...');
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      console.log('📦 Sessão:', session);
+      
+      if (session?.user) {
+        console.log('✅ Usuário logado:', session.user.email);
+        setUser(session.user);
+      } else {
+        console.log('❌ Nenhum usuário logado');
+      }
+      
       setLoading(false);
-    } else if (event === 'SIGNED_OUT') {
-      setUser(null);
+    } catch (error) {
+      console.error('💥 Erro:', error);
       setLoading(false);
     }
-  });
-
-  return () => {
-    subscription.unsubscribe();
   };
-}, []);
-
-const checkUser = async () => {
-  try {
-    console.log('🔍 Verificando usuário...');
-    
-    // Aguarda um pouquinho pro Supabase carregar
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    console.log('📦 Sessão:', session);
-    console.log('🍪 Cookies:', document.cookie); // Mostra os cookies
-    
-    if (session?.user) {
-      console.log('✅ Usuário logado:', session.user.email);
-      setUser(session.user);
-    } else {
-      console.log('❌ Nenhum usuário logado - Aguardando listener...');
-      // NÃO seta loading como false aqui, deixa o listener fazer isso
-    }
-    
-    setLoading(false);
-  } catch (error) {
-    console.error('💥 Erro:', error);
-    setLoading(false);
-  }
-};
   
   const handleFormChange = (e) => {
     const { name, value } = e.target;
@@ -127,7 +124,6 @@ const checkUser = async () => {
     e.preventDefault();
     if (isSubmitting) return;
 
-    // VERIFICA SE ESTÁ LOGADO ANTES DE ENVIAR
     if (!user) {
       alert('⚠️ Você precisa estar logado para publicar eventos!');
       router.push('/login');
@@ -142,6 +138,22 @@ const checkUser = async () => {
       alert('Por favor, selecione pelo menos uma categoria!');
       return;
     }
+
+    // VALIDAR SETORES E INGRESSOS
+    if (!setoresIngressos || setoresIngressos.length === 0) {
+      alert('Por favor, adicione pelo menos um setor com ingressos!');
+      return;
+    }
+
+    // Verifica se tem pelo menos um tipo de ingresso
+    const temIngressos = setoresIngressos.some(setor => 
+      setor.tiposIngresso && setor.tiposIngresso.length > 0
+    );
+
+    if (!temIngressos) {
+      alert('Por favor, adicione pelo menos um tipo de ingresso em algum setor!');
+      return;
+    }
     
     setIsSubmitting(true);
     let publicUrl = '';
@@ -149,9 +161,9 @@ const checkUser = async () => {
 
     try {
       console.log('👤 Publicando como usuário:', user.id);
-      console.log('📧 Email do usuário:', user.email);
+      console.log('🎫 Setores e Ingressos:', setoresIngressos);
 
-      // --- UPLOAD DE IMAGEM ---
+      // UPLOAD DE IMAGEM
       if (imagem) {
         const fileExtension = imagem.name.split('.').pop();
         const timestamp = Date.now();
@@ -183,7 +195,7 @@ const checkUser = async () => {
         console.log('🔗 URL pública:', publicUrl);
       }
 
-      // --- DADOS DO EVENTO ---
+      // CRIAR EVENTO
       const eventData = {
         nome: formData.titulo,
         descricao: formData.descricao,
@@ -192,16 +204,17 @@ const checkUser = async () => {
         local: formData.localNome,
         endereco: formData.localEndereco || null,
         categoria: categorias[0],
-        tem_lugar_ma: temLugarMarcado,
+        tem_lugar_marcado: temLugarMarcado,
         TaxaCliente: taxa.taxaComprador,
         TaxaProdutor: taxa.taxaProdutor,
         imagem_url: publicUrl,
         status: 'pendente',
-        user_id: user.id, // ID DO USUÁRIO LOGADO
-        produtor_email: user.email, // EMAIL DO PRODUTOR
-        produtor_nome: user.user_metadata?.name || user.email, // NOME DO PRODUTOR
-        ingressos_vendidos: 0, // INICIA COM ZERO
-   
+        user_id: user.id,
+        produtor_email: user.email,
+        produtor_nome: user.user_metadata?.name || user.email,
+        ingressos_vendidos: 0,
+        total_ingressos: 0, // Será calculado depois
+        preco_medio: 0 // Será calculado depois
       };
 
       console.log('📝 Inserindo evento no banco...', eventData);
@@ -214,7 +227,6 @@ const checkUser = async () => {
       if (insertError) {
         console.error('❌ Erro na inserção:', insertError);
         
-        // Remove a imagem se o evento não foi criado
         if (uploadedFilePath) {
           console.log('🗑️ Removendo imagem do storage...');
           await supabase.storage.from('imagens_eventos').remove([uploadedFilePath]);
@@ -223,8 +235,50 @@ const checkUser = async () => {
         throw new Error(`Erro ao inserir evento: ${insertError.message}`);
       }
       
-      console.log('✅ Evento criado com sucesso!', insertedData);
-      alert('🎉 Evento enviado para moderação! Em breve estará disponível no site.');
+      const eventoId = insertedData[0].id;
+      console.log('✅ Evento criado com ID:', eventoId);
+
+      // AGORA SALVAR OS INGRESSOS NA TABELA INGRESSOS
+      console.log('🎫 Salvando ingressos...');
+      
+      const ingressosParaSalvar = [];
+      
+      setoresIngressos.forEach(setor => {
+        setor.tiposIngresso.forEach(tipo => {
+          const quantidade = parseInt(tipo.quantidade) || 0;
+          const valor = parseFloat(tipo.preco) || 0;
+          
+          if (quantidade > 0 && valor > 0) {
+            ingressosParaSalvar.push({
+              evento_id: eventoId,
+              tipo: tipo.nome || 'Não informado',
+              valor: valor.toString(),
+              quantidade: quantidade,
+              vendidos: 0,
+              status_ingresso: 'disponivel',
+              user_id: user.id,
+              codigo: `${eventoId}-${setor.nome}-${tipo.nome}`.replace(/\s+/g, '-').toLowerCase()
+            });
+          }
+        });
+      });
+
+      console.log('💾 Ingressos a serem salvos:', ingressosParaSalvar);
+
+      if (ingressosParaSalvar.length > 0) {
+        const { error: ingressosError } = await supabase
+          .from('ingressos')
+          .insert(ingressosParaSalvar);
+
+        if (ingressosError) {
+          console.error('❌ Erro ao salvar ingressos:', ingressosError);
+          throw new Error(`Erro ao salvar ingressos: ${ingressosError.message}`);
+        }
+
+        console.log('✅ Ingressos salvos com sucesso!');
+      }
+      
+      alert('🎉 Evento publicado com sucesso! Em breve estará disponível no site.');
       
       // Limpar formulário
       setFormData({
@@ -233,63 +287,47 @@ const checkUser = async () => {
       setCategorias([]);
       setTemLugarMarcado(false);
       setTaxa({ taxaComprador: 15, taxaProdutor: 5 });
+      setSetoresIngressos([]);
       setImagem(null);
       setImagemPreview(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
 
-      // Redireciona para meus eventos (opcional)
-      // router.push('/meus-ingressos');
+      // Redirecionar para área do produtor
+      router.push('/produtor');
 
     } catch (error) {
       console.error('💥 Erro no processo de publicação:', error);
-      alert(`❌ Erro ao publicar evento: ${error.message}\n\nSe o problema persistir, entre em contato com o suporte.`);
+      alert(`❌ Erro ao publicar evento: ${error.message}`);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // MOSTRA LOADING ENQUANTO VERIFICA AUTH
   if (loading) {
     return (
       <div className="publicar-evento-container" style={{ textAlign: 'center', padding: '50px' }}>
         <h2>🔄 Verificando autenticação...</h2>
         <p>Aguarde um momento...</p>
-        <p style={{ fontSize: '12px', color: '#999', marginTop: '20px' }}>
-          Checando sua sessão... Abra o console (F12) para ver detalhes.
-        </p>
       </div>
     );
   }
 
-  // SE NÃO ESTIVER LOGADO, MOSTRA AVISO MAS NÃO REDIRECIONA AUTOMATICAMENTE
   if (!user) {
-    console.log('⚠️ Renderizando tela de acesso negado');
     return (
       <div className="publicar-evento-container" style={{ textAlign: 'center', padding: '50px' }}>
         <h2>⚠️ Sessão não encontrada</h2>
         <p>Não conseguimos verificar seu login.</p>
-        <p style={{ fontSize: '14px', color: '#666', margin: '20px 0' }}>
-          Isso pode acontecer se você acabou de fazer login. Tente:
-        </p>
-        <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap', marginTop: '20px' }}>
           <button onClick={checkUser} className="btn-submit" style={{ background: '#2196F3' }}>
             🔄 Tentar Novamente
           </button>
           <button onClick={() => router.push('/login')} className="btn-submit">
             🔐 Ir para Login
           </button>
-          <button onClick={() => router.push('/')} className="btn-submit" style={{ background: '#666' }}>
-            🏠 Voltar ao Início
-          </button>
         </div>
-        <p style={{ fontSize: '12px', color: '#999', marginTop: '30px' }}>
-          Debug: Abra o console (F12) para ver os logs detalhados
-        </p>
       </div>
     );
   }
-
-  console.log('✅ Renderizando formulário - Usuário:', user.email);
 
   return (
     <div className="publicar-evento-container">
@@ -311,7 +349,7 @@ const checkUser = async () => {
               name="titulo"
               value={formData.titulo}
               onChange={handleFormChange}
-              placeholder="Ex: Show da Banda X, Peça de Teatro Y"
+              placeholder="Ex: Show da Banda X"
               required
             />
           </div>
@@ -322,12 +360,11 @@ const checkUser = async () => {
               name="descricao"
               value={formData.descricao}
               onChange={handleFormChange}
-              placeholder="Descreva detalhadamente o seu evento..."
+              placeholder="Descreva seu evento..."
               required
             />
           </div>
 
-          {/* Campo de Imagem */}
           <div className="form-group">
             <label>Imagem do Evento *</label>
             <div className="image-upload-container">
@@ -354,11 +391,9 @@ const checkUser = async () => {
                 <div className="image-upload-area" onClick={handleClickUpload}>
                   <div className="upload-icon">📷</div>
                   <p>Clique para selecionar uma imagem</p>
-                  <small>Arraste ou clique para fazer upload</small>
                 </div>
               )}
             </div>
-            <small>Formatos aceitos: JPG, PNG, GIF. Tamanho máximo: 5MB</small>
           </div>
 
           <CategoriaSelector onCategoriasChange={setCategorias} />
@@ -382,9 +417,8 @@ const checkUser = async () => {
               name="localEndereco"
               value={formData.localEndereco}
               onChange={handleFormChange}
-              placeholder="Ex: Rua Exemplo, 123 - Bairro - Cidade/Estado"
+              placeholder="Ex: Rua Exemplo, 123"
             />
-            <small>Pode deixar em branco - nossa equipe completará se necessário</small>
           </div>
 
           <div className="form-row">
@@ -412,7 +446,6 @@ const checkUser = async () => {
           </div>
         </div>
 
-        {/* Configuração de Assentos */}
         <div className="form-section">
           <h2>Configuração de Assentos</h2>
           <div className="form-group">
@@ -424,24 +457,21 @@ const checkUser = async () => {
               />
               Evento com lugar marcado
             </label>
-            <small>Marque esta opção se o evento terá assentos numerados</small>
           </div>
         </div>
 
-        {/* Setores e Ingressos */}
         <div className="form-section">
-          <h2>Setores e Ingressos</h2>
-          <SetorManager />
+          <h2>Setores e Ingressos *</h2>
+          <SetorManager onSetoresChange={setSetoresIngressos} />
         </div>
 
-        {/* Configuração de Taxas */}
         <div className="form-section">
           <h2>Configuração de Taxas</h2>
           <SelecionarTaxa onTaxaSelecionada={setTaxa} />
         </div>
 
         <button type="submit" className="btn-submit" disabled={isSubmitting}>
-          {isSubmitting ? '⏳ Enviando para Moderação...' : '🚀 Publicar Evento'}
+          {isSubmitting ? '⏳ Publicando...' : '🚀 Publicar Evento'}
         </button>
       </form>
     </div>
