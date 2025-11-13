@@ -21,7 +21,6 @@ export default function ProdutorPage() {
 
   const carregarDados = async () => {
     try {
-      // Verifica usuário
       const { data: { user: userData }, error: userError } = await supabase.auth.getUser();
       
       if (userError || !userData) {
@@ -31,7 +30,6 @@ export default function ProdutorPage() {
       
       setUser(userData);
 
-      // Busca dados do produtor
       const { data: produtorData } = await supabase
         .from('produtores')
         .select('*')
@@ -40,7 +38,6 @@ export default function ProdutorPage() {
       
       setProdutor(produtorData);
 
-      // Busca eventos futuros
       const dataHoje = new Date().toISOString().split('T')[0];
       const { data: eventosFuturos } = await supabase
         .from('eventos')
@@ -49,17 +46,8 @@ export default function ProdutorPage() {
         .gte('data', dataHoje)
         .order('data', { ascending: true });
 
-      // Para cada evento, busca os ingressos
-      const eventosComIngressos = await Promise.all(
-        (eventosFuturos || []).map(async (evento) => {
-          const dadosIngressos = await buscarDadosIngressos(evento.id);
-          return { ...evento, ...dadosIngressos };
-        })
-      );
+      setEventos(eventosFuturos || []);
 
-      setEventos(eventosComIngressos);
-
-      // Busca eventos passados
       const { data: eventosPass } = await supabase
         .from('eventos')
         .select('*')
@@ -67,17 +55,9 @@ export default function ProdutorPage() {
         .lt('data', dataHoje)
         .order('data', { ascending: false });
 
-      const eventosPassadosComIngressos = await Promise.all(
-        (eventosPass || []).map(async (evento) => {
-          const dadosIngressos = await buscarDadosIngressos(evento.id);
-          return { ...evento, ...dadosIngressos };
-        })
-      );
+      setEventosPassados(eventosPass || []);
 
-      setEventosPassados(eventosPassadosComIngressos);
-
-      // Calcula lucro total
-      const todosEventos = [...eventosComIngressos, ...eventosPassadosComIngressos];
+      const todosEventos = [...(eventosFuturos || []), ...(eventosPass || [])];
       const lucro = calcularLucroTotal(todosEventos);
       setLucroTotal(lucro);
 
@@ -88,20 +68,13 @@ export default function ProdutorPage() {
     }
   };
 
-  const buscarDadosIngressos = async (eventoId) => {
-    // Os dados já vêm direto do evento, não precisa buscar separadamente
-    // A tabela eventos já tem: total_ingressos, ingressos_vendidos, preco_medio
-    return {};
-  };
-
   const calcularBonusGolden = (evento) => {
-    const taxaCliente = evento.TaxaCliente || 0;
+    const taxaCliente = evento.TaxaCliente || evento.taxacliente || 0;
     const ingressosVendidos = evento.ingressos_vendidos || 0;
-    const precoMedio = evento.preco_medio || 0;
+    const precoMedio = parseFloat(evento.preco_medio) || 0;
     
     const valorTotal = ingressosVendidos * precoMedio;
     
-    // Lógica: 15% = 5%, 10% = 3%, 8% = 0%
     let percentualBonus = 0;
     if (taxaCliente === 15) percentualBonus = 5;
     else if (taxaCliente === 10) percentualBonus = 3;
@@ -117,15 +90,16 @@ export default function ProdutorPage() {
   };
 
   const calcularDadosEvento = (evento) => {
-    const ingressosVendidos = evento.ingressos_vendidos || 0;
     const totalIngressos = evento.total_ingressos || 0;
+    const ingressosVendidos = evento.ingressos_vendidos || 0;
     const ingressosDisponiveis = Math.max(0, totalIngressos - ingressosVendidos);
-    const precoMedio = evento.preco_medio || 0;
+    const precoMedio = parseFloat(evento.preco_medio) || 0;
     const valorTotalIngressos = ingressosVendidos * precoMedio;
     const bonusGolden = calcularBonusGolden(evento);
     const totalReceber = valorTotalIngressos + bonusGolden;
 
     return {
+      totalIngressos,
       ingressosVendidos,
       ingressosDisponiveis,
       valorTotalIngressos,
@@ -387,7 +361,7 @@ export default function ProdutorPage() {
             boxShadow: '0 2px 10px rgba(0,0,0,0.05)'
           }}>
             <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#e74c3c' }}>
-              {eventos.reduce((sum, e) => sum + ((e.total_ingressos || 0) - (e.ingressos_vendidos || 0)), 0)}
+              {eventos.reduce((sum, e) => sum + Math.max(0, (e.total_ingressos || 0) - (e.ingressos_vendidos || 0)), 0)}
             </div>
             <div style={{ fontSize: '14px', color: '#7f8c8d', marginTop: '5px' }}>
               Ingressos Disponíveis
