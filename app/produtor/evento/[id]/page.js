@@ -26,7 +26,7 @@ export default function EventoDetalhesPage() {
 
   const carregarEvento = async () => {
     try {
-      // Carrega evento
+      // Carrega evento (já vem com total_ingressos, ingressos_vendidos, preco_medio)
       const { data, error } = await supabase
         .from('eventos')
         .select('*')
@@ -34,11 +34,9 @@ export default function EventoDetalhesPage() {
         .single();
 
       if (error) throw error;
+      
+      console.log('📊 Dados do evento:', data);
       setEvento(data);
-
-      // Busca dados dos ingressos
-      const dadosIngs = await buscarDadosIngressos(eventoId);
-      setDadosIngressos(dadosIngs);
 
     } catch (error) {
       console.error('Erro ao carregar evento:', error);
