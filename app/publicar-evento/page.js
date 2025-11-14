@@ -139,21 +139,13 @@ const PublicarEvento = () => {
       return;
     }
 
-    // VALIDAR SETORES E INGRESSOS
-    if (!setoresIngressos || setoresIngressos.length === 0) {
-      alert('Por favor, adicione pelo menos um setor com ingressos!');
-      return;
-    }
-
-    // Verifica se tem pelo menos um tipo de ingresso
-    const temIngressos = setoresIngressos.some(setor => 
-      setor.tiposIngresso && setor.tiposIngresso.length > 0
-    );
-
-    if (!temIngressos) {
-      alert('Por favor, adicione pelo menos um tipo de ingresso em algum setor!');
-      return;
-    }
+    // VALIDAR SETORES E INGRESSOS (comentado temporariamente)
+    console.log('🎫 Setores recebidos:', setoresIngressos);
+    
+    // if (!setoresIngressos || setoresIngressos.length === 0) {
+    //   alert('Por favor, adicione pelo menos um setor com ingressos!');
+    //   return;
+    // }
     
     setIsSubmitting(true);
     let publicUrl = '';
