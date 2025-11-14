@@ -9,7 +9,6 @@ export default function ProdutorPage() {
   const router = useRouter();
   
   const [user, setUser] = useState(null);
-  const [produtor, setProdutor] = useState(null);
   const [eventos, setEventos] = useState([]);
   const [eventosPassados, setEventosPassados] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,15 +29,9 @@ export default function ProdutorPage() {
       
       setUser(userData);
 
-      // Removido a busca da tabela produtores (não existe)
-      // const { data: produtorData } = await supabase
-      //   .from('produtores')
-      //   .select('*')
-      //   .eq('id', userData.id)
-      //   .single();
-      // setProdutor(produtorData);
-
       const dataHoje = new Date().toISOString().split('T')[0];
+      
+      // BUSCAR EVENTOS FUTUROS
       const { data: eventosFuturos } = await supabase
         .from('eventos')
         .select('*')
@@ -46,8 +39,52 @@ export default function ProdutorPage() {
         .gte('data', dataHoje)
         .order('data', { ascending: true });
 
-      setEventos(eventosFuturos || []);
+      // BUSCAR INGRESSOS DE CADA EVENTO FUTURO
+      if (eventosFuturos && eventosFuturos.length > 0) {
+        const eventosComIngressos = await Promise.all(
+          eventosFuturos.map(async (evento) => {
+            const { data: ingressos } = await supabase
+              .from('ingressos')
+              .select('*')
+              .eq('evento_id', evento.id);
 
+            // CALCULAR TOTAIS BASEADO NOS INGRESSOS REAIS
+            let totalIngressosReal = 0;
+            let totalVendidosReal = 0;
+            let somaPrecos = 0;
+            let totalTipos = 0;
+
+            if (ingressos && ingressos.length > 0) {
+              ingressos.forEach(ing => {
+                const qtd = parseInt(ing.quantidade) || 0;
+                const vendidos = parseInt(ing.vendidos) || 0;
+                const preco = parseFloat(ing.valor) || 0;
+
+                totalIngressosReal += qtd;
+                totalVendidosReal += vendidos;
+                somaPrecos += preco;
+                totalTipos++;
+              });
+            }
+
+            const precoMedioReal = totalTipos > 0 ? (somaPrecos / totalTipos) : 0;
+
+            return {
+              ...evento,
+              total_ingressos: totalIngressosReal,
+              ingressos_vendidos: totalVendidosReal,
+              preco_medio: precoMedioReal,
+              ingressos_detalhados: ingressos || []
+            };
+          })
+        );
+
+        setEventos(eventosComIngressos);
+      } else {
+        setEventos([]);
+      }
+
+      // BUSCAR EVENTOS PASSADOS
       const { data: eventosPass } = await supabase
         .from('eventos')
         .select('*')
@@ -55,8 +92,50 @@ export default function ProdutorPage() {
         .lt('data', dataHoje)
         .order('data', { ascending: false });
 
-      setEventosPassados(eventosPass || []);
+      if (eventosPass && eventosPass.length > 0) {
+        const eventosPassadosComIngressos = await Promise.all(
+          eventosPass.map(async (evento) => {
+            const { data: ingressos } = await supabase
+              .from('ingressos')
+              .select('*')
+              .eq('evento_id', evento.id);
 
+            let totalIngressosReal = 0;
+            let totalVendidosReal = 0;
+            let somaPrecos = 0;
+            let totalTipos = 0;
+
+            if (ingressos && ingressos.length > 0) {
+              ingressos.forEach(ing => {
+                const qtd = parseInt(ing.quantidade) || 0;
+                const vendidos = parseInt(ing.vendidos) || 0;
+                const preco = parseFloat(ing.valor) || 0;
+
+                totalIngressosReal += qtd;
+                totalVendidosReal += vendidos;
+                somaPrecos += preco;
+                totalTipos++;
+              });
+            }
+
+            const precoMedioReal = totalTipos > 0 ? (somaPrecos / totalTipos) : 0;
+
+            return {
+              ...evento,
+              total_ingressos: totalIngressosReal,
+              ingressos_vendidos: totalVendidosReal,
+              preco_medio: precoMedioReal,
+              ingressos_detalhados: ingressos || []
+            };
+          })
+        );
+
+        setEventosPassados(eventosPassadosComIngressos);
+      } else {
+        setEventosPassados([]);
+      }
+
+      // CALCULAR LUCRO TOTAL
       const todosEventos = [...(eventosFuturos || []), ...(eventosPass || [])];
       const lucro = calcularLucroTotal(todosEventos);
       setLucroTotal(lucro);
