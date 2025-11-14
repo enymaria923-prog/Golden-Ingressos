@@ -18,7 +18,7 @@ const SetorManager = ({ onSetoresChange }) => {
     if (onSetoresChange) {
       onSetoresChange(setores);
     }
-  }, [setores]);
+  }, [setores, onSetoresChange]);
 
   const adicionarSetor = () => {
     const novoSetor = {
@@ -139,13 +139,14 @@ const SetorManager = ({ onSetoresChange }) => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
             <div>
               <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                Nome do Setor
+                Nome do Setor *
               </label>
               <input
                 type="text"
                 value={setor.nome}
                 onChange={(e) => atualizarSetor(setor.id, 'nome', e.target.value)}
                 placeholder="Ex: VIP, Camarote, Pista Premium"
+                required
                 style={{
                   width: '100%',
                   padding: '10px',
@@ -158,29 +159,6 @@ const SetorManager = ({ onSetoresChange }) => {
             </div>
 
             <div>
-              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                Capacidade Total do Setor (opcional)
-              </label>
-              <input
-                type="number"
-                value={setor.capacidadeTotal}
-                onChange={(e) => atualizarSetor(setor.id, 'capacidadeTotal', e.target.value)}
-                placeholder="Quantidade total de ingressos neste setor"
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  border: '1px solid #ddd',
-                  borderRadius: '5px',
-                  boxSizing: 'border-box',
-                  fontSize: '14px'
-                }}
-              />
-              <small style={{ color: '#666' }}>
-                - Deixe em branco para controle por tipo de ingresso
-              </small>
-            </div>
-
-            <div style={{ marginTop: '10px' }}>
               <h4 style={{ marginBottom: '10px', color: '#333' }}>Tipos de Ingresso neste Setor</h4>
               
               {setor.tiposIngresso.map((tipo, tipoIndex) => (
@@ -192,13 +170,14 @@ const SetorManager = ({ onSetoresChange }) => {
                 }}>
                   <div style={{ flex: 1 }}>
                     <label style={{ display: 'block', fontSize: '12px', marginBottom: '3px' }}>
-                      Nome (ex: Inteira, Meia, Promocional)
+                      Nome * (ex: Inteira, Meia, Promocional)
                     </label>
                     <input
                       type="text"
                       value={tipo.nome}
                       onChange={(e) => atualizarTipoIngresso(setor.id, tipo.id, 'nome', e.target.value)}
                       placeholder="Nome do tipo"
+                      required
                       style={{
                         width: '100%',
                         padding: '8px',
@@ -211,14 +190,16 @@ const SetorManager = ({ onSetoresChange }) => {
 
                   <div style={{ width: '120px' }}>
                     <label style={{ display: 'block', fontSize: '12px', marginBottom: '3px' }}>
-                      Preço (R$)
+                      Preço (R$) *
                     </label>
                     <input
                       type="number"
                       step="0.01"
+                      min="0"
                       value={tipo.preco}
                       onChange={(e) => atualizarTipoIngresso(setor.id, tipo.id, 'preco', e.target.value)}
                       placeholder="0.00"
+                      required
                       style={{
                         width: '100%',
                         padding: '8px',
@@ -231,13 +212,15 @@ const SetorManager = ({ onSetoresChange }) => {
 
                   <div style={{ width: '120px' }}>
                     <label style={{ display: 'block', fontSize: '12px', marginBottom: '3px' }}>
-                      Quantidade
+                      Quantidade *
                     </label>
                     <input
                       type="number"
+                      min="1"
                       value={tipo.quantidade}
                       onChange={(e) => atualizarTipoIngresso(setor.id, tipo.id, 'quantidade', e.target.value)}
                       placeholder="0"
+                      required
                       style={{
                         width: '100%',
                         padding: '8px',
