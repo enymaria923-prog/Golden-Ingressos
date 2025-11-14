@@ -30,13 +30,13 @@ export default function ProdutorPage() {
       
       setUser(userData);
 
-      const { data: produtorData } = await supabase
-        .from('produtores')
-        .select('*')
-        .eq('id', userData.id)
-        .single();
-      
-      setProdutor(produtorData);
+      // Removido a busca da tabela produtores (não existe)
+      // const { data: produtorData } = await supabase
+      //   .from('produtores')
+      //   .select('*')
+      //   .eq('id', userData.id)
+      //   .single();
+      // setProdutor(produtorData);
 
       const dataHoje = new Date().toISOString().split('T')[0];
       const { data: eventosFuturos } = await supabase
