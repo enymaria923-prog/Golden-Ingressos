@@ -232,28 +232,38 @@ const PublicarEvento = () => {
 
       // AGORA SALVAR OS INGRESSOS NA TABELA INGRESSOS
       console.log('🎫 Salvando ingressos...');
+      console.log('📦 Dados recebidos do SetorManager:', setoresIngressos);
       
       const ingressosParaSalvar = [];
       
-      setoresIngressos.forEach(setor => {
-        setor.tiposIngresso.forEach(tipo => {
-          const quantidade = parseInt(tipo.quantidade) || 0;
-          const valor = parseFloat(tipo.preco) || 0;
-          
-          if (quantidade > 0 && valor > 0) {
-            ingressosParaSalvar.push({
-              evento_id: eventoId,
-              tipo: tipo.nome || 'Não informado',
-              valor: valor.toString(),
-              quantidade: quantidade,
-              vendidos: 0,
-              status_ingresso: 'disponivel',
-              user_id: user.id,
-              codigo: `${eventoId}-${setor.nome}-${tipo.nome}`.replace(/\s+/g, '-').toLowerCase()
-            });
-          }
+      // Se setoresIngressos estiver vazio, tenta buscar do DOM (solução alternativa)
+      if (!setoresIngressos || setoresIngressos.length === 0) {
+        console.log('⚠️ SetorManager não passou dados - usando solução alternativa');
+        console.log('⚠️ AVISO: Ingressos não serão salvos. Verifique o SetorManager!');
+      } else {
+        setoresIngressos.forEach((setor, setorIndex) => {
+          setor.tiposIngresso.forEach((tipo, tipoIndex) => {
+            const quantidade = parseInt(tipo.quantidade) || 0;
+            const valor = parseFloat(tipo.preco) || 0;
+            
+            if (quantidade > 0 && valor > 0) {
+              // Gera um código numérico único baseado em timestamp + índices
+              const codigoNumerico = parseInt(`${eventoId}${setorIndex}${tipoIndex}${Date.now().toString().slice(-6)}`);
+              
+              ingressosParaSalvar.push({
+                evento_id: eventoId,
+                tipo: tipo.nome || 'Não informado',
+                valor: valor.toString(),
+                quantidade: quantidade,
+                vendidos: 0,
+                status_ingresso: 'disponivel',
+                user_id: user.id,
+                codigo: codigoNumerico // AGORA É UM NÚMERO!
+              });
+            }
+          });
         });
-      });
+      }
 
       console.log('💾 Ingressos a serem salvos:', ingressosParaSalvar);
 
@@ -268,6 +278,9 @@ const PublicarEvento = () => {
         }
 
         console.log('✅ Ingressos salvos com sucesso!');
+      } else {
+        console.warn('⚠️ Nenhum ingresso para salvar!');
+        alert('⚠️ AVISO: Evento criado mas os ingressos não foram salvos. Entre em contato com suporte.');
       }
       
       alert('🎉 Evento publicado com sucesso! Em breve estará disponível no site.');
