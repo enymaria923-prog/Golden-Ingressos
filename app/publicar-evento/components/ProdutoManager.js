@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-const ProdutoManager = ({ onProdutosChange }) => {
+const ProdutoManager = ({ onProdutosChange, cupons = [] }) => {
   const [vendeProdutos, setVendeProdutos] = useState(false);
   const [produtos, setProdutos] = useState([]);
 
@@ -21,7 +21,9 @@ const ProdutoManager = ({ onProdutosChange }) => {
       tamanho: '',
       imagem: null,
       imagemPreview: null,
-      tipoProduto: 'outro'
+      tipoProduto: 'outro',
+      aceitaCupons: false,
+      precosPorCupom: {}
     };
     setProdutos([...produtos, novoProduto]);
   };
@@ -33,7 +35,32 @@ const ProdutoManager = ({ onProdutosChange }) => {
   const atualizarProduto = (produtoId, campo, valor) => {
     setProdutos(produtos.map(produto => {
       if (produto.id === produtoId) {
-        return { ...produto, [campo]: valor };
+        const atualizado = { ...produto, [campo]: valor };
+        
+        if (campo === 'aceitaCupons' && valor === true && cupons.length > 0) {
+          cupons.forEach(cupom => {
+            if (!atualizado.precosPorCupom[cupom.id]) {
+              atualizado.precosPorCupom[cupom.id] = produto.preco || '';
+            }
+          });
+        }
+        
+        return atualizado;
+      }
+      return produto;
+    }));
+  };
+
+  const atualizarPrecoCupomProduto = (produtoId, cupomId, valor) => {
+    setProdutos(produtos.map(produto => {
+      if (produto.id === produtoId) {
+        return {
+          ...produto,
+          precosPorCupom: {
+            ...produto.precosPorCupom,
+            [cupomId]: valor
+          }
+        };
       }
       return produto;
     }));
@@ -290,6 +317,70 @@ const ProdutoManager = ({ onProdutosChange }) => {
                       <option value="XG">XG</option>
                       <option value="Único">Tamanho Único</option>
                     </select>
+                  </div>
+                )}
+
+                {cupons && cupons.length > 0 && (
+                  <div style={{ gridColumn: '1 / -1', background: '#f0f8ff', padding: '15px', borderRadius: '8px', border: '2px dashed #667eea' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={produto.aceitaCupons}
+                        onChange={(e) => atualizarProduto(produto.id, 'aceitaCupons', e.target.checked)}
+                        style={{ width: '20px', height: '20px' }}
+                      />
+                      <span style={{ fontWeight: 'bold', fontSize: '14px', color: '#667eea' }}>
+                        🎟️ Este produto aceita cupons de desconto
+                      </span>
+                    </label>
+
+                    {produto.aceitaCupons && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div style={{ fontSize: '13px', color: '#555', marginBottom: '5px' }}>
+                          <strong>Defina o preço deste produto COM cada cupom aplicado:</strong>
+                        </div>
+                        {cupons.map((cupom) => {
+                          const precoOriginal = parseFloat(produto.preco) || 0;
+                          const precoComCupom = parseFloat(produto.precosPorCupom[cupom.id]) || 0;
+                          const desconto = precoOriginal > 0 ? ((precoOriginal - precoComCupom) / precoOriginal * 100).toFixed(0) : 0;
+
+                          return (
+                            <div key={cupom.id} style={{ background: 'white', padding: '12px', borderRadius: '8px', border: '1px solid #ddd' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <div style={{ flex: 1 }}>
+                                  <div style={{ fontWeight: 'bold', fontSize: '13px', color: '#764ba2', marginBottom: '3px' }}>
+                                    Cupom: {cupom.codigo || `Cupom ${cupons.indexOf(cupom) + 1}`}
+                                  </div>
+                                  <div style={{ fontSize: '12px', color: '#666' }}>
+                                    Preço original: <span style={{ textDecoration: 'line-through' }}>R$ {precoOriginal.toFixed(2)}</span>
+                                    {desconto > 0 && <span style={{ color: '#e74c3c', fontWeight: 'bold', marginLeft: '5px' }}>(-{desconto}%)</span>}
+                                  </div>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px', width: '150px' }}>
+                                  <span style={{ fontSize: '12px', fontWeight: 'bold' }}>R$</span>
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0"
+                                    value={produto.precosPorCupom[cupom.id] || ''}
+                                    onChange={(e) => atualizarPrecoCupomProduto(produto.id, cupom.id, e.target.value)}
+                                    placeholder="0.00"
+                                    style={{ 
+                                      flex: 1,
+                                      padding: '8px', 
+                                      border: '2px solid #667eea', 
+                                      borderRadius: '6px', 
+                                      fontSize: '14px',
+                                      fontWeight: 'bold'
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 )}
 
