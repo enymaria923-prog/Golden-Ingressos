@@ -81,7 +81,14 @@ export default function VitrinePage() {
   const handleLinkClick = async (link) => {
     // Incrementar cliques
     await supabase.rpc('incrementar_clique_link', { link_id: link.id });
-    window.open(link.url, '_blank');
+    
+    // Adicionar https:// se não tiver protocolo
+    let url = link.url;
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = 'https://' + url;
+    }
+    
+    window.open(url, '_blank');
   };
 
   const handleEventoClick = (evento) => {
