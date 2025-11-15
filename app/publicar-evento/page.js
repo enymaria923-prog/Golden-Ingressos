@@ -4,9 +4,6 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '../../utils/supabase/client';
 import SetorManager from './components/SetorManager';
 import CategoriaSelector from './components/CategoriaSelector';
-import SelecionarTaxa from './components/SelecionarTaxa';
-import ProdutoManager from './components/ProdutoManager';
-import CupomManager from './components/CupomManager';
 import './PublicarEvento.css';
 
 const PublicarEvento = () => {
@@ -28,14 +25,7 @@ const PublicarEvento = () => {
   const [categorias, setCategorias] = useState([]);
   const [temLugarMarcado, setTemLugarMarcado] = useState(false);
   const [aparecerComoProdutor, setAparecerComoProdutor] = useState(true);
-  const [taxa, setTaxa] = useState({ 
-    taxaComprador: 15, 
-    taxaProdutor: 5 
-  });
-  
   const [setoresIngressos, setSetoresIngressos] = useState([]);
-  const [cupons, setCupons] = useState([]);
-  const [produtos, setProdutos] = useState([]);
   
   const [imagem, setImagem] = useState(null); 
   const [imagemPreview, setImagemPreview] = useState(null); 
@@ -46,9 +36,7 @@ const PublicarEvento = () => {
     checkUser();
     
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('🔄 Auth mudou:', event);
       if (session?.user) {
-        console.log('✅ Usuário detectado:', session.user.email);
         setUser(session.user);
         setLoading(false);
       } else if (event === 'SIGNED_OUT') {
@@ -64,18 +52,11 @@ const PublicarEvento = () => {
 
   const checkUser = async () => {
     try {
-      console.log('🔍 Verificando usuário...');
       await new Promise(resolve => setTimeout(resolve, 300));
-      
       const { data: { session } } = await supabase.auth.getSession();
       
-      console.log('📦 Sessão:', session);
-      
       if (session?.user) {
-        console.log('✅ Usuário logado:', session.user.email);
         setUser(session.user);
-      } else {
-        console.log('❌ Nenhum usuário logado');
       }
       
       setLoading(false);
@@ -142,8 +123,6 @@ const PublicarEvento = () => {
       alert('Por favor, selecione pelo menos uma categoria!');
       return;
     }
-
-    console.log('🎫 Setores recebidos:', setoresIngressos);
     
     if (!setoresIngressos || setoresIngressos.length === 0) {
       alert('Por favor, adicione pelo menos um setor com ingressos!');
@@ -236,24 +215,6 @@ const PublicarEvento = () => {
       alert('Adicione pelo menos um ingresso válido!');
       return;
     }
-
-    console.log('🛍️ Produtos recebidos:', produtos);
-    if (produtos && produtos.length > 0) {
-      for (const produto of produtos) {
-        if (!produto.nome || !produto.preco || !produto.quantidade || !produto.tipoProduto) {
-          alert(`Preencha todos os campos obrigatórios do produto "${produto.nome || 'sem nome'}"!`);
-          return;
-        }
-        
-        const preco = parseFloat(produto.preco);
-        const quantidade = parseInt(produto.quantidade);
-        
-        if (preco <= 0 || quantidade <= 0) {
-          alert(`Valores inválidos no produto "${produto.nome}". Preço e quantidade devem ser maiores que zero!`);
-          return;
-        }
-      }
-    }
     
     setIsSubmitting(true);
     let publicUrl = '';
@@ -269,8 +230,6 @@ const PublicarEvento = () => {
         const filePath = `eventos/${user.id}/${timestamp}-${randomStr}.${fileExtension}`;
         uploadedFilePath = filePath;
 
-        console.log('📤 Iniciando upload da imagem do evento para:', filePath);
-        
         const { data: uploadData, error: uploadError } = await supabase.storage
           .from('imagens_eventos')
           .upload(filePath, imagem, { 
@@ -279,18 +238,14 @@ const PublicarEvento = () => {
           });
 
         if (uploadError) {
-          console.error('❌ Erro no upload:', uploadError);
           throw new Error(`Erro ao fazer upload da imagem: ${uploadError.message}`);
         }
-
-        console.log('✅ Upload realizado:', uploadData);
         
         const { data: publicUrlData } = supabase.storage
           .from('imagens_eventos')
           .getPublicUrl(filePath);
         
         publicUrl = publicUrlData.publicUrl;
-        console.log('🔗 URL pública:', publicUrl);
       }
 
       let totalIngressosEvento = 0;
@@ -337,19 +292,18 @@ const PublicarEvento = () => {
         categoria: categorias[0],
         tem_lugar_marcado: temLugarMarcado,
         mostrar_produtor: aparecerComoProdutor,
-        TaxaCliente: taxa.taxaComprador,
-        TaxaProdutor: taxa.taxaProdutor,
         imagem_url: publicUrl,
         status: 'pendente',
+        rascunho: true,
         user_id: user.id,
         produtor_email: user.email,
         produtor_nome: user.user_metadata?.name || user.email,
         ingressos_vendidos: 0,
         total_ingressos: totalIngressosEvento,
-        preco_medio: precoMedioEvento
+        preco_medio: precoMedioEvento,
+        TaxaCliente: 0,
+        TaxaProdutor: 0
       };
-
-      console.log('📝 Inserindo evento no banco...', eventData);
       
       const { data: insertedData, error: insertError } = await supabase
         .from('eventos')
@@ -357,13 +311,9 @@ const PublicarEvento = () => {
         .select();
 
       if (insertError) {
-        console.error('❌ Erro na inserção:', insertError);
-        
         if (uploadedFilePath) {
-          console.log('🗑️ Removendo imagem do storage...');
           await supabase.storage.from('imagens_eventos').remove([uploadedFilePath]);
         }
-        
         throw new Error(`Erro ao inserir evento: ${insertError.message}`);
       }
       
@@ -374,8 +324,6 @@ const PublicarEvento = () => {
 
       for (const setor of setoresIngressos) {
         if (setor.usaLotes && setor.lotes && setor.lotes.length > 0) {
-          console.log(`📦 Salvando lotes do setor "${setor.nome}"...`);
-          
           for (const lote of setor.lotes) {
             const loteData = {
               evento_id: eventoId,
@@ -395,17 +343,14 @@ const PublicarEvento = () => {
               .select();
 
             if (loteError) {
-              console.error('❌ Erro ao salvar lote:', loteError);
               throw new Error(`Erro ao salvar lote "${lote.nome}": ${loteError.message}`);
             }
 
             lotesMap.set(lote.id, loteInserido[0].id);
-            console.log(`✅ Lote "${lote.nome}" salvo com ID: ${loteInserido[0].id}`);
           }
         }
       }
 
-      console.log('🎫 Salvando ingressos...');
       const ingressosParaSalvar = [];
       
       setoresIngressos.forEach((setor, setorIndex) => {
@@ -461,249 +406,23 @@ const PublicarEvento = () => {
         }
       });
 
-      console.log('💾 Ingressos a serem salvos:', ingressosParaSalvar);
-
       if (ingressosParaSalvar.length > 0) {
         const { error: ingressosError } = await supabase
           .from('ingressos')
           .insert(ingressosParaSalvar);
 
         if (ingressosError) {
-          console.error('❌ Erro ao salvar ingressos:', ingressosError);
           throw new Error(`Erro ao salvar ingressos: ${ingressosError.message}`);
         }
 
         console.log('✅ Ingressos salvos com sucesso!');
-      } else {
-        throw new Error('Nenhum ingresso válido para salvar!');
-      }
-
-      if (produtos && produtos.length > 0) {
-        console.log('🛍️ Salvando produtos...');
-        
-        for (const produto of produtos) {
-          let imagemProdutoUrl = null;
-
-          if (produto.imagem) {
-            const fileExtension = produto.imagem.name.split('.').pop();
-            const timestamp = Date.now();
-            const randomStr = Math.random().toString(36).substring(7);
-            const filePath = `produtos/${user.id}/${eventoId}/${timestamp}-${randomStr}.${fileExtension}`;
-
-            console.log('📤 Upload da imagem do produto:', produto.nome);
-
-            const { data: uploadProdData, error: uploadProdError } = await supabase.storage
-              .from('imagens_eventos')
-              .upload(filePath, produto.imagem, { 
-                cacheControl: '3600', 
-                upsert: false 
-              });
-
-            if (uploadProdError) {
-              console.error('⚠️ Erro ao fazer upload da imagem do produto, continuando sem imagem:', uploadProdError);
-            } else {
-              const { data: publicProdUrlData } = supabase.storage
-                .from('imagens_eventos')
-                .getPublicUrl(filePath);
-              
-              imagemProdutoUrl = publicProdUrlData.publicUrl;
-            }
-          }
-
-          const produtoData = {
-            evento_id: eventoId,
-            nome: produto.nome,
-            descricao: produto.descricao || null,
-            preco: parseFloat(produto.preco),
-            quantidade_disponivel: parseInt(produto.quantidade),
-            quantidade_vendida: 0,
-            tamanho: produto.tamanho || null,
-            imagem_url: imagemProdutoUrl,
-            tipo_produto: produto.tipoProduto,
-            ativo: true,
-            user_id: user.id
-          };
-
-          const { error: produtoError } = await supabase
-            .from('produtos')
-            .insert([produtoData]);
-
-          if (produtoError) {
-            console.error('❌ Erro ao salvar produto:', produtoError);
-            throw new Error(`Erro ao salvar produto "${produto.nome}": ${produtoError.message}`);
-          }
-
-          console.log(`✅ Produto "${produto.nome}" salvo com sucesso!`);
-        }
-      }
-
-      if (cupons && cupons.length > 0) {
-        console.log('🎟️ Salvando cupons...');
-        
-        for (const cupom of cupons) {
-          if (!cupom.codigo || cupom.codigo.trim() === '') {
-            throw new Error('Preencha o código de todos os cupons!');
-          }
-
-          const cupomData = {
-            evento_id: eventoId,
-            codigo: cupom.codigo.toUpperCase(),
-            descricao: cupom.descricao || null,
-            ativo: true,
-            quantidade_total: parseInt(cupom.quantidadeTotal) || null,
-            quantidade_usada: 0,
-            data_validade_inicio: cupom.dataInicio || null,
-            data_validade_fim: cupom.dataFim || null,
-            user_id: user.id
-          };
-
-          const { data: cupomInserido, error: cupomError } = await supabase
-            .from('cupons')
-            .insert([cupomData])
-            .select();
-
-          if (cupomError) {
-            console.error('❌ Erro ao salvar cupom:', cupomError);
-            throw new Error(`Erro ao salvar cupom "${cupom.codigo}": ${cupomError.message}`);
-          }
-
-          const cupomIdReal = cupomInserido[0].id;
-          console.log(`✅ Cupom "${cupom.codigo}" salvo com ID: ${cupomIdReal}`);
-
-          const cuponsIngressosData = [];
-          
-          const { data: ingressosSalvos } = await supabase
-            .from('ingressos')
-            .select('*')
-            .eq('evento_id', eventoId);
-
-          if (ingressosSalvos) {
-            setoresIngressos.forEach((setor) => {
-              if (setor.usaLotes) {
-                setor.lotes.forEach((lote) => {
-                  lote.tiposIngresso.forEach((tipo) => {
-                    const chave = `${setor.id}-${lote.id}-${tipo.id}`;
-                    const precoComCupom = parseFloat(cupom.precosPorIngresso[chave]);
-                    
-                    if (precoComCupom && precoComCupom > 0) {
-                      const ingressoReal = ingressosSalvos.find(ing => 
-                        ing.setor === setor.nome && 
-                        ing.tipo === tipo.nome &&
-                        ing.lote_id !== null
-                      );
-                      
-                      if (ingressoReal) {
-                        cuponsIngressosData.push({
-                          cupom_id: cupomIdReal,
-                          ingresso_id: ingressoReal.id,
-                          preco_com_cupom: precoComCupom
-                        });
-                      }
-                    }
-                  });
-                });
-              } else {
-                setor.tiposIngresso.forEach((tipo) => {
-                  const chave = `${setor.id}-null-${tipo.id}`;
-                  const precoComCupom = parseFloat(cupom.precosPorIngresso[chave]);
-                  
-                  if (precoComCupom && precoComCupom > 0) {
-                    const ingressoReal = ingressosSalvos.find(ing => 
-                      ing.setor === setor.nome && 
-                      ing.tipo === tipo.nome &&
-                      ing.lote_id === null
-                    );
-                    
-                    if (ingressoReal) {
-                      cuponsIngressosData.push({
-                        cupom_id: cupomIdReal,
-                        ingresso_id: ingressoReal.id,
-                        preco_com_cupom: precoComCupom
-                      });
-                    }
-                  }
-                });
-              }
-            });
-          }
-
-          if (cuponsIngressosData.length > 0) {
-            const { error: cuponsIngressosError } = await supabase
-              .from('cupons_ingressos')
-              .insert(cuponsIngressosData);
-
-            if (cuponsIngressosError) {
-              console.error('❌ Erro ao salvar preços com cupom:', cuponsIngressosError);
-              throw new Error(`Erro ao salvar preços do cupom: ${cuponsIngressosError.message}`);
-            }
-            
-            console.log(`✅ Preços com cupom "${cupom.codigo}" salvos!`);
-          }
-
-          if (produtos && produtos.length > 0) {
-            const { data: produtosSalvos } = await supabase
-              .from('produtos')
-              .select('*')
-              .eq('evento_id', eventoId);
-
-            if (produtosSalvos) {
-              const cuponsProdutosData = [];
-              
-              produtos.forEach((produto) => {
-                if (produto.aceitaCupons && produto.precosPorCupom[cupom.id]) {
-                  const produtoReal = produtosSalvos.find(p => p.nome === produto.nome);
-                  
-                  if (produtoReal) {
-                    const precoProdutoComCupom = parseFloat(produto.precosPorCupom[cupom.id]);
-                    
-                    if (precoProdutoComCupom && precoProdutoComCupom > 0) {
-                      cuponsProdutosData.push({
-                        cupom_id: cupomIdReal,
-                        produto_id: produtoReal.id,
-                        preco_com_cupom: precoProdutoComCupom
-                      });
-                    }
-                  }
-                }
-              });
-
-              if (cuponsProdutosData.length > 0) {
-                const { error: cuponsProdutosError } = await supabase
-                  .from('cupons_produtos')
-                  .insert(cuponsProdutosData);
-
-                if (cuponsProdutosError) {
-                  console.error('❌ Erro ao salvar preços de produtos com cupom:', cuponsProdutosError);
-                } else {
-                  console.log(`✅ Preços de produtos com cupom "${cupom.codigo}" salvos!`);
-                }
-              }
-            }
-          }
-        }
       }
       
-      alert('🎉 Evento publicado com sucesso! Em breve estará disponível no site.');
-      
-      setFormData({
-        titulo: '', descricao: '', data: '', hora: '', localNome: '', localEndereco: ''
-      });
-      setCategorias([]);
-      setTemLugarMarcado(false);
-      setAparecerComoProdutor(true);
-      setTaxa({ taxaComprador: 15, taxaProdutor: 5 });
-      setSetoresIngressos([]);
-      setCupons([]);
-      setProdutos([]);
-      setImagem(null);
-      setImagemPreview(null);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-
-      router.push('/produtor');
+      router.push(`/publicar-evento-complemento?evento=${eventoId}`);
 
     } catch (error) {
-      console.error('💥 Erro no processo de publicação:', error);
-      alert(`❌ Erro ao publicar evento: ${error.message}`);
+      console.error('💥 Erro:', error);
+      alert(`❌ Erro: ${error.message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -713,7 +432,6 @@ const PublicarEvento = () => {
     return (
       <div className="publicar-evento-container" style={{ textAlign: 'center', padding: '50px' }}>
         <h2>🔄 Verificando autenticação...</h2>
-        <p>Aguarde um momento...</p>
       </div>
     );
   }
@@ -722,15 +440,9 @@ const PublicarEvento = () => {
     return (
       <div className="publicar-evento-container" style={{ textAlign: 'center', padding: '50px' }}>
         <h2>⚠️ Sessão não encontrada</h2>
-        <p>Não conseguimos verificar seu login.</p>
-        <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', flexWrap: 'wrap', marginTop: '20px' }}>
-          <button onClick={checkUser} className="btn-submit" style={{ background: '#2196F3' }}>
-            🔄 Tentar Novamente
-          </button>
-          <button onClick={() => router.push('/login')} className="btn-submit">
-            🔐 Ir para Login
-          </button>
-        </div>
+        <button onClick={() => router.push('/login')} className="btn-submit">
+          🔐 Ir para Login
+        </button>
       </div>
     );
   }
@@ -741,7 +453,10 @@ const PublicarEvento = () => {
         <p>👤 Publicando como: <strong>{user.email}</strong></p>
       </div>
       
-      <h1>Publicar Novo Evento</h1>
+      <h1>Publicar Novo Evento - Passo 1/2</h1>
+      <p style={{ color: '#666', marginBottom: '20px' }}>
+        Preencha as informações básicas e configure os setores e ingressos
+      </p>
       
       <form onSubmit={handleSubmit}>
         <div className="form-section">
@@ -880,7 +595,7 @@ const PublicarEvento = () => {
                   Aparecer como produtor na página do evento
                 </span>
                 <p style={{ margin: '5px 0 0 0', fontSize: '13px', color: '#555' }}>
-                  Seu nome e informações de contato serão exibidos publicamente na página de compra do evento
+                  Seu nome e informações de contato serão exibidos publicamente
                 </p>
               </div>
             </label>
@@ -892,26 +607,8 @@ const PublicarEvento = () => {
           <SetorManager onSetoresChange={setSetoresIngressos} />
         </div>
 
-        <div className="form-section">
-          <h2>🎟️ Cupons de Desconto (Opcional)</h2>
-          <CupomManager 
-            setoresIngressos={setoresIngressos} 
-            onCuponsChange={setCupons} 
-          />
-        </div>
-
-        <div className="form-section">
-          <h2>🛍️ Produtos Adicionais (Opcional)</h2>
-          <ProdutoManager onProdutosChange={setProdutos} cupons={cupons} />
-        </div>
-
-        <div className="form-section">
-          <h2>Configuração de Taxas</h2>
-          <SelecionarTaxa onTaxaSelecionada={setTaxa} />
-        </div>
-
         <button type="submit" className="btn-submit" disabled={isSubmitting}>
-          {isSubmitting ? '⏳ Publicando...' : '🚀 Publicar Evento'}
+          {isSubmitting ? '⏳ Salvando...' : '➡️ Avançar para Cupons e Produtos'}
         </button>
       </form>
     </div>
