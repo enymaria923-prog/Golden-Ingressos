@@ -1,0 +1,410 @@
+import React, { useState, useEffect, useRef } from 'react';
+
+const ProdutoManager = ({ onProdutosChange }) => {
+  const [vendeProdutos, setVendeProdutos] = useState(false);
+  const [produtos, setProdutos] = useState([]);
+
+  useEffect(() => {
+    console.log('🛍️ Produtos atualizados:', produtos);
+    if (onProdutosChange) {
+      onProdutosChange(vendeProdutos ? produtos : []);
+    }
+  }, [produtos, vendeProdutos, onProdutosChange]);
+
+  const adicionarProduto = () => {
+    const novoProduto = {
+      id: Date.now(),
+      nome: '',
+      descricao: '',
+      preco: '',
+      quantidade: '',
+      tamanho: '',
+      imagem: null,
+      imagemPreview: null,
+      tipoProduto: 'outro' // estacionamento, vestuario, acessorio, outro
+    };
+    setProdutos([...produtos, novoProduto]);
+  };
+
+  const removerProduto = (produtoId) => {
+    setProdutos(produtos.filter(p => p.id !== produtoId));
+  };
+
+  const atualizarProduto = (produtoId, campo, valor) => {
+    setProdutos(produtos.map(produto => {
+      if (produto.id === produtoId) {
+        return { ...produto, [campo]: valor };
+      }
+      return produto;
+    }));
+  };
+
+  const handleImageChange = (produtoId, e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Imagem muito grande! Máximo 5MB.');
+        return;
+      }
+      if (!file.type.match('image/jpeg') && !file.type.match('image/png') && !file.type.match('image/gif')) {
+        alert('Apenas JPG, PNG ou GIF!');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setProdutos(produtos.map(produto => {
+          if (produto.id === produtoId) {
+            return {
+              ...produto,
+              imagem: file,
+              imagemPreview: e.target.result
+            };
+          }
+          return produto;
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removerImagem = (produtoId) => {
+    setProdutos(produtos.map(produto => {
+      if (produto.id === produtoId) {
+        return {
+          ...produto,
+          imagem: null,
+          imagemPreview: null
+        };
+      }
+      return produto;
+    }));
+  };
+
+  const sugestoesPorTipo = {
+    estacionamento: ['Estacionamento Coberto', 'Estacionamento Descoberto', 'Valet'],
+    vestuario: ['Camiseta Oficial', 'Moletom', 'Boné', 'Regata'],
+    acessorio: ['Caneca', 'Copo', 'Chaveiro', 'Adesivo', 'Pulseira'],
+    outro: ['Combo Bebida', 'Brinde Exclusivo', 'Poster', 'Ingresso + Produto']
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {/* TOGGLE PARA ATIVAR VENDA DE PRODUTOS */}
+      <div style={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', padding: '20px', borderRadius: '12px', color: 'white' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: 'pointer' }}>
+          <input 
+            type="checkbox" 
+            checked={vendeProdutos} 
+            onChange={(e) => {
+              setVendeProdutos(e.target.checked);
+              if (e.target.checked && produtos.length === 0) {
+                adicionarProduto();
+              }
+            }}
+            style={{ width: '24px', height: '24px', cursor: 'pointer' }}
+          />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '5px' }}>
+              🛍️ Vender Produtos Adicionais
+            </div>
+            <div style={{ fontSize: '14px', opacity: 0.9 }}>
+              Estacionamento, camisetas, brindes, etc. - SEM TAXA da Golden!
+            </div>
+          </div>
+        </label>
+      </div>
+
+      {/* LISTA DE PRODUTOS */}
+      {vendeProdutos && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+          <div style={{ background: '#fff3cd', padding: '15px', borderRadius: '8px', border: '2px solid #ffc107' }}>
+            <strong style={{ color: '#856404' }}>💰 Importante:</strong>
+            <p style={{ margin: '5px 0 0 0', fontSize: '14px', color: '#856404' }}>
+              A Golden NÃO cobra nenhuma taxa sobre a venda de produtos! 
+              Todo o valor vai direto para você.
+            </p>
+          </div>
+
+          {produtos.map((produto, index) => (
+            <div key={produto.id} style={{ 
+              border: '2px solid #e0e0e0', 
+              borderRadius: '12px', 
+              padding: '20px', 
+              backgroundColor: '#fff',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                <h4 style={{ margin: 0, color: '#f5576c' }}>🛒 Produto {index + 1}</h4>
+                <button 
+                  type="button" 
+                  onClick={() => removerProduto(produto.id)}
+                  style={{ 
+                    backgroundColor: '#e74c3c', 
+                    color: 'white', 
+                    border: 'none', 
+                    padding: '8px 15px', 
+                    borderRadius: '5px', 
+                    cursor: 'pointer', 
+                    fontWeight: 'bold' 
+                  }}
+                >
+                  🗑️ Remover
+                </button>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                {/* TIPO DE PRODUTO */}
+                <div>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', fontSize: '14px' }}>
+                    Tipo de Produto *
+                  </label>
+                  <select
+                    value={produto.tipoProduto}
+                    onChange={(e) => atualizarProduto(produto.id, 'tipoProduto', e.target.value)}
+                    required
+                    style={{ 
+                      width: '100%', 
+                      padding: '10px', 
+                      border: '1px solid #ddd', 
+                      borderRadius: '5px', 
+                      fontSize: '14px' 
+                    }}
+                  >
+                    <option value="estacionamento">🚗 Estacionamento</option>
+                    <option value="vestuario">👕 Vestuário</option>
+                    <option value="acessorio">🎁 Acessório</option>
+                    <option value="outro">📦 Outro</option>
+                  </select>
+                </div>
+
+                {/* NOME DO PRODUTO */}
+                <div>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', fontSize: '14px' }}>
+                    Nome do Produto *
+                  </label>
+                  <input
+                    type="text"
+                    value={produto.nome}
+                    onChange={(e) => atualizarProduto(produto.id, 'nome', e.target.value)}
+                    placeholder={sugestoesPorTipo[produto.tipoProduto][0]}
+                    list={`sugestoes-${produto.id}`}
+                    required
+                    style={{ 
+                      width: '100%', 
+                      padding: '10px', 
+                      border: '1px solid #ddd', 
+                      borderRadius: '5px', 
+                      fontSize: '14px' 
+                    }}
+                  />
+                  <datalist id={`sugestoes-${produto.id}`}>
+                    {sugestoesPorTipo[produto.tipoProduto].map((sugestao, i) => (
+                      <option key={i} value={sugestao} />
+                    ))}
+                  </datalist>
+                </div>
+
+                {/* DESCRIÇÃO */}
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', fontSize: '14px' }}>
+                    Descrição (opcional)
+                  </label>
+                  <textarea
+                    value={produto.descricao}
+                    onChange={(e) => atualizarProduto(produto.id, 'descricao', e.target.value)}
+                    placeholder="Ex: Camiseta 100% algodão com estampa do evento"
+                    rows="2"
+                    style={{ 
+                      width: '100%', 
+                      padding: '10px', 
+                      border: '1px solid #ddd', 
+                      borderRadius: '5px', 
+                      fontSize: '14px',
+                      fontFamily: 'inherit',
+                      resize: 'vertical'
+                    }}
+                  />
+                </div>
+
+                {/* PREÇO */}
+                <div>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', fontSize: '14px' }}>
+                    Preço (R$) *
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={produto.preco}
+                    onChange={(e) => atualizarProduto(produto.id, 'preco', e.target.value)}
+                    placeholder="0.00"
+                    required
+                    style={{ 
+                      width: '100%', 
+                      padding: '10px', 
+                      border: '1px solid #ddd', 
+                      borderRadius: '5px', 
+                      fontSize: '14px' 
+                    }}
+                  />
+                </div>
+
+                {/* QUANTIDADE */}
+                <div>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', fontSize: '14px' }}>
+                    Quantidade Disponível *
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={produto.quantidade}
+                    onChange={(e) => atualizarProduto(produto.id, 'quantidade', e.target.value)}
+                    placeholder="0"
+                    required
+                    style={{ 
+                      width: '100%', 
+                      padding: '10px', 
+                      border: '1px solid #ddd', 
+                      borderRadius: '5px', 
+                      fontSize: '14px' 
+                    }}
+                  />
+                </div>
+
+                {/* TAMANHO (APENAS PARA VESTUÁRIO) */}
+                {produto.tipoProduto === 'vestuario' && (
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', fontSize: '14px' }}>
+                      Tamanho
+                    </label>
+                    <select
+                      value={produto.tamanho}
+                      onChange={(e) => atualizarProduto(produto.id, 'tamanho', e.target.value)}
+                      style={{ 
+                        width: '100%', 
+                        padding: '10px', 
+                        border: '1px solid #ddd', 
+                        borderRadius: '5px', 
+                        fontSize: '14px' 
+                      }}
+                    >
+                      <option value="">Selecione (opcional)</option>
+                      <option value="PP">PP</option>
+                      <option value="P">P</option>
+                      <option value="M">M</option>
+                      <option value="G">G</option>
+                      <option value="GG">GG</option>
+                      <option value="XG">XG</option>
+                      <option value="Único">Tamanho Único</option>
+                    </select>
+                  </div>
+                )}
+
+                {/* IMAGEM DO PRODUTO */}
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', fontSize: '14px' }}>
+                    Imagem do Produto (opcional)
+                  </label>
+                  
+                  {produto.imagemPreview ? (
+                    <div style={{ 
+                      display: 'flex', 
+                      gap: '15px', 
+                      alignItems: 'center',
+                      padding: '15px',
+                      background: '#f8f9fa',
+                      borderRadius: '8px'
+                    }}>
+                      <img 
+                        src={produto.imagemPreview} 
+                        alt="Preview" 
+                        style={{ 
+                          width: '120px', 
+                          height: '120px', 
+                          objectFit: 'cover', 
+                          borderRadius: '8px',
+                          border: '2px solid #dee2e6'
+                        }} 
+                      />
+                      <div style={{ flex: 1 }}>
+                        <p style={{ margin: '0 0 10px 0', color: '#28a745', fontWeight: 'bold' }}>
+                          ✅ {produto.imagem?.name || 'Imagem selecionada'}
+                        </p>
+                        <button 
+                          type="button" 
+                          onClick={() => removerImagem(produto.id)}
+                          style={{ 
+                            backgroundColor: '#e74c3c', 
+                            color: 'white', 
+                            border: 'none', 
+                            padding: '8px 15px', 
+                            borderRadius: '5px', 
+                            cursor: 'pointer' 
+                          }}
+                        >
+                          Remover Imagem
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/gif"
+                        onChange={(e) => handleImageChange(produto.id, e)}
+                        id={`file-input-${produto.id}`}
+                        style={{ display: 'none' }}
+                      />
+                      <label 
+                        htmlFor={`file-input-${produto.id}`}
+                        style={{ 
+                          display: 'block',
+                          padding: '40px', 
+                          border: '2px dashed #ccc', 
+                          borderRadius: '8px', 
+                          textAlign: 'center',
+                          cursor: 'pointer',
+                          background: '#f8f9fa',
+                          transition: 'all 0.3s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#e9ecef'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = '#f8f9fa'}
+                      >
+                        <div style={{ fontSize: '48px', marginBottom: '10px' }}>📷</div>
+                        <div style={{ fontSize: '14px', color: '#666' }}>
+                          Clique para adicionar imagem
+                        </div>
+                      </label>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {/* BOTÃO ADICIONAR PRODUTO */}
+          <button 
+            type="button" 
+            onClick={adicionarProduto}
+            style={{ 
+              backgroundColor: '#f5576c', 
+              color: 'white', 
+              border: 'none', 
+              padding: '15px 25px', 
+              borderRadius: '8px', 
+              cursor: 'pointer', 
+              fontWeight: 'bold',
+              fontSize: '16px',
+              boxShadow: '0 4px 12px rgba(245, 87, 108, 0.3)'
+            }}
+          >
+            + Adicionar Outro Produto
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default ProdutoManager;
