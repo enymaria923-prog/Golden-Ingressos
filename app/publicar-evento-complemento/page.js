@@ -518,8 +518,10 @@ function PublicarEventoComplementoContent() {
             {isSubmitting ? '⏳ Publicando...' : '🚀 Publicar Evento'}
           </button>
         </div>
+      </form>
+    </div>
   );
-};
+}
 
 export default function PublicarEventoComplemento() {
   return (
