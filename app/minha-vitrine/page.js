@@ -107,8 +107,11 @@ export default function MinhaVitrinePage() {
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
+      .replace(/@/g, '-')  // Substitui @ por -
+      .replace(/\./g, '-')  // Substitui . por -
       .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '');
+      .replace(/^-+|-+$/g, '')
+      .replace(/-+/g, '-');  // Remove hífens duplicados
   };
 
   const handleNomeChange = (valor) => {
