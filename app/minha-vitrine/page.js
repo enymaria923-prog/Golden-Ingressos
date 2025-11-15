@@ -34,8 +34,10 @@ export default function MinhaVitrinePage() {
   // Uploads
   const [uploadingFotoPerfil, setUploadingFotoPerfil] = useState(false);
   const [uploadingFotoCapa, setUploadingFotoCapa] = useState(false);
+  const [uploadingImagensLinks, setUploadingImagensLinks] = useState({});
   const fotoPerfilRef = useRef(null);
   const fotoCapaRef = useRef(null);
+  const imagemLinkRefs = useRef({});
 
   useEffect(() => {
     checkUser();
@@ -94,11 +96,11 @@ export default function MinhaVitrinePage() {
         setLinks(linksData || []);
       } else {
         // Se não tem perfil, criar um slug inicial baseado no email
-        const emailSlug = gerarSlug(user.email.split('@')[0]);
+        const emailSlug = gerarSlug(userId.substring(0, 8));
         setPerfil(prev => ({
           ...prev,
           slug: emailSlug,
-          nome_exibicao: user.email.split('@')[0]
+          nome_exibicao: 'Meu Nome'
         }));
       }
     } catch (error) {
@@ -115,11 +117,11 @@ export default function MinhaVitrinePage() {
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
-      .replace(/@/g, '-')  // Substitui @ por -
-      .replace(/\./g, '-')  // Substitui . por -
+      .replace(/@/g, '-')
+      .replace(/\./g, '-')
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '')
-      .replace(/-+/g, '-');  // Remove hífens duplicados
+      .replace(/-+/g, '-');
   };
 
   const handleNomeChange = (valor) => {
@@ -129,10 +131,17 @@ export default function MinhaVitrinePage() {
     }
   };
 
-  const uploadImagem = async (file, tipo) => {
+  const uploadImagem = async (file, tipo, linkId = null) => {
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/${tipo}-${Date.now()}.${fileExt}`;
+      const timestamp = Date.now();
+      let fileName;
+      
+      if (linkId) {
+        fileName = `${user.id}/links/${linkId}-${timestamp}.${fileExt}`;
+      } else {
+        fileName = `${user.id}/${tipo}-${timestamp}.${fileExt}`;
+      }
       
       const { data, error } = await supabase.storage
         .from('vitrine-imagens')
@@ -184,6 +193,23 @@ export default function MinhaVitrinePage() {
       handlePerfilChange('foto_capa_url', url);
     }
     setUploadingFotoCapa(false);
+  };
+
+  const handleImagemLinkChange = async (e, linkId) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Imagem muito grande. Máximo 5MB.');
+      return;
+    }
+
+    setUploadingImagensLinks(prev => ({ ...prev, [linkId]: true }));
+    const url = await uploadImagem(file, 'link', linkId);
+    if (url) {
+      atualizarLink(linkId, 'imagem_url', url);
+    }
+    setUploadingImagensLinks(prev => ({ ...prev, [linkId]: false }));
   };
 
   const adicionarLink = () => {
@@ -281,7 +307,7 @@ export default function MinhaVitrinePage() {
 
       // Salvar links
       for (const link of links) {
-        if (!link.titulo || !link.url) continue; // Pula links vazios
+        if (!link.titulo || !link.url) continue;
 
         if (link.novo) {
           // Inserir novo
@@ -360,6 +386,7 @@ export default function MinhaVitrinePage() {
           <a 
             href={`/vitrine/${perfil.slug}`}
             target="_blank"
+            rel="noopener noreferrer"
             style={{
               color: '#1976d2',
               fontSize: '18px',
@@ -551,9 +578,6 @@ export default function MinhaVitrinePage() {
                 onChange={(e) => atualizarLink(link.id, 'url', e.target.value)}
                 placeholder="https://exemplo.com"
               />
-              <small style={{ color: '#e74c3c' }}>
-                ⚠️ Precisa começar com https:// ou http://
-              </small>
             </div>
 
             <div className="form-group">
@@ -579,13 +603,30 @@ export default function MinhaVitrinePage() {
             </div>
 
             <div className="form-group">
-              <label>URL da Imagem (opcional)</label>
+              <label>Imagem do Link (opcional)</label>
               <input
-                type="url"
-                value={link.imagem_url}
-                onChange={(e) => atualizarLink(link.id, 'imagem_url', e.target.value)}
-                placeholder="https://..."
+                type="file"
+                ref={(el) => imagemLinkRefs.current[link.id] = el}
+                accept="image/*"
+                onChange={(e) => handleImagemLinkChange(e, link.id)}
+                style={{ display: 'none' }}
               />
+              <button
+                type="button"
+                onClick={() => imagemLinkRefs.current[link.id]?.click()}
+                className="btn-submit"
+                style={{ background: '#27ae60', marginBottom: '10px' }}
+                disabled={uploadingImagensLinks[link.id]}
+              >
+                {uploadingImagensLinks[link.id] ? '⏳ Enviando...' : '🖼️ Escolher Imagem'}
+              </button>
+              {link.imagem_url && (
+                <img 
+                  src={link.imagem_url} 
+                  alt={link.titulo} 
+                  style={{ width: '100%', maxWidth: '300px', height: '120px', objectFit: 'cover', borderRadius: '8px' }} 
+                />
+              )}
             </div>
           </div>
         ))}
@@ -615,6 +656,7 @@ export default function MinhaVitrinePage() {
           <Link
             href={`/vitrine/${perfil.slug}`}
             target="_blank"
+            rel="noopener noreferrer"
             className="btn-submit"
             style={{ flex: 1, background: '#3498db', textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
