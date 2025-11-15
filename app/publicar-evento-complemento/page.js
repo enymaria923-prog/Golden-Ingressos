@@ -518,9 +518,17 @@ function PublicarEventoComplementoContent() {
             {isSubmitting ? '⏳ Publicando...' : '🚀 Publicar Evento'}
           </button>
         </div>
-      </form>
-    </div>
   );
 };
 
-export default PublicarEventoComplemento;
+export default function PublicarEventoComplemento() {
+  return (
+    <Suspense fallback={
+      <div style={{ fontFamily: 'sans-serif', padding: '50px', textAlign: 'center' }}>
+        <h2>🔄 Carregando...</h2>
+      </div>
+    }>
+      <PublicarEventoComplementoContent />
+    </Suspense>
+  );
+}
