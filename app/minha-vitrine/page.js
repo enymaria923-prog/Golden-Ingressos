@@ -1,12 +1,17 @@
+// ==========================================
+// ARQUIVO 1: app/minha-vitrine/organizar/page.js
+// ==========================================
+// Este é o PAINEL DE ADMINISTRAÇÃO onde você 
+// organiza categorias e eventos
+// ==========================================
+
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '../../utils/supabase/client';
-import Link from 'next/link';
-import '../publicar-evento/PublicarEvento.css';
+import { createClient } from '../../../utils/supabase/client';
 
-export default function MinhaVitrinePage() {
+export default function OrganizarEventosPage() {
   const supabase = createClient();
   const router = useRouter();
   
@@ -14,30 +19,10 @@ export default function MinhaVitrinePage() {
   const [loading, setLoading] = useState(true);
   const [salvando, setSalvando] = useState(false);
   
-  // Dados do perfil
-  const [perfil, setPerfil] = useState({
-    slug: '',
-    nome_exibicao: '',
-    bio: '',
-    foto_perfil_url: '',
-    foto_capa_url: '',
-    instagram: '',
-    facebook: '',
-    youtube: '',
-    twitter: '',
-    tiktok: ''
-  });
-
-  // Links personalizados
-  const [links, setLinks] = useState([]);
-  
-  // Uploads
-  const [uploadingFotoPerfil, setUploadingFotoPerfil] = useState(false);
-  const [uploadingFotoCapa, setUploadingFotoCapa] = useState(false);
-  const [uploadingImagensLinks, setUploadingImagensLinks] = useState({});
-  const fotoPerfilRef = useRef(null);
-  const fotoCapaRef = useRef(null);
-  const imagemLinkRefs = useRef({});
+  const [categorias, setCategorias] = useState([]);
+  const [eventos, setEventos] = useState([]);
+  const [novaCategoria, setNovaCategoria] = useState({ nome: '', icone: '📁', cor: '#5d34a4' });
+  const [categoriaExpandida, setCategoriaExpandida] = useState({});
 
   useEffect(() => {
     checkUser();
@@ -46,307 +31,232 @@ export default function MinhaVitrinePage() {
   const checkUser = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      
       if (!session?.user) {
         router.push('/login');
         return;
       }
-      
       setUser(session.user);
-      await carregarVitrine(session.user.id);
-      
+      await carregarDados(session.user.id);
     } catch (error) {
-      console.error('Erro ao verificar usuário:', error);
+      console.error('Erro:', error);
       router.push('/login');
     } finally {
       setLoading(false);
     }
   };
 
-  const carregarVitrine = async (userId) => {
+  const carregarDados = async (userId) => {
     try {
-      // Buscar perfil existente
-      const { data: perfilData, error: perfilError } = await supabase
-        .from('perfil_produtor')
+      // Buscar categorias
+      const { data: categoriasData } = await supabase
+        .from('categorias_vitrine')
         .select('*')
         .eq('user_id', userId)
+        .eq('ativo', true)
+        .order('ordem', { ascending: true });
+
+      setCategorias(categoriasData || []);
+
+      // Buscar eventos aprovados do usuário
+      const { data: eventosData } = await supabase
+        .from('eventos')
+        .select('id, nome, data, hora, local, status')
+        .eq('user_id', userId)
+        .eq('status', 'aprovado')
+        .order('data', { ascending: true });
+
+      // Buscar configuração dos eventos na vitrine
+      const { data: eventosVitrineData } = await supabase
+        .from('eventos_vitrine')
+        .select('*')
+        .eq('user_id', userId);
+
+      // Combinar dados
+      const eventosMap = new Map(eventosVitrineData?.map(ev => [ev.evento_id, ev]) || []);
+      
+      const eventosCombinados = (eventosData || []).map(evento => {
+        const config = eventosMap.get(evento.id);
+        return {
+          ...evento,
+          categoria_id: config?.categoria_id || null,
+          ordem: config?.ordem || 0,
+          destaque: config?.destaque || false,
+          visivel: config?.visivel_vitrine !== false,
+          config_id: config?.id
+        };
+      });
+
+      setEventos(eventosCombinados);
+      
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+      alert('Erro ao carregar dados');
+    }
+  };
+
+  const eventosPorCategoria = () => {
+    const grouped = {};
+    
+    categorias.forEach(cat => {
+      grouped[cat.id] = eventos
+        .filter(e => e.categoria_id === cat.id && e.visivel)
+        .sort((a, b) => a.ordem - b.ordem);
+    });
+    
+    grouped['sem-categoria'] = eventos
+      .filter(e => !e.categoria_id && e.visivel)
+      .sort((a, b) => a.ordem - b.ordem);
+    
+    return grouped;
+  };
+
+  const adicionarCategoria = async () => {
+    if (!novaCategoria.nome.trim()) {
+      alert('Digite um nome para a categoria');
+      return;
+    }
+    
+    try {
+      const { data, error } = await supabase
+        .from('categorias_vitrine')
+        .insert([{
+          user_id: user.id,
+          nome: novaCategoria.nome,
+          icone: novaCategoria.icone,
+          cor: novaCategoria.cor,
+          ordem: categorias.length
+        }])
+        .select()
         .single();
 
-      if (perfilData) {
-        setPerfil({
-          slug: perfilData.slug || '',
-          nome_exibicao: perfilData.nome_exibicao || '',
-          bio: perfilData.bio || '',
-          foto_perfil_url: perfilData.foto_perfil_url || '',
-          foto_capa_url: perfilData.foto_capa_url || '',
-          instagram: perfilData.instagram || '',
-          facebook: perfilData.facebook || '',
-          youtube: perfilData.youtube || '',
-          twitter: perfilData.twitter || '',
-          tiktok: perfilData.tiktok || ''
-        });
-
-        // Buscar links
-        const { data: linksData } = await supabase
-          .from('links_vitrine')
-          .select('*')
-          .eq('user_id', userId)
-          .order('ordem', { ascending: true });
-
-        setLinks(linksData || []);
-      } else {
-        // Se não tem perfil, criar um slug inicial baseado no email
-        const emailSlug = gerarSlug(userId.substring(0, 8));
-        setPerfil(prev => ({
-          ...prev,
-          slug: emailSlug,
-          nome_exibicao: 'Meu Nome'
-        }));
-      }
+      if (error) throw error;
+      
+      setCategorias([...categorias, data]);
+      setNovaCategoria({ nome: '', icone: '📁', cor: '#5d34a4' });
+      alert('✅ Categoria criada!');
+      
     } catch (error) {
-      console.error('Erro ao carregar vitrine:', error);
+      console.error('Erro:', error);
+      alert('Erro ao criar categoria');
     }
   };
 
-  const handlePerfilChange = (campo, valor) => {
-    setPerfil(prev => ({ ...prev, [campo]: valor }));
-  };
-
-  const gerarSlug = (texto) => {
-    return texto
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/@/g, '-')
-      .replace(/\./g, '-')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .replace(/-+/g, '-');
-  };
-
-  const handleNomeChange = (valor) => {
-    handlePerfilChange('nome_exibicao', valor);
-    if (!perfil.slug) {
-      handlePerfilChange('slug', gerarSlug(valor));
-    }
-  };
-
-  const uploadImagem = async (file, tipo, linkId = null) => {
+  const removerCategoria = async (id) => {
+    if (!confirm('Remover esta categoria? Os eventos não serão deletados.')) return;
+    
     try {
-      const fileExt = file.name.split('.').pop();
-      const timestamp = Date.now();
-      let fileName;
-      
-      if (linkId) {
-        fileName = `${user.id}/links/${linkId}-${timestamp}.${fileExt}`;
-      } else {
-        fileName = `${user.id}/${tipo}-${timestamp}.${fileExt}`;
-      }
-      
-      const { data, error } = await supabase.storage
-        .from('vitrine-imagens')
-        .upload(fileName, file);
+      const { error } = await supabase
+        .from('categorias_vitrine')
+        .delete()
+        .eq('id', id);
 
       if (error) throw error;
-
-      const { data: publicUrlData } = supabase.storage
-        .from('vitrine-imagens')
-        .getPublicUrl(fileName);
-
-      return publicUrlData.publicUrl;
+      
+      setCategorias(categorias.filter(c => c.id !== id));
+      setEventos(eventos.map(e => 
+        e.categoria_id === id ? { ...e, categoria_id: null } : e
+      ));
+      
+      alert('✅ Categoria removida!');
+      
     } catch (error) {
-      console.error('Erro ao fazer upload:', error);
-      alert('Erro ao fazer upload da imagem');
-      return null;
+      console.error('Erro:', error);
+      alert('Erro ao remover categoria');
     }
   };
 
-  const handleFotoPerfilChange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Imagem muito grande. Máximo 5MB.');
-      return;
-    }
-
-    setUploadingFotoPerfil(true);
-    const url = await uploadImagem(file, 'perfil');
-    if (url) {
-      handlePerfilChange('foto_perfil_url', url);
-    }
-    setUploadingFotoPerfil(false);
+  const moverCategoria = async (id, direcao) => {
+    const index = categorias.findIndex(c => c.id === id);
+    if ((direcao === 'cima' && index === 0) || (direcao === 'baixo' && index === categorias.length - 1)) return;
+    
+    const novasCategorias = [...categorias];
+    const novoIndex = direcao === 'cima' ? index - 1 : index + 1;
+    [novasCategorias[index], novasCategorias[novoIndex]] = [novasCategorias[novoIndex], novasCategorias[index]];
+    
+    setCategorias(novasCategorias.map((c, i) => ({ ...c, ordem: i })));
   };
 
-  const handleFotoCapaChange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Imagem muito grande. Máximo 5MB.');
-      return;
-    }
-
-    setUploadingFotoCapa(true);
-    const url = await uploadImagem(file, 'capa');
-    if (url) {
-      handlePerfilChange('foto_capa_url', url);
-    }
-    setUploadingFotoCapa(false);
+  const moverEvento = (eventoId, direcao, categoriaId) => {
+    const eventosCategoria = eventos
+      .filter(e => e.categoria_id === categoriaId && e.visivel)
+      .sort((a, b) => a.ordem - b.ordem);
+    
+    const index = eventosCategoria.findIndex(e => e.id === eventoId);
+    if ((direcao === 'cima' && index === 0) || (direcao === 'baixo' && index === eventosCategoria.length - 1)) return;
+    
+    const novoIndex = direcao === 'cima' ? index - 1 : index + 1;
+    const eventoAtual = eventosCategoria[index];
+    const eventoTroca = eventosCategoria[novoIndex];
+    
+    setEventos(eventos.map(e => {
+      if (e.id === eventoAtual.id) return { ...e, ordem: novoIndex };
+      if (e.id === eventoTroca.id) return { ...e, ordem: index };
+      return e;
+    }));
   };
 
-  const handleImagemLinkChange = async (e, linkId) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Imagem muito grande. Máximo 5MB.');
-      return;
-    }
-
-    setUploadingImagensLinks(prev => ({ ...prev, [linkId]: true }));
-    const url = await uploadImagem(file, 'link', linkId);
-    if (url) {
-      atualizarLink(linkId, 'imagem_url', url);
-    }
-    setUploadingImagensLinks(prev => ({ ...prev, [linkId]: false }));
-  };
-
-  const adicionarLink = () => {
-    const novoLink = {
-      id: Date.now().toString(),
-      titulo: '',
-      url: '',
-      descricao: '',
-      imagem_url: '',
-      icone: '🔗',
-      ordem: links.length,
-      novo: true
-    };
-    setLinks([...links, novoLink]);
-  };
-
-  const atualizarLink = (id, campo, valor) => {
-    setLinks(links.map(link => 
-      link.id === id ? { ...link, [campo]: valor } : link
+  const toggleVisibilidade = (id) => {
+    setEventos(eventos.map(e => 
+      e.id === id ? { ...e, visivel: !e.visivel } : e
     ));
   };
 
-  const removerLink = (id) => {
-    if (confirm('Deseja remover este link?')) {
-      setLinks(links.filter(link => link.id !== id));
-    }
+  const toggleDestaque = (id) => {
+    setEventos(eventos.map(e => 
+      e.id === id ? { ...e, destaque: !e.destaque } : e
+    ));
   };
 
-  const handleSalvar = async () => {
-    if (!perfil.nome_exibicao || !perfil.slug) {
-      alert('Preencha pelo menos o nome e o slug!');
-      return;
-    }
+  const moverParaCategoria = (eventoId, novaCategoriaId) => {
+    const novaCategoria = novaCategoriaId === 'sem-categoria' ? null : novaCategoriaId;
+    setEventos(eventos.map(e => 
+      e.id === eventoId ? { ...e, categoria_id: novaCategoria } : e
+    ));
+  };
 
+  const salvarTudo = async () => {
     setSalvando(true);
-
+    
     try {
-      // Salvar/atualizar perfil
-      const { data: perfilExistente } = await supabase
-        .from('perfil_produtor')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (perfilExistente) {
-        // Atualizar
-        const { error } = await supabase
-          .from('perfil_produtor')
-          .update({
-            slug: perfil.slug,
-            nome_exibicao: perfil.nome_exibicao,
-            bio: perfil.bio,
-            foto_perfil_url: perfil.foto_perfil_url,
-            foto_capa_url: perfil.foto_capa_url,
-            instagram: perfil.instagram,
-            facebook: perfil.facebook,
-            youtube: perfil.youtube,
-            twitter: perfil.twitter,
-            tiktok: perfil.tiktok,
-            updated_at: new Date().toISOString()
-          })
-          .eq('user_id', user.id);
-
-        if (error) throw error;
-      } else {
-        // Criar
-        const { error } = await supabase
-          .from('perfil_produtor')
-          .insert([{
-            user_id: user.id,
-            slug: perfil.slug,
-            nome_exibicao: perfil.nome_exibicao,
-            bio: perfil.bio,
-            foto_perfil_url: perfil.foto_perfil_url,
-            foto_capa_url: perfil.foto_capa_url,
-            instagram: perfil.instagram,
-            facebook: perfil.facebook,
-            youtube: perfil.youtube,
-            twitter: perfil.twitter,
-            tiktok: perfil.tiktok
-          }]);
-
-        if (error) throw error;
-      }
-
-      // Deletar links que foram removidos
-      const linksIdsAtuais = links.filter(l => !l.novo).map(l => l.id);
-      if (linksIdsAtuais.length > 0) {
+      // Salvar ordem das categorias
+      for (const cat of categorias) {
         await supabase
-          .from('links_vitrine')
-          .delete()
-          .eq('user_id', user.id)
-          .not('id', 'in', `(${linksIdsAtuais.join(',')})`);
+          .from('categorias_vitrine')
+          .update({ ordem: cat.ordem })
+          .eq('id', cat.id);
       }
 
-      // Salvar links
-      for (const link of links) {
-        if (!link.titulo || !link.url) continue;
+      // Salvar/atualizar eventos_vitrine
+      for (const evento of eventos) {
+        const dados = {
+          user_id: user.id,
+          evento_id: evento.id,
+          categoria_id: evento.categoria_id,
+          ordem: evento.ordem,
+          destaque: evento.destaque,
+          visivel_vitrine: evento.visivel
+        };
 
-        if (link.novo) {
-          // Inserir novo
-          const { error } = await supabase
-            .from('links_vitrine')
-            .insert([{
-              user_id: user.id,
-              titulo: link.titulo,
-              url: link.url,
-              descricao: link.descricao,
-              imagem_url: link.imagem_url,
-              icone: link.icone,
-              ordem: link.ordem
-            }]);
-
-          if (error) console.error('Erro ao inserir link:', error);
-        } else {
+        if (evento.config_id) {
           // Atualizar existente
-          const { error } = await supabase
-            .from('links_vitrine')
-            .update({
-              titulo: link.titulo,
-              url: link.url,
-              descricao: link.descricao,
-              imagem_url: link.imagem_url,
-              icone: link.icone,
-              ordem: link.ordem
-            })
-            .eq('id', link.id);
-
-          if (error) console.error('Erro ao atualizar link:', error);
+          await supabase
+            .from('eventos_vitrine')
+            .update(dados)
+            .eq('id', evento.config_id);
+        } else {
+          // Inserir novo
+          await supabase
+            .from('eventos_vitrine')
+            .insert([dados]);
         }
       }
 
-      alert('✅ Vitrine salva com sucesso!');
+      alert('✅ Configurações salvas com sucesso!');
+      await carregarDados(user.id);
       
     } catch (error) {
       console.error('Erro ao salvar:', error);
-      alert('❌ Erro ao salvar vitrine: ' + error.message);
+      alert('❌ Erro ao salvar: ' + error.message);
     } finally {
       setSalvando(false);
     }
@@ -354,315 +264,126 @@ export default function MinhaVitrinePage() {
 
   if (loading) {
     return (
-      <div className="publicar-evento-container" style={{ textAlign: 'center', padding: '50px' }}>
+      <div style={{ textAlign: 'center', padding: '50px' }}>
         <h2>Carregando...</h2>
       </div>
     );
   }
 
+  const grouped = eventosPorCategoria();
+
   return (
-    <div className="publicar-evento-container">
-      <div className="user-info-banner">
-        <p>👤 Editando como: <strong>{user.email}</strong></p>
-      </div>
-
-      <h1>✨ Minha Vitrine</h1>
-      <p style={{ textAlign: 'center', color: '#666', marginBottom: '30px' }}>
-        Crie sua página personalizada para compartilhar seus eventos e links
-      </p>
-
-      {/* Prévia e Link */}
-      {perfil.slug && (
-        <div style={{
-          backgroundColor: '#e8f5e9',
-          padding: '15px',
-          borderRadius: '8px',
-          marginBottom: '30px',
-          textAlign: 'center'
-        }}>
-          <p style={{ margin: '0 0 10px 0', color: '#2e7d32' }}>
-            <strong>🔗 Sua vitrine está em:</strong>
-          </p>
-          <a 
-            href={`/vitrine/${perfil.slug}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              color: '#1976d2',
-              fontSize: '18px',
-              fontWeight: 'bold',
-              textDecoration: 'none'
-            }}
-          >
-            golden-ingressos.vercel.app/vitrine/{perfil.slug}
-          </a>
-        </div>
-      )}
-
-      {/* Dados Básicos */}
-      <div className="form-section">
-        <h2>📝 Dados Básicos</h2>
-
-        <div className="form-group">
-          <label>Nome de Exibição *</label>
-          <input
-            type="text"
-            value={perfil.nome_exibicao}
-            onChange={(e) => handleNomeChange(e.target.value)}
-            placeholder="Ex: Maria Silva Eventos"
-            required
-          />
-        </div>
-
-        <div className="form-group">
-          <label>Slug (URL personalizada) *</label>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ color: '#666' }}>golden-ingressos.com/vitrine/</span>
-            <input
-              type="text"
-              value={perfil.slug}
-              onChange={(e) => handlePerfilChange('slug', gerarSlug(e.target.value))}
-              placeholder="seu-nome"
-              required
-              style={{ flex: 1 }}
-            />
-          </div>
-          <small>Somente letras minúsculas, números e hífens</small>
-        </div>
-
-        <div className="form-group">
-          <label>Bio</label>
-          <textarea
-            value={perfil.bio}
-            onChange={(e) => handlePerfilChange('bio', e.target.value)}
-            placeholder="Conte um pouco sobre você..."
-            rows="3"
-          />
-        </div>
-      </div>
-
-      {/* Fotos */}
-      <div className="form-section">
-        <h2>📸 Fotos</h2>
-
-        <div className="form-group">
-          <label>Foto de Perfil</label>
-          <input
-            type="file"
-            ref={fotoPerfilRef}
-            accept="image/*"
-            onChange={handleFotoPerfilChange}
-            style={{ display: 'none' }}
-          />
-          <button
-            type="button"
-            onClick={() => fotoPerfilRef.current.click()}
-            className="btn-submit"
-            style={{ background: '#3498db', marginBottom: '10px' }}
-            disabled={uploadingFotoPerfil}
-          >
-            {uploadingFotoPerfil ? '⏳ Enviando...' : '📷 Escolher Foto de Perfil'}
-          </button>
-          {perfil.foto_perfil_url && (
-            <img src={perfil.foto_perfil_url} alt="Perfil" style={{ width: '100px', height: '100px', objectFit: 'cover', borderRadius: '50%' }} />
-          )}
-        </div>
-
-        <div className="form-group">
-          <label>Foto de Capa</label>
-          <input
-            type="file"
-            ref={fotoCapaRef}
-            accept="image/*"
-            onChange={handleFotoCapaChange}
-            style={{ display: 'none' }}
-          />
-          <button
-            type="button"
-            onClick={() => fotoCapaRef.current.click()}
-            className="btn-submit"
-            style={{ background: '#9b59b6', marginBottom: '10px' }}
-            disabled={uploadingFotoCapa}
-          >
-            {uploadingFotoCapa ? '⏳ Enviando...' : '🖼️ Escolher Foto de Capa'}
-          </button>
-          {perfil.foto_capa_url && (
-            <img src={perfil.foto_capa_url} alt="Capa" style={{ width: '100%', maxWidth: '400px', height: '150px', objectFit: 'cover', borderRadius: '8px' }} />
-          )}
-        </div>
-      </div>
-
-      {/* Redes Sociais */}
-      <div className="form-section">
-        <h2>📱 Redes Sociais</h2>
-
-        <div className="form-group">
-          <label>Instagram</label>
-          <input
-            type="text"
-            value={perfil.instagram}
-            onChange={(e) => handlePerfilChange('instagram', e.target.value)}
-            placeholder="@seuusuario"
-          />
-        </div>
-
-        <div className="form-group">
-          <label>Facebook</label>
-          <input
-            type="text"
-            value={perfil.facebook}
-            onChange={(e) => handlePerfilChange('facebook', e.target.value)}
-            placeholder="seu-usuario"
-          />
-        </div>
-
-        <div className="form-group">
-          <label>YouTube</label>
-          <input
-            type="text"
-            value={perfil.youtube}
-            onChange={(e) => handlePerfilChange('youtube', e.target.value)}
-            placeholder="@seu-canal"
-          />
-        </div>
-      </div>
-
-      {/* Links Personalizados */}
-      <div className="form-section">
-        <h2>🔗 Links Personalizados</h2>
-        <p style={{ color: '#666', marginBottom: '20px' }}>
-          Adicione links para suas redes, produtos, serviços, etc.
+    <div style={{ fontFamily: 'system-ui', padding: '20px', maxWidth: '1200px', margin: '0 auto', background: '#f5f7fa', minHeight: '100vh' }}>
+      <div style={{ background: 'white', borderRadius: '15px', padding: '30px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
+        <h1 style={{ marginBottom: '10px' }}>🎭 Organizar Eventos da Vitrine</h1>
+        <p style={{ color: '#666', marginBottom: '30px' }}>
+          Use as setas para reordenar. Organize como quiser!
         </p>
 
-        {links.map((link, index) => (
-          <div key={link.id} style={{
-            border: '2px solid #ddd',
-            borderRadius: '8px',
-            padding: '20px',
-            marginBottom: '15px',
-            backgroundColor: '#f9f9f9'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
-              <h3 style={{ margin: 0 }}>Link {index + 1}</h3>
-              <button
-                type="button"
-                onClick={() => removerLink(link.id)}
-                style={{
-                  background: '#e74c3c',
-                  color: 'white',
-                  border: 'none',
-                  padding: '5px 15px',
-                  borderRadius: '5px',
-                  cursor: 'pointer'
-                }}
-              >
-                🗑️ Remover
-              </button>
-            </div>
+        {/* CRIAR CATEGORIA */}
+        <div style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', padding: '25px', borderRadius: '12px', marginBottom: '30px' }}>
+          <h2 style={{ color: 'white', marginBottom: '15px' }}>➕ Nova Categoria</h2>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <input
+              type="text"
+              placeholder="Nome da categoria"
+              value={novaCategoria.nome}
+              onChange={(e) => setNovaCategoria({ ...novaCategoria, nome: e.target.value })}
+              style={{ flex: '1', minWidth: '200px', padding: '12px', borderRadius: '8px', border: 'none' }}
+            />
+            <input
+              type="text"
+              placeholder="🎵"
+              value={novaCategoria.icone}
+              onChange={(e) => setNovaCategoria({ ...novaCategoria, icone: e.target.value })}
+              maxLength="2"
+              style={{ width: '70px', padding: '12px', borderRadius: '8px', border: 'none', textAlign: 'center' }}
+            />
+            <input
+              type="color"
+              value={novaCategoria.cor}
+              onChange={(e) => setNovaCategoria({ ...novaCategoria, cor: e.target.value })}
+              style={{ width: '60px', borderRadius: '8px', border: 'none', cursor: 'pointer' }}
+            />
+            <button
+              onClick={adicionarCategoria}
+              style={{ padding: '12px 25px', background: '#27ae60', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
+            >
+              Adicionar
+            </button>
+          </div>
+        </div>
 
-            <div className="form-group">
-              <label>Título</label>
-              <input
-                type="text"
-                value={link.titulo}
-                onChange={(e) => atualizarLink(link.id, 'titulo', e.target.value)}
-                placeholder="Ex: Meu Site, WhatsApp, Instagram"
-              />
+        {/* CATEGORIAS */}
+        <div style={{ marginBottom: '30px' }}>
+          <h2>📋 Categorias</h2>
+          {categorias.map((cat, index) => (
+            <div key={cat.id} style={{ background: 'white', padding: '18px', borderRadius: '10px', marginBottom: '12px', border: '2px solid #e0e0e0', display: 'flex', alignItems: 'center', gap: '15px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <button onClick={() => moverCategoria(cat.id, 'cima')} disabled={index === 0} style={{ background: index === 0 ? '#ddd' : '#3498db', color: 'white', border: 'none', borderRadius: '4px', cursor: index === 0 ? 'not-allowed' : 'pointer', padding: '4px 8px' }}>▲</button>
+                <button onClick={() => moverCategoria(cat.id, 'baixo')} disabled={index === categorias.length - 1} style={{ background: index === categorias.length - 1 ? '#ddd' : '#3498db', color: 'white', border: 'none', borderRadius: '4px', cursor: index === categorias.length - 1 ? 'not-allowed' : 'pointer', padding: '4px 8px' }}>▼</button>
+              </div>
+              <span style={{ fontSize: '32px' }}>{cat.icone}</span>
+              <div style={{ flex: 1 }}>
+                <strong style={{ fontSize: '18px' }}>{cat.nome}</strong>
+                <span style={{ marginLeft: '12px', color: '#999' }}>({grouped[cat.id]?.length || 0} eventos)</span>
+              </div>
+              <div style={{ width: '35px', height: '35px', borderRadius: '50%', background: cat.cor }} />
+              <button onClick={() => removerCategoria(cat.id)} style={{ padding: '8px 16px', background: '#e74c3c', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>🗑️</button>
             </div>
+          ))}
+        </div>
 
-            <div className="form-group">
-              <label>URL *</label>
-              <input
-                type="url"
-                value={link.url}
-                onChange={(e) => atualizarLink(link.id, 'url', e.target.value)}
-                placeholder="https://exemplo.com"
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Descrição (opcional)</label>
-              <input
-                type="text"
-                value={link.descricao}
-                onChange={(e) => atualizarLink(link.id, 'descricao', e.target.value)}
-                placeholder="Breve descrição"
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Ícone (emoji)</label>
-              <input
-                type="text"
-                value={link.icone}
-                onChange={(e) => atualizarLink(link.id, 'icone', e.target.value)}
-                placeholder="🔗"
-                maxLength="2"
-                style={{ width: '80px' }}
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Imagem do Link (opcional)</label>
-              <input
-                type="file"
-                ref={(el) => imagemLinkRefs.current[link.id] = el}
-                accept="image/*"
-                onChange={(e) => handleImagemLinkChange(e, link.id)}
-                style={{ display: 'none' }}
-              />
-              <button
-                type="button"
-                onClick={() => imagemLinkRefs.current[link.id]?.click()}
-                className="btn-submit"
-                style={{ background: '#27ae60', marginBottom: '10px' }}
-                disabled={uploadingImagensLinks[link.id]}
-              >
-                {uploadingImagensLinks[link.id] ? '⏳ Enviando...' : '🖼️ Escolher Imagem'}
-              </button>
-              {link.imagem_url && (
-                <img 
-                  src={link.imagem_url} 
-                  alt={link.titulo} 
-                  style={{ width: '100%', maxWidth: '300px', height: '120px', objectFit: 'cover', borderRadius: '8px' }} 
-                />
+        {/* EVENTOS */}
+        <div>
+          <h2>🎯 Eventos</h2>
+          
+          {categorias.map(cat => (
+            <div key={cat.id} style={{ marginBottom: '20px' }}>
+              <div onClick={() => setCategoriaExpandida({ ...categoriaExpandida, [cat.id]: !categoriaExpandida[cat.id] })} style={{ background: cat.cor, color: 'white', padding: '18px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ fontSize: '28px' }}>{cat.icone}</span>
+                <strong style={{ flex: 1, fontSize: '20px' }}>{cat.nome}</strong>
+                <span>({grouped[cat.id]?.length || 0})</span>
+                <span>{categoriaExpandida[cat.id] ? '▼' : '▶'}</span>
+              </div>
+              
+              {categoriaExpandida[cat.id] && (
+                <div style={{ background: '#f8f9fa', padding: '15px', borderRadius: '10px', marginLeft: '20px', marginTop: '10px' }}>
+                  {grouped[cat.id]?.length === 0 ? (
+                    <p style={{ color: '#999', textAlign: 'center' }}>📭 Sem eventos</p>
+                  ) : (
+                    grouped[cat.id]?.map((evento, index) => (
+                      <div key={evento.id} style={{ background: 'white', padding: '15px', borderRadius: '8px', marginBottom: '10px', border: evento.destaque ? '3px solid #f39c12' : '1px solid #ddd', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <button onClick={() => moverEvento(evento.id, 'cima', cat.id)} disabled={index === 0} style={{ background: index === 0 ? '#ddd' : '#3498db', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 8px' }}>▲</button>
+                          <button onClick={() => moverEvento(evento.id, 'baixo', cat.id)} disabled={index === grouped[cat.id].length - 1} style={{ background: index === grouped[cat.id].length - 1 ? '#ddd' : '#3498db', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 8px' }}>▼</button>
+                        </div>
+                        {evento.destaque && <span>⭐</span>}
+                        <div style={{ flex: 1 }}>
+                          <strong>{evento.nome}</strong>
+                          <div style={{ fontSize: '13px', color: '#666' }}>📅 {new Date(evento.data).toLocaleDateString('pt-BR')}</div>
+                        </div>
+                        <select value={evento.categoria_id || 'sem-categoria'} onChange={(e) => moverParaCategoria(evento.id, e.target.value)} style={{ padding: '6px', borderRadius: '5px', border: '1px solid #ddd' }}>
+                          <option value="sem-categoria">Sem categoria</option>
+                          {categorias.map(c => <option key={c.id} value={c.id}>{c.icone} {c.nome}</option>)}
+                        </select>
+                        <button onClick={() => toggleDestaque(evento.id)} style={{ padding: '6px 12px', background: evento.destaque ? '#f39c12' : '#95a5a6', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>{evento.destaque ? '⭐' : '☆'}</button>
+                        <button onClick={() => toggleVisibilidade(evento.id)} style={{ padding: '6px 12px', background: evento.visivel ? '#27ae60' : '#e74c3c', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>{evento.visivel ? '👁️' : '🚫'}</button>
+                      </div>
+                    ))
+                  )}
+                </div>
               )}
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
 
-        <button
-          type="button"
-          onClick={adicionarLink}
-          className="btn-submit"
-          style={{ background: '#27ae60' }}
-        >
-          ➕ Adicionar Link
-        </button>
-      </div>
-
-      {/* Botões */}
-      <div style={{ display: 'flex', gap: '15px', marginTop: '30px' }}>
-        <button
-          onClick={handleSalvar}
-          className="btn-submit"
-          disabled={salvando}
-          style={{ flex: 1 }}
-        >
-          {salvando ? '⏳ Salvando...' : '💾 Salvar Vitrine'}
-        </button>
-
-        {perfil.slug && (
-          <Link
-            href={`/vitrine/${perfil.slug}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn-submit"
-            style={{ flex: 1, background: '#3498db', textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          >
-            👁️ Ver Vitrine
-          </Link>
-        )}
+        {/* SALVAR */}
+        <div style={{ textAlign: 'center', marginTop: '40px' }}>
+          <button onClick={salvarTudo} disabled={salvando} style={{ padding: '18px 50px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', border: 'none', borderRadius: '10px', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer' }}>
+            {salvando ? '⏳ Salvando...' : '💾 Salvar Tudo'}
+          </button>
+        </div>
       </div>
     </div>
   );
