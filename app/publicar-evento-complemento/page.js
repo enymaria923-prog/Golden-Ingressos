@@ -1,11 +1,11 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '../../utils/supabase/client';
 import CupomManager from '../publicar-evento/components/CupomManager';
 import ProdutoManager from '../publicar-evento/components/ProdutoManager';
 
-const PublicarEventoComplemento = () => {
+function PublicarEventoComplementoContent() {
   const supabase = createClient();
   const router = useRouter();
   const searchParams = useSearchParams();
