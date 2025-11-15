@@ -218,14 +218,6 @@ export default function MinhaVitrinePage() {
       return;
     }
 
-    // Validar URLs dos links
-    for (const link of links) {
-      if (link.url && !link.url.startsWith('http://') && !link.url.startsWith('https://')) {
-        alert(`⚠️ O link "${link.titulo}" precisa começar com https:// ou http://`);
-        return;
-      }
-    }
-
     setSalvando(true);
 
     try {
