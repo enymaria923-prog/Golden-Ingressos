@@ -92,6 +92,14 @@ export default function MinhaVitrinePage() {
           .order('ordem', { ascending: true });
 
         setLinks(linksData || []);
+      } else {
+        // Se não tem perfil, criar um slug inicial baseado no email
+        const emailSlug = gerarSlug(user.email.split('@')[0]);
+        setPerfil(prev => ({
+          ...prev,
+          slug: emailSlug,
+          nome_exibicao: user.email.split('@')[0]
+        }));
       }
     } catch (error) {
       console.error('Erro ao carregar vitrine:', error);
@@ -210,6 +218,14 @@ export default function MinhaVitrinePage() {
       return;
     }
 
+    // Validar URLs dos links
+    for (const link of links) {
+      if (link.url && !link.url.startsWith('http://') && !link.url.startsWith('https://')) {
+        alert(`⚠️ O link "${link.titulo}" precisa começar com https:// ou http://`);
+        return;
+      }
+    }
+
     setSalvando(true);
 
     try {
@@ -261,8 +277,20 @@ export default function MinhaVitrinePage() {
         if (error) throw error;
       }
 
+      // Deletar links que foram removidos
+      const linksIdsAtuais = links.filter(l => !l.novo).map(l => l.id);
+      if (linksIdsAtuais.length > 0) {
+        await supabase
+          .from('links_vitrine')
+          .delete()
+          .eq('user_id', user.id)
+          .not('id', 'in', `(${linksIdsAtuais.join(',')})`);
+      }
+
       // Salvar links
       for (const link of links) {
+        if (!link.titulo || !link.url) continue; // Pula links vazios
+
         if (link.novo) {
           // Inserir novo
           const { error } = await supabase
@@ -524,13 +552,16 @@ export default function MinhaVitrinePage() {
             </div>
 
             <div className="form-group">
-              <label>URL</label>
+              <label>URL *</label>
               <input
                 type="url"
                 value={link.url}
                 onChange={(e) => atualizarLink(link.id, 'url', e.target.value)}
-                placeholder="https://..."
+                placeholder="https://exemplo.com"
               />
+              <small style={{ color: '#e74c3c' }}>
+                ⚠️ Precisa começar com https:// ou http://
+              </small>
             </div>
 
             <div className="form-group">
