@@ -137,6 +137,7 @@ const PublicarEvento = () => {
       }
 
       let totalIngressosSetor = 0;
+      let temIngressoValidoNoSetor = false;
       
       if (setor.usaLotes) {
         if (!setor.lotes || setor.lotes.length === 0) {
@@ -161,21 +162,23 @@ const PublicarEvento = () => {
 
           let totalIngressosLote = 0;
           for (const tipo of lote.tiposIngresso) {
-            if (!tipo.nome || !tipo.preco || !tipo.quantidade) {
-              alert(`Preencha todos os campos do ingresso no lote "${lote.nome}" do setor "${setor.nome}"!`);
+            if (!tipo.nome || !tipo.preco) {
+              alert(`Preencha nome e preço do ingresso no lote "${lote.nome}" do setor "${setor.nome}"!`);
               return;
             }
             
-            const quantidade = parseInt(tipo.quantidade);
-            const preco = parseFloat(tipo.preco);
+            const quantidade = parseInt(tipo.quantidade) || 0;
+            const preco = parseFloat(tipo.preco) || 0;
             
-            if (quantidade <= 0 || preco <= 0) {
-              alert(`Valores inválidos no lote "${lote.nome}". Quantidade e preço devem ser maiores que zero!`);
+            if (preco <= 0) {
+              alert(`Preço inválido no lote "${lote.nome}". O preço deve ser maior que zero!`);
               return;
             }
             
-            totalIngressosLote += quantidade;
-            temIngressoValido = true;
+            if (quantidade > 0) {
+              totalIngressosLote += quantidade;
+              temIngressoValidoNoSetor = true;
+            }
           }
 
           if (lote.quantidadeTotal && totalIngressosLote > parseInt(lote.quantidadeTotal)) {
@@ -187,27 +190,38 @@ const PublicarEvento = () => {
         }
       } else {
         for (const tipo of setor.tiposIngresso) {
-          if (!tipo.nome || !tipo.preco || !tipo.quantidade) {
-            alert(`Preencha todos os campos do ingresso no setor "${setor.nome}"!`);
+          if (!tipo.nome || !tipo.preco) {
+            alert(`Preencha nome e preço do ingresso no setor "${setor.nome}"!`);
             return;
           }
           
-          const quantidade = parseInt(tipo.quantidade);
-          const preco = parseFloat(tipo.preco);
+          const quantidade = parseInt(tipo.quantidade) || 0;
+          const preco = parseFloat(tipo.preco) || 0;
           
-          if (quantidade <= 0 || preco <= 0) {
-            alert(`Valores inválidos no setor "${setor.nome}". Quantidade e preço devem ser maiores que zero!`);
+          if (preco <= 0) {
+            alert(`Preço inválido no setor "${setor.nome}". O preço deve ser maior que zero!`);
             return;
           }
           
-          totalIngressosSetor += quantidade;
-          temIngressoValido = true;
+          if (quantidade > 0) {
+            totalIngressosSetor += quantidade;
+            temIngressoValidoNoSetor = true;
+          }
         }
+      }
+
+      if (!temIngressoValidoNoSetor) {
+        alert(`O setor "${setor.nome}" precisa ter pelo menos um tipo de ingresso com quantidade maior que zero!`);
+        return;
       }
 
       if (setor.capacidadeTotal && totalIngressosSetor > parseInt(setor.capacidadeTotal)) {
         alert(`O total de ingressos (${totalIngressosSetor}) no setor "${setor.nome}" ultrapassa a capacidade definida (${setor.capacidadeTotal})!`);
         return;
+      }
+
+      if (temIngressoValidoNoSetor) {
+        temIngressoValido = true;
       }
     }
 
