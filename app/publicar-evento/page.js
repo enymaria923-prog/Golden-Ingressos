@@ -6,6 +6,7 @@ import SetorManager from './components/SetorManager';
 import CategoriaSelector from './components/CategoriaSelector';
 import SelecionarTaxa from './components/SelecionarTaxa';
 import ProdutoManager from './components/ProdutoManager';
+import CupomManager from './components/CupomManager';
 import './PublicarEvento.css';
 
 const PublicarEvento = () => {
@@ -26,12 +27,14 @@ const PublicarEvento = () => {
   
   const [categorias, setCategorias] = useState([]);
   const [temLugarMarcado, setTemLugarMarcado] = useState(false);
+  const [aparecerComoProdutor, setAparecerComoProdutor] = useState(true);
   const [taxa, setTaxa] = useState({ 
     taxaComprador: 15, 
     taxaProdutor: 5 
   });
   
   const [setoresIngressos, setSetoresIngressos] = useState([]);
+  const [cupons, setCupons] = useState([]);
   const [produtos, setProdutos] = useState([]);
   
   const [imagem, setImagem] = useState(null); 
@@ -131,7 +134,6 @@ const PublicarEvento = () => {
       return;
     }
 
-    // VALIDAÇÕES BÁSICAS
     if (!formData.titulo || !formData.descricao || !formData.data || !formData.hora || !formData.localNome || !imagem) {
       alert('Por favor, preencha todos os campos obrigatórios, incluindo a imagem!');
       return;
@@ -141,7 +143,6 @@ const PublicarEvento = () => {
       return;
     }
 
-    // VALIDAR SETORES E INGRESSOS
     console.log('🎫 Setores recebidos:', setoresIngressos);
     
     if (!setoresIngressos || setoresIngressos.length === 0) {
@@ -149,7 +150,6 @@ const PublicarEvento = () => {
       return;
     }
 
-    // VALIDAR CADA SETOR
     let temIngressoValido = false;
     for (const setor of setoresIngressos) {
       if (!setor.nome || setor.nome.trim() === '') {
@@ -157,11 +157,9 @@ const PublicarEvento = () => {
         return;
       }
 
-      // VALIDAR CAPACIDADE DO SETOR
       let totalIngressosSetor = 0;
       
       if (setor.usaLotes) {
-        // SE USA LOTES
         if (!setor.lotes || setor.lotes.length === 0) {
           alert(`O setor "${setor.nome}" está configurado para usar lotes, mas não tem nenhum lote criado!`);
           return;
@@ -173,7 +171,6 @@ const PublicarEvento = () => {
             return;
           }
 
-          // VALIDAR DATAS DO LOTE
           if (lote.dataInicio && lote.dataFim) {
             const inicio = new Date(lote.dataInicio);
             const fim = new Date(lote.dataFim);
@@ -183,7 +180,6 @@ const PublicarEvento = () => {
             }
           }
 
-          // VALIDAR INGRESSOS DO LOTE
           let totalIngressosLote = 0;
           for (const tipo of lote.tiposIngresso) {
             if (!tipo.nome || !tipo.preco || !tipo.quantidade) {
@@ -203,7 +199,6 @@ const PublicarEvento = () => {
             temIngressoValido = true;
           }
 
-          // VERIFICAR SE ULTRAPASSA CAPACIDADE DO LOTE
           if (lote.quantidadeTotal && totalIngressosLote > parseInt(lote.quantidadeTotal)) {
             alert(`O total de ingressos (${totalIngressosLote}) no lote "${lote.nome}" ultrapassa a capacidade definida (${lote.quantidadeTotal})!`);
             return;
@@ -212,7 +207,6 @@ const PublicarEvento = () => {
           totalIngressosSetor += totalIngressosLote;
         }
       } else {
-        // SE NÃO USA LOTES (INGRESSOS DIRETOS)
         for (const tipo of setor.tiposIngresso) {
           if (!tipo.nome || !tipo.preco || !tipo.quantidade) {
             alert(`Preencha todos os campos do ingresso no setor "${setor.nome}"!`);
@@ -232,7 +226,6 @@ const PublicarEvento = () => {
         }
       }
 
-      // VERIFICAR SE ULTRAPASSA CAPACIDADE DO SETOR
       if (setor.capacidadeTotal && totalIngressosSetor > parseInt(setor.capacidadeTotal)) {
         alert(`O total de ingressos (${totalIngressosSetor}) no setor "${setor.nome}" ultrapassa a capacidade definida (${setor.capacidadeTotal})!`);
         return;
@@ -244,7 +237,6 @@ const PublicarEvento = () => {
       return;
     }
 
-    // VALIDAR PRODUTOS (SE HOUVER)
     console.log('🛍️ Produtos recebidos:', produtos);
     if (produtos && produtos.length > 0) {
       for (const produto of produtos) {
@@ -270,7 +262,6 @@ const PublicarEvento = () => {
     try {
       console.log('👤 Publicando como usuário:', user.id);
 
-      // ====== 1. UPLOAD DA IMAGEM DO EVENTO ======
       if (imagem) {
         const fileExtension = imagem.name.split('.').pop();
         const timestamp = Date.now();
@@ -302,7 +293,6 @@ const PublicarEvento = () => {
         console.log('🔗 URL pública:', publicUrl);
       }
 
-      // ====== 2. CALCULAR TOTAIS DO EVENTO ======
       let totalIngressosEvento = 0;
       let somaPrecos = 0;
       let totalTipos = 0;
@@ -337,7 +327,6 @@ const PublicarEvento = () => {
 
       const precoMedioEvento = totalTipos > 0 ? (somaPrecos / totalTipos) : 0;
 
-      // ====== 3. CRIAR EVENTO ======
       const eventData = {
         nome: formData.titulo,
         descricao: formData.descricao,
@@ -347,6 +336,7 @@ const PublicarEvento = () => {
         endereco: formData.localEndereco || null,
         categoria: categorias[0],
         tem_lugar_marcado: temLugarMarcado,
+        mostrar_produtor: aparecerComoProdutor,
         TaxaCliente: taxa.taxaComprador,
         TaxaProdutor: taxa.taxaProdutor,
         imagem_url: publicUrl,
@@ -380,7 +370,6 @@ const PublicarEvento = () => {
       const eventoId = insertedData[0].id;
       console.log('✅ Evento criado com ID:', eventoId);
 
-      // ====== 4. SALVAR LOTES (SE HOUVER) ======
       const lotesMap = new Map();
 
       for (const setor of setoresIngressos) {
@@ -416,7 +405,6 @@ const PublicarEvento = () => {
         }
       }
 
-      // ====== 5. SALVAR INGRESSOS ======
       console.log('🎫 Salvando ingressos...');
       const ingressosParaSalvar = [];
       
@@ -490,7 +478,6 @@ const PublicarEvento = () => {
         throw new Error('Nenhum ingresso válido para salvar!');
       }
 
-      // ====== 6. SALVAR PRODUTOS (SE HOUVER) ======
       if (produtos && produtos.length > 0) {
         console.log('🛍️ Salvando produtos...');
         
@@ -549,6 +536,152 @@ const PublicarEvento = () => {
           console.log(`✅ Produto "${produto.nome}" salvo com sucesso!`);
         }
       }
+
+      if (cupons && cupons.length > 0) {
+        console.log('🎟️ Salvando cupons...');
+        
+        for (const cupom of cupons) {
+          if (!cupom.codigo || cupom.codigo.trim() === '') {
+            throw new Error('Preencha o código de todos os cupons!');
+          }
+
+          const cupomData = {
+            evento_id: eventoId,
+            codigo: cupom.codigo.toUpperCase(),
+            descricao: cupom.descricao || null,
+            ativo: true,
+            quantidade_total: parseInt(cupom.quantidadeTotal) || null,
+            quantidade_usada: 0,
+            data_validade_inicio: cupom.dataInicio || null,
+            data_validade_fim: cupom.dataFim || null,
+            user_id: user.id
+          };
+
+          const { data: cupomInserido, error: cupomError } = await supabase
+            .from('cupons')
+            .insert([cupomData])
+            .select();
+
+          if (cupomError) {
+            console.error('❌ Erro ao salvar cupom:', cupomError);
+            throw new Error(`Erro ao salvar cupom "${cupom.codigo}": ${cupomError.message}`);
+          }
+
+          const cupomIdReal = cupomInserido[0].id;
+          console.log(`✅ Cupom "${cupom.codigo}" salvo com ID: ${cupomIdReal}`);
+
+          const cuponsIngressosData = [];
+          
+          const { data: ingressosSalvos } = await supabase
+            .from('ingressos')
+            .select('*')
+            .eq('evento_id', eventoId);
+
+          if (ingressosSalvos) {
+            setoresIngressos.forEach((setor) => {
+              if (setor.usaLotes) {
+                setor.lotes.forEach((lote) => {
+                  lote.tiposIngresso.forEach((tipo) => {
+                    const chave = `${setor.id}-${lote.id}-${tipo.id}`;
+                    const precoComCupom = parseFloat(cupom.precosPorIngresso[chave]);
+                    
+                    if (precoComCupom && precoComCupom > 0) {
+                      const ingressoReal = ingressosSalvos.find(ing => 
+                        ing.setor === setor.nome && 
+                        ing.tipo === tipo.nome &&
+                        ing.lote_id !== null
+                      );
+                      
+                      if (ingressoReal) {
+                        cuponsIngressosData.push({
+                          cupom_id: cupomIdReal,
+                          ingresso_id: ingressoReal.id,
+                          preco_com_cupom: precoComCupom
+                        });
+                      }
+                    }
+                  });
+                });
+              } else {
+                setor.tiposIngresso.forEach((tipo) => {
+                  const chave = `${setor.id}-null-${tipo.id}`;
+                  const precoComCupom = parseFloat(cupom.precosPorIngresso[chave]);
+                  
+                  if (precoComCupom && precoComCupom > 0) {
+                    const ingressoReal = ingressosSalvos.find(ing => 
+                      ing.setor === setor.nome && 
+                      ing.tipo === tipo.nome &&
+                      ing.lote_id === null
+                    );
+                    
+                    if (ingressoReal) {
+                      cuponsIngressosData.push({
+                        cupom_id: cupomIdReal,
+                        ingresso_id: ingressoReal.id,
+                        preco_com_cupom: precoComCupom
+                      });
+                    }
+                  }
+                });
+              }
+            });
+          }
+
+          if (cuponsIngressosData.length > 0) {
+            const { error: cuponsIngressosError } = await supabase
+              .from('cupons_ingressos')
+              .insert(cuponsIngressosData);
+
+            if (cuponsIngressosError) {
+              console.error('❌ Erro ao salvar preços com cupom:', cuponsIngressosError);
+              throw new Error(`Erro ao salvar preços do cupom: ${cuponsIngressosError.message}`);
+            }
+            
+            console.log(`✅ Preços com cupom "${cupom.codigo}" salvos!`);
+          }
+
+          if (produtos && produtos.length > 0) {
+            const { data: produtosSalvos } = await supabase
+              .from('produtos')
+              .select('*')
+              .eq('evento_id', eventoId);
+
+            if (produtosSalvos) {
+              const cuponsProdutosData = [];
+              
+              produtos.forEach((produto) => {
+                if (produto.aceitaCupons && produto.precosPorCupom[cupom.id]) {
+                  const produtoReal = produtosSalvos.find(p => p.nome === produto.nome);
+                  
+                  if (produtoReal) {
+                    const precoProdutoComCupom = parseFloat(produto.precosPorCupom[cupom.id]);
+                    
+                    if (precoProdutoComCupom && precoProdutoComCupom > 0) {
+                      cuponsProdutosData.push({
+                        cupom_id: cupomIdReal,
+                        produto_id: produtoReal.id,
+                        preco_com_cupom: precoProdutoComCupom
+                      });
+                    }
+                  }
+                }
+              });
+
+              if (cuponsProdutosData.length > 0) {
+                const { error: cuponsProdutosError } = await supabase
+                  .from('cupons_produtos')
+                  .insert(cuponsProdutosData);
+
+                if (cuponsProdutosError) {
+                  console.error('❌ Erro ao salvar preços de produtos com cupom:', cuponsProdutosError);
+                } else {
+                  console.log(`✅ Preços de produtos com cupom "${cupom.codigo}" salvos!`);
+                }
+              }
+            }
+          }
+        }
+      }
       
       alert('🎉 Evento publicado com sucesso! Em breve estará disponível no site.');
       
@@ -557,8 +690,10 @@ const PublicarEvento = () => {
       });
       setCategorias([]);
       setTemLugarMarcado(false);
+      setAparecerComoProdutor(true);
       setTaxa({ taxaComprador: 15, taxaProdutor: 5 });
       setSetoresIngressos([]);
+      setCupons([]);
       setProdutos([]);
       setImagem(null);
       setImagemPreview(null);
@@ -731,13 +866,43 @@ const PublicarEvento = () => {
         </div>
 
         <div className="form-section">
+          <h2>👤 Visibilidade do Produtor</h2>
+          <div style={{ background: '#e3f2fd', padding: '15px', borderRadius: '8px', border: '2px solid #2196f3' }}>
+            <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={aparecerComoProdutor}
+                onChange={(e) => setAparecerComoProdutor(e.target.checked)}
+                style={{ width: '20px', height: '20px' }}
+              />
+              <div style={{ flex: 1 }}>
+                <span style={{ fontWeight: 'bold', fontSize: '15px', color: '#1976d2' }}>
+                  Aparecer como produtor na página do evento
+                </span>
+                <p style={{ margin: '5px 0 0 0', fontSize: '13px', color: '#555' }}>
+                  Seu nome e informações de contato serão exibidos publicamente na página de compra do evento
+                </p>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div className="form-section">
           <h2>Setores e Ingressos *</h2>
           <SetorManager onSetoresChange={setSetoresIngressos} />
         </div>
 
         <div className="form-section">
+          <h2>🎟️ Cupons de Desconto (Opcional)</h2>
+          <CupomManager 
+            setoresIngressos={setoresIngressos} 
+            onCuponsChange={setCupons} 
+          />
+        </div>
+
+        <div className="form-section">
           <h2>🛍️ Produtos Adicionais (Opcional)</h2>
-          <ProdutoManager onProdutosChange={setProdutos} />
+          <ProdutoManager onProdutosChange={setProdutos} cupons={cupons} />
         </div>
 
         <div className="form-section">
