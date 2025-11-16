@@ -294,6 +294,40 @@ export default function MinhaVitrinePage() {
 
         if (error) throw error;
       }
+      {/* Botões */}
+<div style={{ display: 'flex', gap: '15px', marginTop: '30px' }}>
+  <button
+    onClick={handleSalvar}
+    className="btn-submit"
+    disabled={salvando}
+    style={{ flex: 1 }}
+  >
+    {salvando ? '⏳ Salvando...' : '💾 Salvar Vitrine'}
+  </button>
+
+  {perfil.slug && (
+    <>
+      <Link
+        href={`/vitrine/${perfil.slug}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="btn-submit"
+        style={{ flex: 1, background: '#3498db', textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      >
+        👁️ Ver Vitrine
+      </Link>
+      
+      {/* NOVO BOTÃO AQUI */}
+      <Link
+        href="/minha-vitrine/organizar"
+        className="btn-submit"
+        style={{ flex: 1, background: '#9b59b6', textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      >
+        🎭 Organizar Eventos
+      </Link>
+    </>
+  )}
+</div>
 
       // Deletar links que foram removidos
       const linksIdsAtuais = links.filter(l => !l.novo).map(l => l.id);
