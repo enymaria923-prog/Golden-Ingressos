@@ -15,7 +15,7 @@ export default function OrganizarEventosPage() {
   const [categorias, setCategorias] = useState([]);
   const [eventos, setEventos] = useState([]);
   const [novaCategoria, setNovaCategoria] = useState({ nome: '', icone: '📁', cor: '#5d34a4' });
-  const [categoriaExpandida, setCategoriaExpandida] = useState({});
+  const [categoriasExpandidas, setCategoriasExpandidas] = useState({});
 
   useEffect(() => {
     checkUser();
@@ -39,10 +39,18 @@ export default function OrganizarEventosPage() {
 
   const carregarDados = async (userId) => {
     try {
+      // Buscar categorias
       const { data: categoriasData } = await supabase.from('categorias_vitrine').select('*').eq('user_id', userId).eq('ativo', true).order('ordem');
       setCategorias(categoriasData || []);
+      
+      // Auto-expandir todas as categorias
+      const expandidas = {};
+      (categoriasData || []).forEach(cat => { expandidas[cat.id] = true; });
+      expandidas['sem-categoria'] = true;
+      setCategoriasExpandidas(expandidas);
 
-      const { data: eventosData } = await supabase.from('eventos').select('id, nome, data, status').eq('user_id', userId).eq('status', 'aprovado').order('data');
+      // Buscar eventos
+      const { data: eventosData } = await supabase.from('eventos').select('id, nome, data, status, imagem_url').eq('user_id', userId).eq('status', 'aprovado').order('data');
       const { data: eventosVitrineData } = await supabase.from('eventos_vitrine').select('*').eq('user_id', userId);
 
       const eventosMap = new Map(eventosVitrineData?.map(ev => [ev.evento_id, ev]) || []);
@@ -68,15 +76,16 @@ export default function OrganizarEventosPage() {
     try {
       const { data } = await supabase.from('categorias_vitrine').insert([{ user_id: user.id, nome: novaCategoria.nome, icone: novaCategoria.icone, cor: novaCategoria.cor, ordem: categorias.length }]).select().single();
       setCategorias([...categorias, data]);
+      setCategoriasExpandidas({ ...categoriasExpandidas, [data.id]: true });
       setNovaCategoria({ nome: '', icone: '📁', cor: '#5d34a4' });
-      alert('✅ Criada!');
+      alert('✅ Categoria criada! Agora arraste eventos para ela');
     } catch (error) {
       alert('Erro: ' + error.message);
     }
   };
 
   const removerCategoria = async (id) => {
-    if (!confirm('Remover?')) return;
+    if (!confirm('Remover categoria? Os eventos voltarão para "Sem Categoria"')) return;
     try {
       await supabase.from('categorias_vitrine').delete().eq('id', id);
       setCategorias(categorias.filter(c => c.id !== id));
@@ -117,6 +126,8 @@ export default function OrganizarEventosPage() {
     setEventos(eventos.map(e => e.id === eventoId ? { ...e, categoria_id: novaCat } : e));
   };
 
+  const toggleCategoria = (id) => setCategoriasExpandidas({ ...categoriasExpandidas, [id]: !categoriasExpandidas[id] });
+
   const salvarTudo = async () => {
     setSalvando(true);
     try {
@@ -135,7 +146,7 @@ export default function OrganizarEventosPage() {
     }
   };
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '50px' }}><h2>Carregando...</h2></div>;
+  if (loading) return <div style={{ textAlign: 'center', padding: '50px', fontFamily: 'system-ui' }}><h2>Carregando...</h2></div>;
 
   const grouped = eventosPorCategoria();
 
@@ -144,65 +155,89 @@ export default function OrganizarEventosPage() {
       <div style={{ background: 'white', borderRadius: '15px', padding: '30px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
         
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '30px', flexWrap: 'wrap', gap: '15px' }}>
-          <div><h1 style={{ margin: 0 }}>🎭 Organizar Eventos</h1><p style={{ color: '#666', margin: 0 }}>Organize sua vitrine</p></div>
+          <div><h1 style={{ margin: 0 }}>🎭 Organizar Eventos</h1><p style={{ color: '#666', margin: 0 }}>Crie seções e organize seus eventos</p></div>
           <Link href="/minha-vitrine" style={{ padding: '12px 24px', background: '#3498db', color: 'white', textDecoration: 'none', borderRadius: '8px', fontWeight: 'bold' }}>← Voltar</Link>
         </div>
 
+        {/* Nova Categoria */}
         <div style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', padding: '25px', borderRadius: '12px', marginBottom: '30px' }}>
-          <h2 style={{ color: 'white', margin: '0 0 15px 0' }}>➕ Nova Categoria</h2>
+          <h2 style={{ color: 'white', margin: '0 0 15px 0' }}>➕ Nova Seção/Categoria</h2>
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-            <input type="text" placeholder="Nome" value={novaCategoria.nome} onChange={(e) => setNovaCategoria({ ...novaCategoria, nome: e.target.value })} style={{ flex: 1, minWidth: '200px', padding: '12px', borderRadius: '8px', border: 'none' }} />
-            <input type="text" placeholder="🎵" value={novaCategoria.icone} onChange={(e) => setNovaCategoria({ ...novaCategoria, icone: e.target.value })} maxLength="2" style={{ width: '70px', padding: '12px', borderRadius: '8px', border: 'none', textAlign: 'center' }} />
+            <input type="text" placeholder="Ex: Novembro, Shows, Artista X" value={novaCategoria.nome} onChange={(e) => setNovaCategoria({ ...novaCategoria, nome: e.target.value })} style={{ flex: 1, minWidth: '200px', padding: '12px', borderRadius: '8px', border: 'none' }} />
+            <input type="text" placeholder="📅" value={novaCategoria.icone} onChange={(e) => setNovaCategoria({ ...novaCategoria, icone: e.target.value })} maxLength="2" style={{ width: '70px', padding: '12px', borderRadius: '8px', border: 'none', textAlign: 'center', fontSize: '20px' }} />
             <input type="color" value={novaCategoria.cor} onChange={(e) => setNovaCategoria({ ...novaCategoria, cor: e.target.value })} style={{ width: '60px', borderRadius: '8px', border: 'none' }} />
-            <button onClick={adicionarCategoria} style={{ padding: '12px 25px', background: '#27ae60', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Adicionar</button>
+            <button onClick={adicionarCategoria} style={{ padding: '12px 25px', background: '#27ae60', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Criar</button>
           </div>
+          <p style={{ color: 'white', margin: '10px 0 0 0', fontSize: '13px', opacity: 0.9 }}>💡 Crie seções tipo "Novembro 2024", "Shows de Rock", "Artista X" - seus eventos aparecerão organizados assim na vitrine!</p>
         </div>
 
-        <h2>📋 Categorias ({categorias.length})</h2>
+        <h2>📋 Suas Seções ({categorias.length})</h2>
         {categorias.map((cat, index) => (
-          <div key={cat.id} style={{ background: 'white', padding: '18px', borderRadius: '10px', marginBottom: '12px', border: '2px solid #e0e0e0', display: 'flex', alignItems: 'center', gap: '15px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <button onClick={() => moverCategoria(cat.id, 'cima')} disabled={index === 0} style={{ background: index === 0 ? '#ddd' : '#3498db', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 8px', cursor: index === 0 ? 'not-allowed' : 'pointer' }}>▲</button>
-              <button onClick={() => moverCategoria(cat.id, 'baixo')} disabled={index === categorias.length - 1} style={{ background: index === categorias.length - 1 ? '#ddd' : '#3498db', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 8px', cursor: index === categorias.length - 1 ? 'not-allowed' : 'pointer' }}>▼</button>
+          <div key={cat.id} style={{ marginBottom: '15px' }}>
+            <div style={{ background: 'white', padding: '15px', borderRadius: '10px', border: '2px solid #e0e0e0', display: 'flex', alignItems: 'center', gap: '15px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <button onClick={() => moverCategoria(cat.id, 'cima')} disabled={index === 0} style={{ background: index === 0 ? '#ddd' : '#3498db', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 8px', cursor: index === 0 ? 'not-allowed' : 'pointer', fontSize: '10px' }}>▲</button>
+                <button onClick={() => moverCategoria(cat.id, 'baixo')} disabled={index === categorias.length - 1} style={{ background: index === categorias.length - 1 ? '#ddd' : '#3498db', color: 'white', border: 'none', borderRadius: '4px', padding: '4px 8px', cursor: index === categorias.length - 1 ? 'not-allowed' : 'pointer', fontSize: '10px' }}>▼</button>
+              </div>
+              <button onClick={() => toggleCategoria(cat.id)} style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer' }}>{categoriasExpandidas[cat.id] ? '📂' : '📁'}</button>
+              <span style={{ fontSize: '28px' }}>{cat.icone}</span>
+              <div style={{ flex: 1 }}><strong style={{ fontSize: '18px' }}>{cat.nome}</strong><span style={{ marginLeft: '12px', color: '#999', fontSize: '14px' }}>({grouped[cat.id]?.length || 0} eventos)</span></div>
+              <div style={{ width: '30px', height: '30px', borderRadius: '50%', background: cat.cor }} />
+              <button onClick={() => removerCategoria(cat.id)} style={{ padding: '8px 16px', background: '#e74c3c', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '13px' }}>🗑️</button>
             </div>
-            <span style={{ fontSize: '32px' }}>{cat.icone}</span>
-            <div style={{ flex: 1 }}><strong>{cat.nome}</strong><span style={{ marginLeft: '12px', color: '#999' }}>({grouped[cat.id]?.length || 0})</span></div>
-            <div style={{ width: '35px', height: '35px', borderRadius: '50%', background: cat.cor }} />
-            <button onClick={() => removerCategoria(cat.id)} style={{ padding: '8px 16px', background: '#e74c3c', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>🗑️</button>
-          </div>
-        ))}
-
-        <h2 style={{ marginTop: '30px' }}>🎯 Eventos ({eventos.length})</h2>
-        {categorias.map(cat => (
-          <div key={cat.id} style={{ marginBottom: '20px' }}>
-            <div onClick={() => setCategoriaExpandida({ ...categoriaExpandida, [cat.id]: !categoriaExpandida[cat.id] })} style={{ background: cat.cor, color: 'white', padding: '15px', borderRadius: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <span style={{ fontSize: '24px' }}>{cat.icone}</span>
-              <strong style={{ flex: 1 }}>{cat.nome}</strong>
-              <span>({grouped[cat.id]?.length || 0})</span>
-              <span>{categoriaExpandida[cat.id] ? '▼' : '▶'}</span>
-            </div>
-            {categoriaExpandida[cat.id] && (
-              <div style={{ background: '#f8f9fa', padding: '15px', borderRadius: '10px', marginTop: '10px' }}>
-                {grouped[cat.id]?.map((ev, i) => (
-                  <div key={ev.id} style={{ background: 'white', padding: '12px', borderRadius: '8px', marginBottom: '8px', border: ev.destaque ? '2px solid #f39c12' : '1px solid #ddd', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      <button onClick={() => moverEvento(ev.id, 'cima', cat.id)} disabled={i === 0} style={{ background: i === 0 ? '#ddd' : '#3498db', color: 'white', border: 'none', borderRadius: '3px', padding: '3px 6px', fontSize: '10px' }}>▲</button>
-                      <button onClick={() => moverEvento(ev.id, 'baixo', cat.id)} disabled={i === grouped[cat.id].length - 1} style={{ background: i === grouped[cat.id].length - 1 ? '#ddd' : '#3498db', color: 'white', border: 'none', borderRadius: '3px', padding: '3px 6px', fontSize: '10px' }}>▼</button>
+            
+            {categoriasExpandidas[cat.id] && (
+              <div style={{ background: '#f8f9fa', padding: '15px', borderRadius: '10px', marginTop: '10px', marginLeft: '20px' }}>
+                {grouped[cat.id]?.length === 0 ? (
+                  <p style={{ color: '#999', textAlign: 'center', margin: '20px 0' }}>📭 Arraste eventos para cá usando o dropdown abaixo</p>
+                ) : (
+                  grouped[cat.id]?.map((ev, i) => (
+                    <div key={ev.id} style={{ background: 'white', padding: '12px', borderRadius: '8px', marginBottom: '8px', border: ev.destaque ? '2px solid #f39c12' : '1px solid #ddd', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        <button onClick={() => moverEvento(ev.id, 'cima', cat.id)} disabled={i === 0} style={{ background: i === 0 ? '#ddd' : '#3498db', color: 'white', border: 'none', borderRadius: '3px', padding: '3px 6px', fontSize: '9px' }}>▲</button>
+                        <button onClick={() => moverEvento(ev.id, 'baixo', cat.id)} disabled={i === grouped[cat.id].length - 1} style={{ background: i === grouped[cat.id].length - 1 ? '#ddd' : '#3498db', color: 'white', border: 'none', borderRadius: '3px', padding: '3px 6px', fontSize: '9px' }}>▼</button>
+                      </div>
+                      {ev.imagem_url && <img src={ev.imagem_url} alt={ev.nome} style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '5px' }} />}
+                      {ev.destaque && <span style={{ fontSize: '18px' }}>⭐</span>}
+                      <div style={{ flex: 1, minWidth: '150px' }}><strong>{ev.nome}</strong><div style={{ fontSize: '12px', color: '#666' }}>📅 {new Date(ev.data).toLocaleDateString('pt-BR')}</div></div>
+                      <select value={ev.categoria_id || 'sem-categoria'} onChange={(e) => moverParaCategoria(ev.id, e.target.value)} style={{ padding: '5px', borderRadius: '5px', border: '1px solid #ddd', fontSize: '12px' }}>
+                        <option value="sem-categoria">Sem categoria</option>
+                        {categorias.map(c => <option key={c.id} value={c.id}>{c.icone} {c.nome}</option>)}
+                      </select>
+                      <button onClick={() => toggleDestaque(ev.id)} title={ev.destaque ? 'Remover destaque' : 'Destacar'} style={{ padding: '5px 10px', background: ev.destaque ? '#f39c12' : '#95a5a6', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontSize: '12px' }}>{ev.destaque ? '⭐' : '☆'}</button>
+                      <button onClick={() => toggleVisibilidade(ev.id)} title={ev.visivel ? 'Ocultar' : 'Mostrar'} style={{ padding: '5px 10px', background: ev.visivel ? '#27ae60' : '#e74c3c', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontSize: '12px' }}>{ev.visivel ? '👁️' : '🚫'}</button>
                     </div>
-                    {ev.destaque && <span>⭐</span>}
-                    <div style={{ flex: 1, minWidth: '150px' }}><strong>{ev.nome}</strong><div style={{ fontSize: '12px', color: '#666' }}>📅 {new Date(ev.data).toLocaleDateString('pt-BR')}</div></div>
-                    <select value={ev.categoria_id || 'sem-categoria'} onChange={(e) => moverParaCategoria(ev.id, e.target.value)} style={{ padding: '5px', borderRadius: '5px', border: '1px solid #ddd' }}>
-                      <option value="sem-categoria">Sem categoria</option>
-                      {categorias.map(c => <option key={c.id} value={c.id}>{c.icone} {c.nome}</option>)}
-                    </select>
-                    <button onClick={() => toggleDestaque(ev.id)} style={{ padding: '5px 10px', background: ev.destaque ? '#f39c12' : '#95a5a6', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>{ev.destaque ? '⭐' : '☆'}</button>
-                    <button onClick={() => toggleVisibilidade(ev.id)} style={{ padding: '5px 10px', background: ev.visivel ? '#27ae60' : '#e74c3c', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>{ev.visivel ? '👁️' : '🚫'}</button>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             )}
           </div>
         ))}
+
+        {/* Sem Categoria */}
+        <div style={{ marginBottom: '15px', marginTop: '30px' }}>
+          <div style={{ background: '#95a5a6', color: 'white', padding: '15px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '15px', cursor: 'pointer' }} onClick={() => toggleCategoria('sem-categoria')}>
+            <span style={{ fontSize: '24px' }}>{categoriasExpandidas['sem-categoria'] ? '📂' : '📁'}</span>
+            <span style={{ fontSize: '28px' }}>📦</span>
+            <div style={{ flex: 1 }}><strong style={{ fontSize: '18px' }}>Eventos Sem Categoria</strong><span style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.8 }}>({grouped['sem-categoria']?.length || 0} eventos)</span></div>
+          </div>
+          
+          {categoriasExpandidas['sem-categoria'] && grouped['sem-categoria']?.length > 0 && (
+            <div style={{ background: '#f8f9fa', padding: '15px', borderRadius: '10px', marginTop: '10px', marginLeft: '20px' }}>
+              {grouped['sem-categoria']?.map(ev => (
+                <div key={ev.id} style={{ background: 'white', padding: '12px', borderRadius: '8px', marginBottom: '8px', border: '1px solid #ddd', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                  {ev.imagem_url && <img src={ev.imagem_url} alt={ev.nome} style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '5px' }} />}
+                  <div style={{ flex: 1, minWidth: '150px' }}><strong>{ev.nome}</strong><div style={{ fontSize: '12px', color: '#666' }}>📅 {new Date(ev.data).toLocaleDateString('pt-BR')}</div></div>
+                  <select value="sem-categoria" onChange={(e) => moverParaCategoria(ev.id, e.target.value)} style={{ padding: '5px', borderRadius: '5px', border: '1px solid #ddd', fontSize: '12px' }}>
+                    <option value="sem-categoria">Mover para...</option>
+                    {categorias.map(c => <option key={c.id} value={c.id}>{c.icone} {c.nome}</option>)}
+                  </select>
+                  <button onClick={() => toggleVisibilidade(ev.id)} style={{ padding: '5px 10px', background: ev.visivel ? '#27ae60' : '#e74c3c', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontSize: '12px' }}>{ev.visivel ? '👁️' : '🚫'}</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         <div style={{ textAlign: 'center', marginTop: '40px' }}>
           <button onClick={salvarTudo} disabled={salvando} style={{ padding: '18px 50px', background: salvando ? '#95a5a6' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', border: 'none', borderRadius: '10px', fontSize: '18px', fontWeight: 'bold', cursor: salvando ? 'not-allowed' : 'pointer' }}>
