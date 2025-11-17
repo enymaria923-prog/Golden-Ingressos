@@ -1,396 +1,311 @@
-'use client';
-import React, { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { createClient } from '../../utils/supabase/client';
-import CuponsManager from '../publicar-evento/components/CuponsManager';
-import ProdutoManager from '../publicar-evento/components/ProdutoManager';
+import React, { useState, useEffect } from 'react';
 
-function PublicarEventoComplementoContent() {
-  const supabase = createClient();
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const eventoId = searchParams.get('evento');
-  
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [evento, setEvento] = useState(null);
-  
-  const [cupons, setCupons] = useState([]);
-  const [produtos, setProdutos] = useState([]);
-  const [taxa, setTaxa] = useState({ taxaComprador: 15, taxaProdutor: 5 });
-  const [isSubmitting, setIsSubmitting] = useState(false);
+const CuponsManager = ({ onCuponsChange }) => {
+  const [cupons, setCupons] = useState([
+    {
+      id: 1,
+      codigo: '',
+      desconto: '',
+      tipoDesconto: 'porcentagem', // 'porcentagem' ou 'fixo'
+      quantidade: '',
+      dataValidade: '',
+      ativo: true
+    }
+  ]);
 
   useEffect(() => {
-    if (!eventoId) {
-      router.push('/publicar-evento');
+    console.log('🎟️ Cupons atualizados:', cupons);
+    if (onCuponsChange) {
+      onCuponsChange(cupons);
+    }
+  }, [cupons, onCuponsChange]);
+
+  const adicionarCupom = () => {
+    const novoCupom = {
+      id: Date.now(),
+      codigo: '',
+      desconto: '',
+      tipoDesconto: 'porcentagem',
+      quantidade: '',
+      dataValidade: '',
+      ativo: true
+    };
+    setCupons([...cupons, novoCupom]);
+  };
+
+  const removerCupom = (cupomId) => {
+    if (cupons.length === 1) {
+      // Permite remover o último cupom, resetando para vazio
+      setCupons([]);
+      if (onCuponsChange) {
+        onCuponsChange([]);
+      }
       return;
     }
-    
-    checkUserAndLoadData();
-  }, [eventoId]);
-
-  const checkUserAndLoadData = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session?.user) {
-        router.push('/login');
-        return;
-      }
-      
-      setUser(session.user);
-
-      const { data: eventoData, error: eventoError } = await supabase
-        .from('eventos')
-        .select('*')
-        .eq('id', eventoId)
-        .eq('user_id', session.user.id)
-        .single();
-
-      if (eventoError || !eventoData) {
-        alert('Evento não encontrado!');
-        router.push('/publicar-evento');
-        return;
-      }
-
-      setEvento(eventoData);
-      setLoading(false);
-
-    } catch (error) {
-      console.error('💥 Erro:', error);
-      alert('Erro ao carregar dados do evento!');
-      router.push('/publicar-evento');
-    }
+    setCupons(cupons.filter(c => c.id !== cupomId));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (isSubmitting) return;
-
-    setIsSubmitting(true);
-
-    try {
-      console.log('💰 Atualizando taxas do evento...');
-
-      // ====== 1. ATUALIZAR TAXAS E MARCAR COMO PUBLICADO ======
-      const { error: updateError } = await supabase
-        .from('eventos')
-        .update({
-          TaxaCliente: taxa.taxaComprador,
-          TaxaProdutor: taxa.taxaProdutor,
-          rascunho: false,
-          status: 'ativo'
-        })
-        .eq('id', eventoId);
-
-      if (updateError) {
-        throw new Error(`Erro ao atualizar taxas: ${updateError.message}`);
+  const atualizarCupom = (cupomId, campo, valor) => {
+    setCupons(cupons.map(cupom => {
+      if (cupom.id === cupomId) {
+        return { ...cupom, [campo]: valor };
       }
-
-      // ====== 2. SALVAR PRODUTOS (SE HOUVER) ======
-      if (produtos && produtos.length > 0) {
-        console.log('🛍️ Salvando produtos...');
-        
-        for (const produto of produtos) {
-          let imagemProdutoUrl = null;
-
-          if (produto.imagem) {
-            const fileExtension = produto.imagem.name.split('.').pop();
-            const timestamp = Date.now();
-            const randomStr = Math.random().toString(36).substring(7);
-            const filePath = `produtos/${user.id}/${eventoId}/${timestamp}-${randomStr}.${fileExtension}`;
-
-            const { data: uploadProdData, error: uploadProdError } = await supabase.storage
-              .from('imagens_eventos')
-              .upload(filePath, produto.imagem, { 
-                cacheControl: '3600', 
-                upsert: false 
-              });
-
-            if (!uploadProdError) {
-              const { data: publicProdUrlData } = supabase.storage
-                .from('imagens_eventos')
-                .getPublicUrl(filePath);
-              
-              imagemProdutoUrl = publicProdUrlData.publicUrl;
-            }
-          }
-
-          const produtoData = {
-            evento_id: eventoId,
-            nome: produto.nome,
-            descricao: produto.descricao || null,
-            preco: parseFloat(produto.preco),
-            quantidade_disponivel: parseInt(produto.quantidade) || 0,
-            quantidade_vendida: 0,
-            tamanho: produto.tamanho || null,
-            imagem_url: imagemProdutoUrl,
-            tipo_produto: produto.tipoProduto,
-            ativo: true,
-            user_id: user.id
-          };
-
-          const { error: produtoError } = await supabase
-            .from('produtos')
-            .insert([produtoData]);
-
-          if (produtoError) {
-            throw new Error(`Erro ao salvar produto "${produto.nome}": ${produtoError.message}`);
-          }
-
-          console.log(`✅ Produto "${produto.nome}" salvo!`);
-        }
-      }
-
-      // ====== 3. SALVAR CUPONS (SE HOUVER) ======
-      if (cupons && cupons.length > 0) {
-        console.log('🎟️ Salvando cupons...');
-        
-        for (const cupom of cupons) {
-          // Validar campos obrigatórios
-          if (!cupom.codigo || cupom.codigo.trim() === '') {
-            throw new Error('Preencha o código de todos os cupons!');
-          }
-          if (!cupom.desconto || parseFloat(cupom.desconto) <= 0) {
-            throw new Error(`Preencha um desconto válido para o cupom "${cupom.codigo}"!`);
-          }
-
-          const cupomData = {
-            evento_id: eventoId,
-            codigo: cupom.codigo.toUpperCase(),
-            tipo_desconto: cupom.tipoDesconto || 'porcentagem',
-            valor_desconto: parseFloat(cupom.desconto),
-            quantidade_total: parseInt(cupom.quantidade) || null,
-            quantidade_usada: 0,
-            data_validade: cupom.dataValidade || null,
-            ativo: true,
-            user_id: user.id
-          };
-
-          const { error: cupomError } = await supabase
-            .from('cupons')
-            .insert([cupomData]);
-
-          if (cupomError) {
-            console.error('❌ Erro ao salvar cupom:', cupomError);
-            throw new Error(`Erro ao salvar cupom "${cupom.codigo}": ${cupomError.message}`);
-          }
-
-          console.log(`✅ Cupom "${cupom.codigo}" salvo!`);
-        }
-      }
-      
-      alert('🎉 Evento publicado com sucesso!');
-      router.push('/produtor');
-
-    } catch (error) {
-      console.error('💥 Erro:', error);
-      alert(`❌ Erro: ${error.message}`);
-    } finally {
-      setIsSubmitting(false);
-    }
+      return cupom;
+    }));
   };
 
-  if (loading) {
-    return (
-      <div style={{ fontFamily: 'sans-serif', padding: '50px', textAlign: 'center' }}>
-        <h2>🔄 Carregando...</h2>
-      </div>
-    );
-  }
+  const gerarCodigoAleatorio = (cupomId) => {
+    const codigo = 'CUPOM' + Math.random().toString(36).substring(2, 8).toUpperCase();
+    atualizarCupom(cupomId, 'codigo', codigo);
+  };
 
-  if (!evento) {
+  // Se não tem cupons, mostra mensagem e botão para adicionar
+  if (cupons.length === 0) {
     return (
-      <div style={{ fontFamily: 'sans-serif', padding: '50px', textAlign: 'center' }}>
-        <h2>⚠️ Evento não encontrado</h2>
-        <button onClick={() => router.push('/publicar-evento')} style={{ padding: '10px 20px', marginTop: '20px' }}>
-          Voltar
+      <div style={{ textAlign: 'center', padding: '40px', background: '#f9f9f9', borderRadius: '8px' }}>
+        <p style={{ color: '#666', marginBottom: '20px' }}>
+          Nenhum cupom adicionado ainda
+        </p>
+        <button 
+          type="button"
+          onClick={adicionarCupom} 
+          style={{ 
+            backgroundColor: '#f39c12', 
+            color: 'white', 
+            border: 'none', 
+            padding: '12px 20px', 
+            borderRadius: '5px', 
+            cursor: 'pointer', 
+            fontWeight: 'bold', 
+            fontSize: '16px' 
+          }}
+        >
+          + Adicionar Cupom
         </button>
       </div>
     );
   }
 
   return (
-    <div style={{ fontFamily: 'sans-serif', maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
-      <div style={{ background: '#5d34a4', color: 'white', padding: '20px', borderRadius: '12px', marginBottom: '30px' }}>
-        <h1 style={{ margin: '0 0 10px 0' }}>Publicar Evento - Passo 2/2</h1>
-        <p style={{ margin: 0, opacity: 0.9 }}>
-          Configure cupons, produtos e escolha seu plano de taxas
-        </p>
-        <p style={{ margin: '10px 0 0 0', fontSize: '14px' }}>
-          <strong>Evento:</strong> {evento.nome}
-        </p>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <div style={{ background: '#fff3cd', padding: '15px', borderRadius: '8px', border: '2px solid #ffc107' }}>
+        <h4 style={{ margin: '0 0 10px 0', color: '#856404' }}>🎟️ Como funcionam os cupons:</h4>
+        <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '14px', color: '#856404' }}>
+          <li><strong>Código</strong>: O texto que o comprador vai digitar (ex: PROMO10, BLACKFRIDAY)</li>
+          <li><strong>Desconto</strong>: Pode ser em % (ex: 10%) ou valor fixo (ex: R$ 20,00)</li>
+          <li><strong>Quantidade</strong>: Número de vezes que pode ser usado (deixe vazio para ilimitado)</li>
+          <li><strong>Validade</strong>: Data até quando o cupom funciona (opcional)</li>
+        </ul>
       </div>
 
-      <form onSubmit={handleSubmit}>
-        <div style={{ background: 'white', padding: '30px', borderRadius: '12px', marginBottom: '20px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
-          <h2 style={{ color: '#5d34a4', marginTop: 0 }}>🎟️ Cupons de Desconto (Opcional)</h2>
-          <p style={{ color: '#666', fontSize: '14px', marginBottom: '20px' }}>
-            Adicione cupons de desconto para atrair mais clientes
-          </p>
-          <CuponsManager onCuponsChange={setCupons} />
-        </div>
-
-        <div style={{ background: 'white', padding: '30px', borderRadius: '12px', marginBottom: '20px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
-          <h2 style={{ color: '#5d34a4', marginTop: 0 }}>🛍️ Produtos Adicionais (Opcional)</h2>
-          <p style={{ color: '#666', fontSize: '14px', marginBottom: '20px' }}>
-            Venda camisetas, copos, brindes e outros produtos do seu evento
-          </p>
-          <ProdutoManager onProdutosChange={setProdutos} />
-        </div>
-
-        <div style={{ background: 'white', padding: '30px', borderRadius: '12px', marginBottom: '20px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
-          <h2 style={{ color: '#5d34a4', marginTop: 0 }}>💰 Escolha seu Plano de Taxas *</h2>
-          <p style={{ color: '#666', marginBottom: '20px' }}>
-            Selecione o plano que melhor se adequa ao seu evento
-          </p>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
-            <div 
-              onClick={() => setTaxa({ taxaComprador: 15, taxaProdutor: 5 })}
+      {cupons.map((cupom, index) => (
+        <div key={cupom.id} style={{ 
+          border: '2px solid #ffc107', 
+          borderRadius: '8px', 
+          padding: '20px',
+          backgroundColor: '#fffbf0'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+            <h3 style={{ margin: 0, color: '#f39c12' }}>🎟️ Cupom {index + 1}</h3>
+            <button 
+              type="button" 
+              onClick={() => removerCupom(cupom.id)} 
               style={{ 
-                border: taxa.taxaComprador === 15 ? '3px solid #4CAF50' : '2px solid #ddd',
-                borderRadius: '12px', 
-                padding: '25px', 
-                cursor: 'pointer',
-                background: taxa.taxaComprador === 15 ? '#f1f8f4' : 'white',
-                transition: 'all 0.3s'
+                backgroundColor: '#e74c3c', 
+                color: 'white', 
+                border: 'none', 
+                padding: '8px 15px', 
+                borderRadius: '5px', 
+                cursor: 'pointer', 
+                fontWeight: 'bold' 
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
+              ❌ Remover
+            </button>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '15px', marginBottom: '15px' }}>
+            {/* CÓDIGO DO CUPOM */}
+            <div>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+                Código do Cupom *
+              </label>
+              <div style={{ display: 'flex', gap: '10px' }}>
                 <input 
-                  type="radio" 
-                  checked={taxa.taxaComprador === 15} 
-                  onChange={() => {}}
-                  style={{ width: '20px', height: '20px' }}
+                  type="text" 
+                  value={cupom.codigo} 
+                  onChange={(e) => atualizarCupom(cupom.id, 'codigo', e.target.value.toUpperCase())} 
+                  placeholder="Ex: PROMO10, BLACKFRIDAY" 
+                  required
+                  style={{ 
+                    flex: 1,
+                    padding: '10px', 
+                    border: '1px solid #ddd', 
+                    borderRadius: '5px', 
+                    boxSizing: 'border-box', 
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                    textTransform: 'uppercase'
+                  }} 
                 />
-                <h3 style={{ margin: 0, color: '#4CAF50', fontSize: '20px' }}>Premium</h3>
-              </div>
-              <div style={{ fontSize: '14px', color: '#555', marginBottom: '15px' }}>
-                <p><strong>Taxa do Cliente:</strong> 15%</p>
-                <p><strong>Você recebe:</strong> +5% de bônus</p>
-              </div>
-              <div style={{ background: '#e8f5e9', padding: '12px', borderRadius: '8px', fontSize: '13px' }}>
-                <strong>✓ Visibilidade máxima</strong><br/>
-                <strong>✓ Destaque no site</strong><br/>
-                <strong>✓ Suporte prioritário</strong>
+                <button
+                  type="button"
+                  onClick={() => gerarCodigoAleatorio(cupom.id)}
+                  style={{
+                    backgroundColor: '#3498db',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 15px',
+                    borderRadius: '5px',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  🎲 Gerar
+                </button>
               </div>
             </div>
 
-            <div 
-              onClick={() => setTaxa({ taxaComprador: 10, taxaProdutor: 3 })}
-              style={{ 
-                border: taxa.taxaComprador === 10 ? '3px solid #2196F3' : '2px solid #ddd',
-                borderRadius: '12px', 
-                padding: '25px', 
-                cursor: 'pointer',
-                background: taxa.taxaComprador === 10 ? '#e3f2fd' : 'white',
-                transition: 'all 0.3s'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
-                <input 
-                  type="radio" 
-                  checked={taxa.taxaComprador === 10} 
-                  onChange={() => {}}
-                  style={{ width: '20px', height: '20px' }}
-                />
-                <h3 style={{ margin: 0, color: '#2196F3', fontSize: '20px' }}>Padrão</h3>
-              </div>
-              <div style={{ fontSize: '14px', color: '#555', marginBottom: '15px' }}>
-                <p><strong>Taxa do Cliente:</strong> 10%</p>
-                <p><strong>Você recebe:</strong> +3% de bônus</p>
-              </div>
-              <div style={{ background: '#e3f2fd', padding: '12px', borderRadius: '8px', fontSize: '13px' }}>
-                <strong>✓ Visibilidade padrão</strong><br/>
-                <strong>✓ Listagem básica</strong><br/>
-                <strong>✓ Suporte padrão</strong>
-              </div>
-            </div>
-
-            <div 
-              onClick={() => setTaxa({ taxaComprador: 8, taxaProdutor: 0 })}
-              style={{ 
-                border: taxa.taxaComprador === 8 ? '3px solid #FF9800' : '2px solid #ddd',
-                borderRadius: '12px', 
-                padding: '25px', 
-                cursor: 'pointer',
-                background: taxa.taxaComprador === 8 ? '#fff3e0' : 'white',
-                transition: 'all 0.3s'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
-                <input 
-                  type="radio" 
-                  checked={taxa.taxaComprador === 8} 
-                  onChange={() => {}}
-                  style={{ width: '20px', height: '20px' }}
-                />
-                <h3 style={{ margin: 0, color: '#FF9800', fontSize: '20px' }}>Econômico</h3>
-              </div>
-              <div style={{ fontSize: '14px', color: '#555', marginBottom: '15px' }}>
-                <p><strong>Taxa do Cliente:</strong> 8%</p>
-                <p><strong>Você recebe:</strong> 0% (sem bônus)</p>
-              </div>
-              <div style={{ background: '#fff3e0', padding: '12px', borderRadius: '8px', fontSize: '13px' }}>
-                <strong>🏆 MENOR TAXA DO MERCADO</strong><br/>
-                <strong>✓ Garanta o melhor preço</strong><br/>
-                <strong>✓ Atraia mais clientes</strong>
-              </div>
+            {/* TIPO DE DESCONTO */}
+            <div>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+                Tipo de Desconto *
+              </label>
+              <select
+                value={cupom.tipoDesconto}
+                onChange={(e) => atualizarCupom(cupom.id, 'tipoDesconto', e.target.value)}
+                required
+                style={{ 
+                  width: '100%', 
+                  padding: '10px', 
+                  border: '1px solid #ddd', 
+                  borderRadius: '5px', 
+                  boxSizing: 'border-box', 
+                  fontSize: '14px' 
+                }}
+              >
+                <option value="porcentagem">Porcentagem (%)</option>
+                <option value="fixo">Valor Fixo (R$)</option>
+              </select>
             </div>
           </div>
-        </div>
 
-        <div style={{ display: 'flex', gap: '15px' }}>
-          <button 
-            type="button"
-            onClick={() => router.push('/produtor')}
-            style={{ 
-              flex: 1,
-              background: '#9e9e9e', 
-              color: 'white', 
-              border: 'none', 
-              padding: '15px 30px', 
-              borderRadius: '8px', 
-              fontSize: '16px', 
-              fontWeight: 'bold',
-              cursor: 'pointer'
-            }}
-          >
-            ⬅️ Cancelar
-          </button>
-          <button 
-            type="submit" 
-            disabled={isSubmitting}
-            style={{ 
-              flex: 2,
-              background: isSubmitting ? '#ccc' : '#4CAF50', 
-              color: 'white', 
-              border: 'none', 
-              padding: '15px 30px', 
-              borderRadius: '8px', 
-              fontSize: '18px', 
-              fontWeight: 'bold',
-              cursor: isSubmitting ? 'not-allowed' : 'pointer',
-              boxShadow: isSubmitting ? 'none' : '0 4px 12px rgba(76, 175, 80, 0.4)'
-            }}
-          >
-            {isSubmitting ? '⏳ Publicando...' : '🚀 Publicar Evento'}
-          </button>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '15px' }}>
+            {/* VALOR DO DESCONTO */}
+            <div>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+                Valor do Desconto *
+              </label>
+              <input 
+                type="number" 
+                step={cupom.tipoDesconto === 'fixo' ? '0.01' : '1'}
+                min="0"
+                max={cupom.tipoDesconto === 'porcentagem' ? '100' : undefined}
+                value={cupom.desconto} 
+                onChange={(e) => atualizarCupom(cupom.id, 'desconto', e.target.value)} 
+                placeholder={cupom.tipoDesconto === 'porcentagem' ? 'Ex: 10' : 'Ex: 20.00'}
+                required
+                style={{ 
+                  width: '100%', 
+                  padding: '10px', 
+                  border: '1px solid #ddd', 
+                  borderRadius: '5px', 
+                  boxSizing: 'border-box', 
+                  fontSize: '14px' 
+                }} 
+              />
+              <small style={{ color: '#666' }}>
+                {cupom.tipoDesconto === 'porcentagem' ? '% de desconto' : 'Desconto em R$'}
+              </small>
+            </div>
+
+            {/* QUANTIDADE DE USOS */}
+            <div>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+                Quantidade de Usos
+              </label>
+              <input 
+                type="number" 
+                min="1"
+                value={cupom.quantidade} 
+                onChange={(e) => atualizarCupom(cupom.id, 'quantidade', e.target.value)} 
+                placeholder="Ilimitado"
+                style={{ 
+                  width: '100%', 
+                  padding: '10px', 
+                  border: '1px solid #ddd', 
+                  borderRadius: '5px', 
+                  boxSizing: 'border-box', 
+                  fontSize: '14px' 
+                }} 
+              />
+              <small style={{ color: '#666' }}>Vazio = ilimitado</small>
+            </div>
+
+            {/* DATA DE VALIDADE */}
+            <div>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
+                Válido até
+              </label>
+              <input 
+                type="date" 
+                value={cupom.dataValidade} 
+                onChange={(e) => atualizarCupom(cupom.id, 'dataValidade', e.target.value)} 
+                style={{ 
+                  width: '100%', 
+                  padding: '10px', 
+                  border: '1px solid #ddd', 
+                  borderRadius: '5px', 
+                  boxSizing: 'border-box', 
+                  fontSize: '14px' 
+                }} 
+              />
+              <small style={{ color: '#666' }}>Vazio = sem prazo</small>
+            </div>
+          </div>
+
+          {/* PREVIEW DO CUPOM */}
+          {cupom.codigo && cupom.desconto && (
+            <div style={{ 
+              marginTop: '15px', 
+              padding: '15px', 
+              backgroundColor: '#d4edda', 
+              borderRadius: '5px',
+              border: '1px solid #c3e6cb'
+            }}>
+              <p style={{ margin: 0, color: '#155724', fontWeight: 'bold' }}>
+                ✅ Preview: Use o código <span style={{ 
+                  backgroundColor: '#28a745', 
+                  color: 'white', 
+                  padding: '4px 10px', 
+                  borderRadius: '4px',
+                  fontFamily: 'monospace'
+                }}>{cupom.codigo}</span> e ganhe {cupom.tipoDesconto === 'porcentagem' ? `${cupom.desconto}%` : `R$ ${parseFloat(cupom.desconto).toFixed(2)}`} de desconto!
+              </p>
+            </div>
+          )}
         </div>
-      </form>
+      ))}
+
+      <button 
+        type="button" 
+        onClick={adicionarCupom} 
+        style={{ 
+          backgroundColor: '#f39c12', 
+          color: 'white', 
+          border: 'none', 
+          padding: '12px 20px', 
+          borderRadius: '5px', 
+          cursor: 'pointer', 
+          fontWeight: 'bold', 
+          fontSize: '16px' 
+        }}
+      >
+        + Adicionar Novo Cupom
+      </button>
     </div>
   );
-}
+};
 
-export default function PublicarEventoComplemento() {
-  return (
-    <Suspense fallback={
-      <div style={{ fontFamily: 'sans-serif', padding: '50px', textAlign: 'center' }}>
-        <h2>🔄 Carregando...</h2>
-      </div>
-    }>
-      <PublicarEventoComplementoContent />
-    </Suspense>
-  );
-}
+export default CuponsManager;
