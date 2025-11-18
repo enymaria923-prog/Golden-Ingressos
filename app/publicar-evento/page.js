@@ -418,9 +418,7 @@ const PublicarEvento = () => {
 
         console.log('✅ Ingressos salvos com sucesso!');
       }
-      
-      router.push(`/publicar-evento-complemento?evento=${eventoId}`);
-
+      router.push(`/publicar-evento/complemento?evento=${eventoId}`);
     } catch (error) {
       console.error('💥 Erro:', error);
       alert(`❌ Erro: ${error.message}`);
