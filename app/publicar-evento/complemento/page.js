@@ -1,11 +1,11 @@
 'use client';
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { createClient } from '../../utils/supabase/client';
-import CupomManager from '../publicar-evento/components/CupomManager';
-import ProdutoManager from '../publicar-evento/components/ProdutoManager';
+import { createClient } from '../../../utils/supabase/client';
+import CupomManager from '../components/CupomManager';
+import ProdutoManager from '../components/ProdutoManager';
 
-function PublicarEventoComplementoContent() {
+function ComplementoContent() {
   const supabase = createClient();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -159,10 +159,15 @@ function PublicarEventoComplementoContent() {
         throw new Error(`Erro ao atualizar taxas: ${updateError.message}`);
       }
 
+      const produtosSalvosIds = {};
       if (produtos && produtos.length > 0) {
         console.log('🛍️ Salvando produtos...');
         
         for (const produto of produtos) {
+          if (!produto.nome || !produto.preco || !produto.quantidade) {
+            throw new Error('Preencha todos os campos obrigatórios do produto!');
+          }
+
           let imagemProdutoUrl = null;
 
           if (produto.imagem) {
@@ -171,7 +176,7 @@ function PublicarEventoComplementoContent() {
             const randomStr = Math.random().toString(36).substring(7);
             const filePath = `produtos/${user.id}/${eventoId}/${timestamp}-${randomStr}.${fileExtension}`;
 
-            const { data: uploadProdData, error: uploadProdError } = await supabase.storage
+            const { error: uploadProdError } = await supabase.storage
               .from('imagens_eventos')
               .upload(filePath, produto.imagem, { 
                 cacheControl: '3600', 
@@ -201,13 +206,16 @@ function PublicarEventoComplementoContent() {
             user_id: user.id
           };
 
-          const { error: produtoError } = await supabase
+          const { data: produtoInserido, error: produtoError } = await supabase
             .from('produtos')
-            .insert([produtoData]);
+            .insert([produtoData])
+            .select();
 
           if (produtoError) {
             throw new Error(`Erro ao salvar produto "${produto.nome}": ${produtoError.message}`);
           }
+
+          produtosSalvosIds[produto.id] = produtoInserido[0].id;
         }
       }
 
@@ -224,7 +232,7 @@ function PublicarEventoComplementoContent() {
             codigo: cupom.codigo.toUpperCase(),
             descricao: cupom.descricao || null,
             ativo: true,
-            quantidade_total: parseInt(cupom.quantidadeTotal) || null,
+            quantidade_total: cupom.quantidadeTotal ? parseInt(cupom.quantidadeTotal) : null,
             quantidade_usada: 0,
             data_validade_inicio: cupom.dataInicio || null,
             data_validade_fim: cupom.dataFim || null,
@@ -244,34 +252,17 @@ function PublicarEventoComplementoContent() {
 
           const cuponsIngressosData = [];
 
-          setoresIngressos.forEach(setor => {
-            if (setor.usaLotes) {
-              setor.lotes.forEach(lote => {
-                lote.tiposIngresso.forEach(tipo => {
-                  const chave = `${setor.id}-${lote.id}-${tipo.id}`;
-                  const precoComCupom = parseFloat(cupom.precosPorIngresso[chave]);
-                  
-                  if (precoComCupom && precoComCupom > 0) {
-                    cuponsIngressosData.push({
-                      cupom_id: cupomIdReal,
-                      ingresso_id: tipo.id,
-                      preco_com_cupom: precoComCupom
-                    });
-                  }
-                });
-              });
-            } else {
-              setor.tiposIngresso.forEach(tipo => {
-                const chave = `${setor.id}-null-${tipo.id}`;
-                const precoComCupom = parseFloat(cupom.precosPorIngresso[chave]);
-                
-                if (precoComCupom && precoComCupom > 0) {
-                  cuponsIngressosData.push({
-                    cupom_id: cupomIdReal,
-                    ingresso_id: tipo.id,
-                    preco_com_cupom: precoComCupom
-                  });
-                }
+          Object.keys(cupom.precosPorIngresso || {}).forEach(chave => {
+            const precoComCupom = parseFloat(cupom.precosPorIngresso[chave]);
+            
+            if (precoComCupom && precoComCupom > 0) {
+              const partes = chave.split('-');
+              const ingressoId = parseInt(partes[partes.length - 1]);
+              
+              cuponsIngressosData.push({
+                cupom_id: cupomIdReal,
+                ingresso_id: ingressoId,
+                preco_com_cupom: precoComCupom
               });
             }
           });
@@ -287,36 +278,30 @@ function PublicarEventoComplementoContent() {
           }
 
           if (produtos && produtos.length > 0) {
-            const { data: produtosSalvos } = await supabase
-              .from('produtos')
-              .select('*')
-              .eq('evento_id', eventoId);
-
-            if (produtosSalvos) {
-              const cuponsProdutosData = [];
-              
-              produtos.forEach(produto => {
-                if (produto.aceitaCupons && produto.precosPorCupom[cupom.id]) {
-                  const produtoReal = produtosSalvos.find(p => p.nome === produto.nome);
-                  
-                  if (produtoReal) {
-                    const precoProdutoComCupom = parseFloat(produto.precosPorCupom[cupom.id]);
-                    
-                    if (precoProdutoComCupom && precoProdutoComCupom > 0) {
-                      cuponsProdutosData.push({
-                        cupom_id: cupomIdReal,
-                        produto_id: produtoReal.id,
-                        preco_com_cupom: precoProdutoComCupom
-                      });
-                    }
-                  }
+            const cuponsProdutosData = [];
+            
+            produtos.forEach(produto => {
+              if (produto.aceitaCupons && produto.precosPorCupom && produto.precosPorCupom[cupom.id]) {
+                const produtoIdReal = produtosSalvosIds[produto.id];
+                const precoProdutoComCupom = parseFloat(produto.precosPorCupom[cupom.id]);
+                
+                if (produtoIdReal && precoProdutoComCupom && precoProdutoComCupom > 0) {
+                  cuponsProdutosData.push({
+                    cupom_id: cupomIdReal,
+                    produto_id: produtoIdReal,
+                    preco_com_cupom: precoProdutoComCupom
+                  });
                 }
-              });
+              }
+            });
 
-              if (cuponsProdutosData.length > 0) {
-                await supabase
-                  .from('cupons_produtos')
-                  .insert(cuponsProdutosData);
+            if (cuponsProdutosData.length > 0) {
+              const { error: cuponsProdutosError } = await supabase
+                .from('cupons_produtos')
+                .insert(cuponsProdutosData);
+
+              if (cuponsProdutosError) {
+                throw new Error(`Erro ao salvar preços de produtos com cupom: ${cuponsProdutosError.message}`);
               }
             }
           }
@@ -366,13 +351,15 @@ function PublicarEventoComplementoContent() {
       </div>
 
       <form onSubmit={handleSubmit}>
-        <div style={{ background: 'white', padding: '30px', borderRadius: '12px', marginBottom: '20px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
-          <h2 style={{ color: '#5d34a4', marginTop: 0 }}>🎟️ Cupons de Desconto (Opcional)</h2>
-          <CupomManager 
-            setoresIngressos={setoresIngressos} 
-            onCuponsChange={setCupons} 
-          />
-        </div>
+        {setoresIngressos.length > 0 && (
+          <div style={{ background: 'white', padding: '30px', borderRadius: '12px', marginBottom: '20px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
+            <h2 style={{ color: '#5d34a4', marginTop: 0 }}>🎟️ Cupons de Desconto (Opcional)</h2>
+            <CupomManager 
+              setoresIngressos={setoresIngressos} 
+              onCuponsChange={setCupons} 
+            />
+          </div>
+        )}
 
         <div style={{ background: 'white', padding: '30px', borderRadius: '12px', marginBottom: '20px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
           <h2 style={{ color: '#5d34a4', marginTop: 0 }}>🛍️ Produtos Adicionais (Opcional)</h2>
@@ -530,7 +517,7 @@ export default function PublicarEventoComplemento() {
         <h2>🔄 Carregando...</h2>
       </div>
     }>
-      <PublicarEventoComplementoContent />
+      <ComplementoContent />
     </Suspense>
   );
 }
