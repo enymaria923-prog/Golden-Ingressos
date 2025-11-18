@@ -11,7 +11,8 @@ export default function VitrinePage() {
   const supabase = createClient();
 
   const [produtor, setProdutor] = useState(null);
-  const [eventos, setEventos] = useState([]);
+  const [categorias, setCategorias] = useState([]);
+  const [eventosPorCategoria, setEventosPorCategoria] = useState({});
   const [links, setLinks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState(null);
@@ -22,9 +23,6 @@ export default function VitrinePage() {
 
   const carregarVitrine = async () => {
     try {
-      console.log('🔍 Carregando vitrine:', slug);
-
-      // Buscar perfil do produtor
       const { data: perfilData, error: perfilError } = await supabase
         .from('perfil_produtor')
         .select('*')
@@ -33,33 +31,79 @@ export default function VitrinePage() {
         .single();
 
       if (perfilError) {
-        console.error('❌ Erro ao buscar perfil:', perfilError);
         setErro('Vitrine não encontrada');
         setLoading(false);
         return;
       }
 
       setProdutor(perfilData);
-      console.log('✅ Perfil carregado:', perfilData);
 
-      // Incrementar visualizações
-      await supabase.rpc('incrementar_visualizacao_vitrine', { perfil_slug: slug });
+      // Registrar visualização
+      await supabase.rpc('registrar_visualizacao_vitrine', { perfil_user_id: perfilData.user_id });
 
-      // Buscar eventos futuros do produtor
-      const dataHoje = new Date().toISOString().split('T')[0];
-      const { data: eventosData } = await supabase
-        .from('eventos')
-        .select('id, nome, data, hora, local, imagem_url, preco_medio, total_ingressos, ingressos_vendidos')
+      // Buscar categorias
+      const { data: categoriasData } = await supabase
+        .from('categorias_vitrine')
+        .select('*')
         .eq('user_id', perfilData.user_id)
-        .eq('status', 'aprovado')
-        .gte('data', dataHoje)
-        .order('data', { ascending: true })
-        .limit(10);
+        .eq('ativo', true)
+        .order('ordem', { ascending: true });
 
-      setEventos(eventosData || []);
-      console.log('✅ Eventos carregados:', eventosData);
+      setCategorias(categoriasData || []);
 
-      // Buscar links personalizados
+      // Buscar eventos da vitrine
+      const dataHoje = new Date().toISOString().split('T')[0];
+      const { data: eventosVitrineData } = await supabase
+        .from('eventos_vitrine')
+        .select(`
+          id,
+          evento_id,
+          categoria_id,
+          ordem,
+          destaque
+        `)
+        .eq('user_id', perfilData.user_id)
+        .eq('visivel_vitrine', true);
+
+      // Buscar dados dos eventos
+      const eventosIds = eventosVitrineData?.map(ev => ev.evento_id) || [];
+      if (eventosIds.length > 0) {
+        const { data: eventosData } = await supabase
+          .from('eventos')
+          .select('id, nome, data, hora, local, imagem_url, preco_medio, total_ingressos, ingressos_vendidos, status')
+          .in('id', eventosIds)
+          .eq('status', 'aprovado')
+          .gte('data', dataHoje);
+
+        // Organizar por categoria
+        const grouped = {};
+        (categoriasData || []).forEach(cat => { grouped[cat.id] = []; });
+        grouped['sem-categoria'] = [];
+        grouped['destaque'] = [];
+
+        eventosVitrineData?.forEach(evVitrine => {
+          const evento = eventosData?.find(e => e.id === evVitrine.evento_id);
+          if (evento) {
+            const eventoCompleto = { ...evento, ordem: evVitrine.ordem, destaque: evVitrine.destaque };
+            
+            if (evVitrine.destaque) grouped['destaque'].push(eventoCompleto);
+            
+            if (evVitrine.categoria_id && grouped[evVitrine.categoria_id]) {
+              grouped[evVitrine.categoria_id].push(eventoCompleto);
+            } else {
+              grouped['sem-categoria'].push(eventoCompleto);
+            }
+          }
+        });
+
+        Object.keys(grouped).forEach(key => {
+          grouped[key].sort((a, b) => a.ordem - b.ordem);
+        });
+
+        setEventosPorCategoria(grouped);
+      }
+
+      // Buscar links
       const { data: linksData } = await supabase
         .from('links_vitrine')
         .select('*')
@@ -68,10 +112,9 @@ export default function VitrinePage() {
         .order('ordem', { ascending: true });
 
       setLinks(linksData || []);
-      console.log('✅ Links carregados:', linksData);
 
     } catch (error) {
-      console.error('💥 Erro:', error);
+      console.error('Erro:', error);
       setErro('Erro ao carregar vitrine');
     } finally {
       setLoading(false);
@@ -79,15 +122,9 @@ export default function VitrinePage() {
   };
 
   const handleLinkClick = async (link) => {
-    // Incrementar cliques
     await supabase.rpc('incrementar_clique_link', { link_id: link.id });
-    
-    // Adicionar https:// se não tiver protocolo
     let url = link.url;
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      url = 'https://' + url;
-    }
-    
+    if (!url.startsWith('http://') && !url.startsWith('https://')) url = 'https://' + url;
     window.open(url, '_blank');
   };
 
@@ -118,14 +155,12 @@ export default function VitrinePage() {
     <div className="vitrine-container" data-tema={produtor.tema}>
       <div className="vitrine-content">
         
-        {/* Foto de Capa */}
         {produtor.foto_capa_url && (
           <div className="vitrine-capa">
             <img src={produtor.foto_capa_url} alt="Capa" />
           </div>
         )}
 
-        {/* Perfil */}
         <div className="vitrine-perfil">
           <img 
             src={produtor.foto_perfil_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(produtor.nome_exibicao)}&size=200&background=5d34a4&color=fff`}
@@ -135,11 +170,8 @@ export default function VitrinePage() {
           
           <h1 className="perfil-nome">{produtor.nome_exibicao}</h1>
           
-          {produtor.bio && (
-            <p className="perfil-bio">{produtor.bio}</p>
-          )}
+          {produtor.bio && <p className="perfil-bio">{produtor.bio}</p>}
 
-          {/* Redes Sociais */}
           <div className="redes-sociais">
             {produtor.instagram && (
               <a href={`https://instagram.com/${produtor.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="rede-social instagram">
@@ -163,48 +195,32 @@ export default function VitrinePage() {
               </a>
             )}
           </div>
-
-          {/* Visualizações */}
-          <div className="visualizacoes">
-            👁️ {produtor.visualizacoes.toLocaleString('pt-BR')} visualizações
-          </div>
         </div>
 
-        {/* Eventos */}
-        {eventos.length > 0 && (
+        {/* Eventos em Destaque */}
+        {eventosPorCategoria['destaque']?.length > 0 && (
           <div className="vitrine-secao">
-            <h2 className="secao-titulo">🎭 Próximos Eventos</h2>
+            <h2 className="secao-titulo">⭐ Em Destaque</h2>
             <div className="eventos-grid">
-              {eventos.map(evento => {
+              {eventosPorCategoria['destaque'].map(evento => {
                 const disponivel = (evento.total_ingressos || 0) - (evento.ingressos_vendidos || 0);
                 return (
-                  <div
-                    key={evento.id}
-                    className="evento-card"
-                    onClick={() => handleEventoClick(evento)}
-                  >
+                  <div key={evento.id} className="evento-card destaque" onClick={() => handleEventoClick(evento)}>
                     {evento.imagem_url && (
                       <div className="evento-imagem">
                         <img src={evento.imagem_url} alt={evento.nome} />
-                        {disponivel > 0 && (
-                          <div className="evento-badge">{disponivel} disponíveis</div>
-                        )}
+                        <div className="evento-badge-destaque">⭐ DESTAQUE</div>
+                        {disponivel > 0 && <div className="evento-badge">{disponivel} disponíveis</div>}
                       </div>
                     )}
                     <div className="evento-info">
                       <h3>{evento.nome}</h3>
                       <div className="evento-detalhes">
-                        <span className="evento-data">
-                          📅 {new Date(evento.data).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
-                        </span>
+                        <span className="evento-data">📅 {new Date(evento.data).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</span>
                         <span className="evento-hora">🕐 {evento.hora}</span>
                       </div>
                       <div className="evento-local">📍 {evento.local}</div>
-                      {evento.preco_medio > 0 && (
-                        <div className="evento-preco">
-                          A partir de R$ {parseFloat(evento.preco_medio).toFixed(2)}
-                        </div>
-                      )}
+                      {evento.preco_medio > 0 && <div className="evento-preco">A partir de R$ {parseFloat(evento.preco_medio).toFixed(2)}</div>}
                     </div>
                   </div>
                 );
@@ -213,17 +229,79 @@ export default function VitrinePage() {
           </div>
         )}
 
-        {/* Links Personalizados */}
+        {/* Eventos por Categoria */}
+        {categorias.map(categoria => (
+          eventosPorCategoria[categoria.id]?.length > 0 && (
+            <div key={categoria.id} className="vitrine-secao">
+              <h2 className="secao-titulo" style={{ color: categoria.cor }}>
+                {categoria.icone} {categoria.nome}
+              </h2>
+              <div className="eventos-grid">
+                {eventosPorCategoria[categoria.id].map(evento => {
+                  const disponivel = (evento.total_ingressos || 0) - (evento.ingressos_vendidos || 0);
+                  return (
+                    <div key={evento.id} className="evento-card" onClick={() => handleEventoClick(evento)}>
+                      {evento.imagem_url && (
+                        <div className="evento-imagem">
+                          <img src={evento.imagem_url} alt={evento.nome} />
+                          {disponivel > 0 && <div className="evento-badge">{disponivel} disponíveis</div>}
+                        </div>
+                      )}
+                      <div className="evento-info">
+                        <h3>{evento.nome}</h3>
+                        <div className="evento-detalhes">
+                          <span className="evento-data">📅 {new Date(evento.data).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</span>
+                          <span className="evento-hora">🕐 {evento.hora}</span>
+                        </div>
+                        <div className="evento-local">📍 {evento.local}</div>
+                        {evento.preco_medio > 0 && <div className="evento-preco">A partir de R$ {parseFloat(evento.preco_medio).toFixed(2)}</div>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )
+        ))}
+
+        {/* Eventos Sem Categoria */}
+        {eventosPorCategoria['sem-categoria']?.length > 0 && (
+          <div className="vitrine-secao">
+            <h2 className="secao-titulo">🎭 Outros Eventos</h2>
+            <div className="eventos-grid">
+              {eventosPorCategoria['sem-categoria'].map(evento => {
+                const disponivel = (evento.total_ingressos || 0) - (evento.ingressos_vendidos || 0);
+                return (
+                  <div key={evento.id} className="evento-card" onClick={() => handleEventoClick(evento)}>
+                    {evento.imagem_url && (
+                      <div className="evento-imagem">
+                        <img src={evento.imagem_url} alt={evento.nome} />
+                        {disponivel > 0 && <div className="evento-badge">{disponivel} disponíveis</div>}
+                      </div>
+                    )}
+                    <div className="evento-info">
+                      <h3>{evento.nome}</h3>
+                      <div className="evento-detalhes">
+                        <span className="evento-data">📅 {new Date(evento.data).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</span>
+                        <span className="evento-hora">🕐 {evento.hora}</span>
+                      </div>
+                      <div className="evento-local">📍 {evento.local}</div>
+                      {evento.preco_medio > 0 && <div className="evento-preco">A partir de R$ {parseFloat(evento.preco_medio).toFixed(2)}</div>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Links */}
         {links.length > 0 && (
           <div className="vitrine-secao">
             <h2 className="secao-titulo">🔗 Meus Links</h2>
             <div className="links-lista">
               {links.map(link => (
-                <div
-                  key={link.id}
-                  className="link-card"
-                  onClick={() => handleLinkClick(link)}
-                >
+                <div key={link.id} className="link-card" onClick={() => handleLinkClick(link)}>
                   {link.imagem_url && (
                     <div className="link-imagem">
                       <img src={link.imagem_url} alt={link.titulo} />
@@ -245,12 +323,9 @@ export default function VitrinePage() {
           </div>
         )}
 
-        {/* Footer */}
         <div className="vitrine-footer">
           <p>Feito com ❤️ por <strong>Golden Ingressos</strong></p>
-          <a href="/criar-vitrine" className="criar-vitrine-btn">
-            Crie sua vitrine gratuitamente
-          </a>
+          <a href="/criar-vitrine" className="criar-vitrine-btn">Crie sua vitrine gratuitamente</a>
         </div>
 
       </div>
