@@ -39,28 +39,40 @@ export default function OrganizarEventosPage() {
 
   const carregarDados = async (userId) => {
     try {
-      // Buscar categorias
+      console.log('📥 Carregando dados para user:', userId);
+      
       const { data: categoriasData } = await supabase.from('categorias_vitrine').select('*').eq('user_id', userId).eq('ativo', true).order('ordem');
+      console.log('✅ Categorias carregadas:', categoriasData);
       setCategorias(categoriasData || []);
       
-      // Auto-expandir todas as categorias
       const expandidas = {};
       (categoriasData || []).forEach(cat => { expandidas[cat.id] = true; });
       expandidas['sem-categoria'] = true;
       setCategoriasExpandidas(expandidas);
 
-      // Buscar eventos
       const { data: eventosData } = await supabase.from('eventos').select('id, nome, data, status, imagem_url').eq('user_id', userId).eq('status', 'aprovado').order('data');
+      console.log('✅ Eventos carregados:', eventosData);
+      
       const { data: eventosVitrineData } = await supabase.from('eventos_vitrine').select('*').eq('user_id', userId);
+      console.log('✅ Configs vitrine carregadas:', eventosVitrineData);
 
       const eventosMap = new Map(eventosVitrineData?.map(ev => [ev.evento_id, ev]) || []);
       const eventosCombinados = (eventosData || []).map(evento => {
         const config = eventosMap.get(evento.id);
-        return { ...evento, categoria_id: config?.categoria_id || null, ordem: config?.ordem || 0, destaque: config?.destaque || false, visivel: config?.visivel_vitrine !== false, config_id: config?.id };
+        return { 
+          ...evento, 
+          categoria_id: config?.categoria_id || null, 
+          ordem: config?.ordem || 0, 
+          destaque: config?.destaque || false, 
+          visivel: config?.visivel_vitrine !== false, 
+          config_id: config?.id 
+        };
       });
+      
+      console.log('✅ Eventos processados:', eventosCombinados);
       setEventos(eventosCombinados);
     } catch (error) {
-      console.error('Erro:', error);
+      console.error('💥 Erro ao carregar:', error);
     }
   };
 
@@ -74,18 +86,22 @@ export default function OrganizarEventosPage() {
   const adicionarCategoria = async () => {
     if (!novaCategoria.nome.trim()) return alert('Digite um nome');
     try {
-      const { data } = await supabase.from('categorias_vitrine').insert([{ user_id: user.id, nome: novaCategoria.nome, icone: novaCategoria.icone, cor: novaCategoria.cor, ordem: categorias.length }]).select().single();
+      console.log('➕ Criando categoria:', novaCategoria);
+      const { data, error } = await supabase.from('categorias_vitrine').insert([{ user_id: user.id, nome: novaCategoria.nome, icone: novaCategoria.icone, cor: novaCategoria.cor, ordem: categorias.length }]).select().single();
+      if (error) throw error;
+      console.log('✅ Categoria criada:', data);
       setCategorias([...categorias, data]);
       setCategoriasExpandidas({ ...categoriasExpandidas, [data.id]: true });
       setNovaCategoria({ nome: '', icone: '📁', cor: '#5d34a4' });
-      alert('✅ Categoria criada! Agora arraste eventos para ela');
+      alert('✅ Categoria criada!');
     } catch (error) {
+      console.error('❌ Erro:', error);
       alert('Erro: ' + error.message);
     }
   };
 
   const removerCategoria = async (id) => {
-    if (!confirm('Remover categoria? Os eventos voltarão para "Sem Categoria"')) return;
+    if (!confirm('Remover categoria?')) return;
     try {
       await supabase.from('categorias_vitrine').delete().eq('id', id);
       setCategorias(categorias.filter(c => c.id !== id));
@@ -121,7 +137,9 @@ export default function OrganizarEventosPage() {
 
   const toggleVisibilidade = (id) => setEventos(eventos.map(e => e.id === id ? { ...e, visivel: !e.visivel } : e));
   const toggleDestaque = (id) => setEventos(eventos.map(e => e.id === id ? { ...e, destaque: !e.destaque } : e));
+  
   const moverParaCategoria = (eventoId, novaCategoriaId) => {
+    console.log(`🔄 Movendo evento ${eventoId} para categoria ${novaCategoriaId}`);
     const novaCat = novaCategoriaId === 'sem-categoria' ? null : novaCategoriaId;
     setEventos(eventos.map(e => e.id === eventoId ? { ...e, categoria_id: novaCat } : e));
   };
@@ -131,15 +149,51 @@ export default function OrganizarEventosPage() {
   const salvarTudo = async () => {
     setSalvando(true);
     try {
-      for (const cat of categorias) await supabase.from('categorias_vitrine').update({ ordem: cat.ordem }).eq('id', cat.id);
-      for (const evento of eventos) {
-        const dados = { user_id: user.id, evento_id: evento.id, categoria_id: evento.categoria_id, ordem: evento.ordem, destaque: evento.destaque, visivel_vitrine: evento.visivel };
-        if (evento.config_id) await supabase.from('eventos_vitrine').update(dados).eq('id', evento.config_id);
-        else await supabase.from('eventos_vitrine').insert([dados]);
+      console.log('💾 Iniciando salvamento...');
+      console.log('📋 Categorias:', categorias);
+      console.log('🎭 Eventos:', eventos);
+
+      // Salvar ordem das categorias
+      for (const cat of categorias) {
+        const { error } = await supabase.from('categorias_vitrine').update({ ordem: cat.ordem }).eq('id', cat.id);
+        if (error) console.error('❌ Erro ao salvar categoria:', error);
       }
-      alert('✅ Salvo!');
+
+      // Salvar eventos
+      for (const evento of eventos) {
+        const dados = {
+          user_id: user.id,
+          evento_id: evento.id,
+          categoria_id: evento.categoria_id,
+          ordem: evento.ordem,
+          destaque: evento.destaque,
+          visivel_vitrine: evento.visivel
+        };
+
+        console.log(`📝 Salvando evento ${evento.nome}:`, dados);
+
+        if (evento.config_id) {
+          const { error } = await supabase.from('eventos_vitrine').update(dados).eq('id', evento.config_id);
+          if (error) {
+            console.error('❌ Erro ao atualizar:', error);
+          } else {
+            console.log('✅ Atualizado:', evento.nome);
+          }
+        } else {
+          const { data, error } = await supabase.from('eventos_vitrine').insert([dados]).select();
+          if (error) {
+            console.error('❌ Erro ao inserir:', error);
+          } else {
+            console.log('✅ Inserido:', evento.nome, data);
+          }
+        }
+      }
+
+      console.log('✅ Tudo salvo!');
+      alert('✅ Configurações salvas com sucesso!');
       await carregarDados(user.id);
     } catch (error) {
+      console.error('💥 Erro geral:', error);
       alert('❌ Erro: ' + error.message);
     } finally {
       setSalvando(false);
@@ -159,7 +213,6 @@ export default function OrganizarEventosPage() {
           <Link href="/minha-vitrine" style={{ padding: '12px 24px', background: '#3498db', color: 'white', textDecoration: 'none', borderRadius: '8px', fontWeight: 'bold' }}>← Voltar</Link>
         </div>
 
-        {/* Nova Categoria */}
         <div style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', padding: '25px', borderRadius: '12px', marginBottom: '30px' }}>
           <h2 style={{ color: 'white', margin: '0 0 15px 0' }}>➕ Nova Seção/Categoria</h2>
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
@@ -168,7 +221,7 @@ export default function OrganizarEventosPage() {
             <input type="color" value={novaCategoria.cor} onChange={(e) => setNovaCategoria({ ...novaCategoria, cor: e.target.value })} style={{ width: '60px', borderRadius: '8px', border: 'none' }} />
             <button onClick={adicionarCategoria} style={{ padding: '12px 25px', background: '#27ae60', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>Criar</button>
           </div>
-          <p style={{ color: 'white', margin: '10px 0 0 0', fontSize: '13px', opacity: 0.9 }}>💡 Crie seções tipo "Novembro 2024", "Shows de Rock", "Artista X" - seus eventos aparecerão organizados assim na vitrine!</p>
+          <p style={{ color: 'white', margin: '10px 0 0 0', fontSize: '13px', opacity: 0.9 }}>💡 Seções tipo "Novembro 2024", "Shows de Rock" - seus eventos aparecerão organizados assim!</p>
         </div>
 
         <h2>📋 Suas Seções ({categorias.length})</h2>
@@ -189,7 +242,7 @@ export default function OrganizarEventosPage() {
             {categoriasExpandidas[cat.id] && (
               <div style={{ background: '#f8f9fa', padding: '15px', borderRadius: '10px', marginTop: '10px', marginLeft: '20px' }}>
                 {grouped[cat.id]?.length === 0 ? (
-                  <p style={{ color: '#999', textAlign: 'center', margin: '20px 0' }}>📭 Arraste eventos para cá usando o dropdown abaixo</p>
+                  <p style={{ color: '#999', textAlign: 'center', margin: '20px 0' }}>📭 Use o dropdown abaixo para mover eventos aqui</p>
                 ) : (
                   grouped[cat.id]?.map((ev, i) => (
                     <div key={ev.id} style={{ background: 'white', padding: '12px', borderRadius: '8px', marginBottom: '8px', border: ev.destaque ? '2px solid #f39c12' : '1px solid #ddd', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
@@ -214,12 +267,11 @@ export default function OrganizarEventosPage() {
           </div>
         ))}
 
-        {/* Sem Categoria */}
         <div style={{ marginBottom: '15px', marginTop: '30px' }}>
           <div style={{ background: '#95a5a6', color: 'white', padding: '15px', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '15px', cursor: 'pointer' }} onClick={() => toggleCategoria('sem-categoria')}>
             <span style={{ fontSize: '24px' }}>{categoriasExpandidas['sem-categoria'] ? '📂' : '📁'}</span>
             <span style={{ fontSize: '28px' }}>📦</span>
-            <div style={{ flex: 1 }}><strong style={{ fontSize: '18px' }}>Eventos Sem Categoria</strong><span style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.8 }}>({grouped['sem-categoria']?.length || 0} eventos)</span></div>
+            <div style={{ flex: 1 }}><strong style={{ fontSize: '18px' }}>Eventos Sem Categoria</strong><span style={{ marginLeft: '12px', fontSize: '14px', opacity: 0.8 }}>({grouped['sem-categoria']?.length || 0})</span></div>
           </div>
           
           {categoriasExpandidas['sem-categoria'] && grouped['sem-categoria']?.length > 0 && (
