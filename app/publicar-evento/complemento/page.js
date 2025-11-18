@@ -14,7 +14,6 @@ function ComplementoContent() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [evento, setEvento] = useState(null);
-  const [ingressos, setIngressos] = useState([]);
   const [setoresIngressos, setSetoresIngressos] = useState([]);
   
   const [cupons, setCupons] = useState([]);
@@ -27,7 +26,6 @@ function ComplementoContent() {
       router.push('/publicar-evento');
       return;
     }
-    
     checkUserAndLoadData();
   }, [eventoId]);
 
@@ -62,8 +60,6 @@ function ComplementoContent() {
         .select('*')
         .eq('evento_id', eventoId)
         .order('setor', { ascending: true });
-
-      setIngressos(ingressosData || []);
 
       const { data: lotesData } = await supabase
         .from('lotes')
@@ -144,8 +140,6 @@ function ComplementoContent() {
     setIsSubmitting(true);
 
     try {
-      console.log('🎟️ Salvando cupons e produtos...');
-
       const { error: updateError } = await supabase
         .from('eventos')
         .update({
@@ -161,8 +155,6 @@ function ComplementoContent() {
 
       const produtosSalvosIds = {};
       if (produtos && produtos.length > 0) {
-        console.log('🛍️ Salvando produtos...');
-        
         for (const produto of produtos) {
           if (!produto.nome || !produto.preco || !produto.quantidade) {
             throw new Error('Preencha todos os campos obrigatórios do produto!');
@@ -220,8 +212,6 @@ function ComplementoContent() {
       }
 
       if (cupons && cupons.length > 0) {
-        console.log('🎟️ Salvando cupons...');
-        
         for (const cupom of cupons) {
           if (!cupom.codigo || cupom.codigo.trim() === '') {
             throw new Error('Preencha o código de todos os cupons!');
@@ -249,7 +239,6 @@ function ComplementoContent() {
           }
 
           const cupomIdReal = cupomInserido[0].id;
-
           const cuponsIngressosData = [];
 
           Object.keys(cupom.precosPorIngresso || {}).forEach(chave => {
@@ -296,13 +285,9 @@ function ComplementoContent() {
             });
 
             if (cuponsProdutosData.length > 0) {
-              const { error: cuponsProdutosError } = await supabase
+              await supabase
                 .from('cupons_produtos')
                 .insert(cuponsProdutosData);
-
-              if (cuponsProdutosError) {
-                throw new Error(`Erro ao salvar preços de produtos com cupom: ${cuponsProdutosError.message}`);
-              }
             }
           }
         }
