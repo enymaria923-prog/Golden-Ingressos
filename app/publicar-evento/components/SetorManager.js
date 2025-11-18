@@ -1,4 +1,4 @@
-'use client';
+'use client'; //comecar o codigo
 import React, { useState, useEffect } from 'react';
 
 const SetorManager = ({ onSetoresChange }) => {
