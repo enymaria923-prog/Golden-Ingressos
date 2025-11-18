@@ -15,7 +15,6 @@ function ComplementoContent() {
   const [loading, setLoading] = useState(true);
   const [evento, setEvento] = useState(null);
   const [setoresIngressos, setSetoresIngressos] = useState([]);
-  
   const [cupons, setCupons] = useState([]);
   const [produtos, setProdutos] = useState([]);
   const [taxa, setTaxa] = useState({ taxaComprador: 15, taxaProdutor: 5 });
@@ -127,7 +126,7 @@ function ComplementoContent() {
       setLoading(false);
 
     } catch (error) {
-      console.error('💥 Erro:', error);
+      console.error('Erro:', error);
       alert('Erro ao carregar dados do evento!');
       router.push('/publicar-evento');
     }
@@ -297,7 +296,7 @@ function ComplementoContent() {
       router.push('/produtor');
 
     } catch (error) {
-      console.error('💥 Erro:', error);
+      console.error('Erro:', error);
       alert(`❌ Erro: ${error.message}`);
     } finally {
       setIsSubmitting(false);
