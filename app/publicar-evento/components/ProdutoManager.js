@@ -1,16 +1,23 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 const ProdutoManager = ({ onProdutosChange, cupons = [] }) => {
   const [vendeProdutos, setVendeProdutos] = useState(false);
   const [produtos, setProdutos] = useState([]);
+  const onProdutosChangeRef = useRef(onProdutosChange);
 
+  // Atualiza a ref quando o callback mudar
+  useEffect(() => {
+    onProdutosChangeRef.current = onProdutosChange;
+  }, [onProdutosChange]);
+
+  // Chama o callback apenas quando produtos ou vendeProdutos mudarem
   useEffect(() => {
     console.log('🛍️ Produtos atualizados:', produtos);
-    if (onProdutosChange) {
-      onProdutosChange(vendeProdutos ? produtos : []);
+    if (onProdutosChangeRef.current) {
+      onProdutosChangeRef.current(vendeProdutos ? produtos : []);
     }
-  }, [produtos, vendeProdutos, onProdutosChange]);
+  }, [produtos, vendeProdutos]);
 
   const adicionarProduto = () => {
     const novoProduto = {
