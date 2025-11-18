@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, Suspense, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '../../../utils/supabase/client';
 import CupomManager from '../components/CupomManager';
@@ -19,6 +19,15 @@ function ComplementoContent() {
   const [produtos, setProdutos] = useState([]);
   const [taxa, setTaxa] = useState({ taxaComprador: 15, taxaProdutor: 5 });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Memoriza o callback para evitar recriações
+  const handleProdutosChange = useCallback((novosProdutos) => {
+    setProdutos(novosProdutos);
+  }, []);
+
+  const handleCuponsChange = useCallback((novosCupons) => {
+    setCupons(novosCupons);
+  }, []);
 
   useEffect(() => {
     if (!eventoId) {
@@ -340,14 +349,14 @@ function ComplementoContent() {
             <h2 style={{ color: '#5d34a4', marginTop: 0 }}>🎟️ Cupons de Desconto (Opcional)</h2>
             <CupomManager 
               setoresIngressos={setoresIngressos} 
-              onCuponsChange={setCupons} 
+              onCuponsChange={handleCuponsChange} 
             />
           </div>
         )}
 
         <div style={{ background: 'white', padding: '30px', borderRadius: '12px', marginBottom: '20px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
           <h2 style={{ color: '#5d34a4', marginTop: 0 }}>🛍️ Produtos Adicionais (Opcional)</h2>
-          <ProdutoManager onProdutosChange={setProdutos} cupons={cupons} />
+          <ProdutoManager onProdutosChange={handleProdutosChange} cupons={cupons} />
         </div>
 
         <div style={{ background: 'white', padding: '30px', borderRadius: '12px', marginBottom: '20px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
