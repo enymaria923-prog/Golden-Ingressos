@@ -114,7 +114,7 @@ export default function AnalyticsPage() {
           </div>
 
           <div style={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', padding: '25px', borderRadius: '12px', color: 'white', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
-            <div style={{ fontSize: '14px', opacity: 0.9', marginBottom: '10px' }}>Últimos 7 dias</div>
+            <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '10px' }}>Últimos 7 dias</div>
             <div style={{ fontSize: '36px', fontWeight: 'bold' }}>{stats.semana}</div>
             <div style={{ fontSize: '12px', opacity: 0.8, marginTop: '5px' }}>👁️ visualizações</div>
           </div>
