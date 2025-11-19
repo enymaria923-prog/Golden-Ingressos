@@ -1,4 +1,4 @@
-'use client'; //comecar o codigo
+'use client';
 import React, { useState, useEffect } from 'react';
 
 const SetorManager = ({ onSetoresChange }) => {
@@ -6,7 +6,7 @@ const SetorManager = ({ onSetoresChange }) => {
     {
       id: 1,
       nome: '',
-      capacidadeTotal: '', // OPCIONAL
+      capacidadeTotal: '',
       usaLotes: false,
       lotes: [],
       tiposIngresso: [
@@ -18,11 +18,30 @@ const SetorManager = ({ onSetoresChange }) => {
   useEffect(() => {
     console.log('🎫 Setores atualizados:', setores);
     if (onSetoresChange) {
-      onSetoresChange(setores);
+      // LIMPAR VALORES VAZIOS ANTES DE ENVIAR
+      const setoresLimpos = setores.map(setor => ({
+        ...setor,
+        capacidadeTotal: setor.capacidadeTotal || null,
+        tiposIngresso: setor.tiposIngresso.map(tipo => ({
+          ...tipo,
+          quantidade: tipo.quantidade === '' ? null : tipo.quantidade,
+          preco: tipo.preco || null
+        })),
+        lotes: setor.lotes.map(lote => ({
+          ...lote,
+          quantidadeTotal: lote.quantidadeTotal === '' ? null : lote.quantidadeTotal,
+          tiposIngresso: lote.tiposIngresso.map(tipo => ({
+            ...tipo,
+            quantidade: tipo.quantidade === '' ? null : tipo.quantidade,
+            preco: tipo.preco || null
+          }))
+        }))
+      }));
+      
+      onSetoresChange(setoresLimpos);
     }
   }, [setores, onSetoresChange]);
 
-  // ========== FUNÇÕES DE SETOR ==========
   const adicionarSetor = () => {
     const novoSetor = {
       id: Date.now(),
@@ -48,7 +67,6 @@ const SetorManager = ({ onSetoresChange }) => {
       if (setor.id === setorId) {
         const novoSetor = { ...setor, [campo]: valor };
         
-        // Se ativou lotes, cria um lote padrão
         if (campo === 'usaLotes' && valor === true && setor.lotes.length === 0) {
           novoSetor.lotes = [{
             id: Date.now(),
@@ -58,10 +76,9 @@ const SetorManager = ({ onSetoresChange }) => {
             dataFim: '',
             tiposIngresso: [{ id: Date.now(), nome: '', preco: '', quantidade: '' }]
           }];
-          novoSetor.tiposIngresso = []; // Limpa ingressos diretos
+          novoSetor.tiposIngresso = [];
         }
         
-        // Se desativou lotes, volta para ingressos diretos
         if (campo === 'usaLotes' && valor === false) {
           novoSetor.lotes = [];
           if (novoSetor.tiposIngresso.length === 0) {
@@ -75,7 +92,6 @@ const SetorManager = ({ onSetoresChange }) => {
     }));
   };
 
-  // ========== FUNÇÕES DE LOTE ==========
   const adicionarLote = (setorId) => {
     setSetores(setores.map(setor => {
       if (setor.id === setorId) {
@@ -132,12 +148,10 @@ const SetorManager = ({ onSetoresChange }) => {
     }));
   };
 
-  // ========== FUNÇÕES DE INGRESSO (DIRETO OU EM LOTE) ==========
   const adicionarTipoIngresso = (setorId, loteId = null) => {
     setSetores(setores.map(setor => {
       if (setor.id === setorId) {
         if (loteId) {
-          // Adiciona ingresso dentro de um lote
           return {
             ...setor,
             lotes: setor.lotes.map(lote => {
@@ -154,7 +168,6 @@ const SetorManager = ({ onSetoresChange }) => {
             })
           };
         } else {
-          // Adiciona ingresso direto no setor
           return {
             ...setor,
             tiposIngresso: [
@@ -172,7 +185,6 @@ const SetorManager = ({ onSetoresChange }) => {
     setSetores(setores.map(setor => {
       if (setor.id === setorId) {
         if (loteId) {
-          // Remove de dentro do lote
           return {
             ...setor,
             lotes: setor.lotes.map(lote => {
@@ -190,7 +202,6 @@ const SetorManager = ({ onSetoresChange }) => {
             })
           };
         } else {
-          // Remove direto do setor
           if (setor.tiposIngresso.length === 1) {
             alert('Você precisa ter pelo menos um tipo de ingresso!');
             return setor;
@@ -209,7 +220,6 @@ const SetorManager = ({ onSetoresChange }) => {
     setSetores(setores.map(setor => {
       if (setor.id === setorId) {
         if (loteId) {
-          // Atualiza dentro do lote
           return {
             ...setor,
             lotes: setor.lotes.map(lote => {
@@ -228,7 +238,6 @@ const SetorManager = ({ onSetoresChange }) => {
             })
           };
         } else {
-          // Atualiza direto no setor
           return {
             ...setor,
             tiposIngresso: setor.tiposIngresso.map(tipo => {
@@ -244,7 +253,6 @@ const SetorManager = ({ onSetoresChange }) => {
     }));
   };
 
-  // ========== VALIDAÇÃO DE CAPACIDADE ==========
   const calcularTotalIngressos = (setor, lote = null) => {
     if (lote) {
       return lote.tiposIngresso.reduce((sum, tipo) => sum + (parseInt(tipo.quantidade) || 0), 0);
@@ -262,7 +270,6 @@ const SetorManager = ({ onSetoresChange }) => {
     return { valido: true, total, capacidade };
   };
 
-  // ========== RENDERIZAÇÃO ==========
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <div style={{ background: '#e8f4f8', padding: '15px', borderRadius: '8px', border: '2px solid #3498db' }}>
@@ -271,7 +278,7 @@ const SetorManager = ({ onSetoresChange }) => {
           <li><strong>Capacidade do Setor</strong>: Define quantos ingressos no total podem ser vendidos (opcional)</li>
           <li><strong>Lotes</strong>: Divida as vendas em fases (1º lote mais barato, 2º lote, etc.)</li>
           <li><strong>Tipos de Ingresso</strong>: Inteira, Meia, VIP, etc.</li>
-          <li><strong>Quantidade</strong>: Pode ser definida no setor, no lote OU no tipo de ingresso</li>
+          <li><strong>Quantidade</strong>: Deixe vazio para ilimitado!</li>
         </ul>
       </div>
 
@@ -295,17 +302,15 @@ const SetorManager = ({ onSetoresChange }) => {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              {/* NOME DO SETOR */}
               <div>
                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Nome do Setor *</label>
                 <input type="text" value={setor.nome} onChange={(e) => atualizarSetor(setor.id, 'nome', e.target.value)} placeholder="Ex: VIP, Camarote, Pista Premium" required style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '5px', boxSizing: 'border-box', fontSize: '14px' }} />
               </div>
 
-              {/* CAPACIDADE TOTAL DO SETOR */}
               <div>
                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Capacidade Total do Setor (opcional)</label>
-                <input type="number" value={setor.capacidadeTotal} onChange={(e) => atualizarSetor(setor.id, 'capacidadeTotal', e.target.value)} placeholder="Ex: 500" style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '5px', boxSizing: 'border-box', fontSize: '14px' }} />
-                <small style={{ color: '#666' }}>Deixe em branco se preferir definir limite nos tipos de ingresso</small>
+                <input type="number" value={setor.capacidadeTotal} onChange={(e) => atualizarSetor(setor.id, 'capacidadeTotal', e.target.value)} placeholder="Deixe vazio para ilimitado" style={{ width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '5px', boxSizing: 'border-box', fontSize: '14px' }} />
+                <small style={{ color: '#666' }}>Deixe em branco para ilimitado</small>
                 {setor.capacidadeTotal && !validacaoSetor.valido && (
                   <div style={{ color: '#e74c3c', fontWeight: 'bold', marginTop: '5px' }}>
                     ⚠️ ATENÇÃO: Total de ingressos ({validacaoSetor.total}) excede a capacidade ({validacaoSetor.capacidade})!
@@ -313,7 +318,6 @@ const SetorManager = ({ onSetoresChange }) => {
                 )}
               </div>
 
-              {/* USAR LOTES? */}
               <div style={{ background: '#fff', padding: '15px', borderRadius: '8px', border: '2px dashed #9b59b6' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
                   <input type="checkbox" checked={setor.usaLotes} onChange={(e) => atualizarSetor(setor.id, 'usaLotes', e.target.checked)} style={{ width: '20px', height: '20px' }} />
@@ -324,7 +328,6 @@ const SetorManager = ({ onSetoresChange }) => {
                 </small>
               </div>
 
-              {/* SE USA LOTES */}
               {setor.usaLotes ? (
                 <div style={{ marginLeft: '20px', borderLeft: '3px solid #9b59b6', paddingLeft: '15px' }}>
                   <h4 style={{ color: '#9b59b6', marginBottom: '15px' }}>Lotes deste Setor</h4>
@@ -349,15 +352,15 @@ const SetorManager = ({ onSetoresChange }) => {
                             <input type="text" value={lote.nome} onChange={(e) => atualizarLote(setor.id, lote.id, 'nome', e.target.value)} placeholder="Ex: 1º Lote" required style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box' }} />
                           </div>
                           <div>
-                            <label style={{ fontSize: '12px', display: 'block', marginBottom: '3px' }}>Qtd Total (opcional)</label>
+                            <label style={{ fontSize: '12px', display: 'block', marginBottom: '3px' }}>Qtd Total</label>
                             <input type="number" min="0" value={lote.quantidadeTotal} onChange={(e) => atualizarLote(setor.id, lote.id, 'quantidadeTotal', e.target.value)} placeholder="Ilimitado" style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box' }} />
                           </div>
                           <div>
-                            <label style={{ fontSize: '12px', display: 'block', marginBottom: '3px' }}>Início (opcional)</label>
+                            <label style={{ fontSize: '12px', display: 'block', marginBottom: '3px' }}>Início</label>
                             <input type="datetime-local" value={lote.dataInicio} onChange={(e) => atualizarLote(setor.id, lote.id, 'dataInicio', e.target.value)} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box', fontSize: '12px' }} />
                           </div>
                           <div>
-                            <label style={{ fontSize: '12px', display: 'block', marginBottom: '3px' }}>Fim (opcional)</label>
+                            <label style={{ fontSize: '12px', display: 'block', marginBottom: '3px' }}>Fim</label>
                             <input type="datetime-local" value={lote.dataFim} onChange={(e) => atualizarLote(setor.id, lote.id, 'dataFim', e.target.value)} style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box', fontSize: '12px' }} />
                           </div>
                         </div>
@@ -368,7 +371,6 @@ const SetorManager = ({ onSetoresChange }) => {
                           </div>
                         )}
 
-                        {/* TIPOS DE INGRESSO DO LOTE */}
                         <div>
                           <h6 style={{ margin: '10px 0', fontSize: '13px' }}>Tipos de Ingresso neste Lote:</h6>
                           {lote.tiposIngresso.map((tipo) => (
@@ -402,7 +404,6 @@ const SetorManager = ({ onSetoresChange }) => {
                   </button>
                 </div>
               ) : (
-                /* SE NÃO USA LOTES - INGRESSOS DIRETOS */
                 <div>
                   <h4 style={{ marginBottom: '10px', color: '#333' }}>Tipos de Ingresso neste Setor</h4>
                   {setor.tiposIngresso.map((tipo) => (
