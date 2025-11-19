@@ -32,6 +32,13 @@ const PublicarEvento = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef(null);
 
+  // FUNÇÃO PARA LIMPAR QUANTIDADE VAZIA
+  const limparQuantidade = (valor) => {
+    if (valor === '' || valor === null || valor === undefined) return null;
+    const num = parseInt(valor);
+    return isNaN(num) ? null : num;
+  };
+
   useEffect(() => {
     checkUser();
     
@@ -129,7 +136,7 @@ const PublicarEvento = () => {
       return;
     }
 
-    console.log('🔍 DEBUGANDO SETORES:', JSON.stringify(setoresIngressos, null, 2));
+    console.log('🔍 DEBUGANDO SETORES RECEBIDOS:', JSON.stringify(setoresIngressos, null, 2));
 
     let temIngressoValido = false;
 
@@ -205,7 +212,7 @@ const PublicarEvento = () => {
         const filePath = `eventos/${user.id}/${timestamp}-${randomStr}.${fileExtension}`;
         uploadedFilePath = filePath;
 
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
           .from('imagens_eventos')
           .upload(filePath, imagem, { 
             cacheControl: '3600', 
@@ -237,8 +244,8 @@ const PublicarEvento = () => {
               const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
               
               if (temNome && temPreco) {
-                const qtd = tipo.quantidade ? parseInt(tipo.quantidade) : 0;
-                totalIngressosEvento += qtd;
+                const qtd = limparQuantidade(tipo.quantidade);
+                totalIngressosEvento += qtd || 0;
                 somaPrecos += parseFloat(tipo.preco);
                 totalTipos++;
               }
@@ -250,8 +257,8 @@ const PublicarEvento = () => {
             const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
             
             if (temNome && temPreco) {
-              const qtd = tipo.quantidade ? parseInt(tipo.quantidade) : 0;
-              totalIngressosEvento += qtd;
+              const qtd = limparQuantidade(tipo.quantidade);
+              totalIngressosEvento += qtd || 0;
               somaPrecos += parseFloat(tipo.preco);
               totalTipos++;
             }
@@ -264,8 +271,7 @@ const PublicarEvento = () => {
       console.log('📊 TOTAIS:', {
         totalIngressosEvento,
         precoMedioEvento,
-        totalTipos,
-        somaPrecos
+        totalTipos
       });
 
       // ====== 3. CRIAR EVENTO ======
@@ -291,8 +297,6 @@ const PublicarEvento = () => {
         TaxaCliente: 0,
         TaxaProdutor: 0
       };
-      
-      console.log('📝 Criando evento com dados:', eventData);
 
       const { data: insertedData, error: insertError } = await supabase
         .from('eventos')
@@ -300,7 +304,6 @@ const PublicarEvento = () => {
         .select();
 
       if (insertError) {
-        console.error('❌ ERRO AO INSERIR EVENTO:', insertError);
         throw new Error(`Erro ao inserir evento: ${insertError.message}`);
       }
       
@@ -308,8 +311,6 @@ const PublicarEvento = () => {
       console.log('✅ Evento criado! ID:', eventoIdCriado);
 
       // ====== 4. SALVAR SETORES ======
-      const setoresMap = new Map();
-
       for (const setor of setoresIngressos) {
         let capacidadeTotalSetor = 0;
         
@@ -319,7 +320,7 @@ const PublicarEvento = () => {
               const temNome = tipo.nome && tipo.nome.trim() !== '';
               const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
               if (temNome && temPreco) {
-                capacidadeTotalSetor += tipo.quantidade ? parseInt(tipo.quantidade) : 0;
+                capacidadeTotalSetor += limparQuantidade(tipo.quantidade) || 0;
               }
             });
           });
@@ -328,27 +329,22 @@ const PublicarEvento = () => {
             const temNome = tipo.nome && tipo.nome.trim() !== '';
             const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
             if (temNome && temPreco) {
-              capacidadeTotalSetor += tipo.quantidade ? parseInt(tipo.quantidade) : 0;
+              capacidadeTotalSetor += limparQuantidade(tipo.quantidade) || 0;
             }
           });
         }
 
-        const { data: setorData, error: setorError } = await supabase
+        const { error: setorError } = await supabase
           .from('setores')
           .insert([{
             eventos_id: eventoIdCriado,
             nome: setor.nome,
             capacidade_total: capacidadeTotalSetor
-          }])
-          .select();
+          }]);
 
         if (setorError) {
-          console.error('❌ ERRO AO INSERIR SETOR:', setorError);
-          throw new Error(`Erro ao salvar setor "${setor.nome}": ${setorError.message}`);
+          throw new Error(`Erro ao salvar setor: ${setorError.message}`);
         }
-
-        setoresMap.set(setor.nome, setorData[0].id);
-        console.log(`✅ Setor "${setor.nome}" salvo! Capacidade: ${capacidadeTotalSetor}`);
       }
 
       // ====== 5. SALVAR LOTES ======
@@ -363,7 +359,7 @@ const PublicarEvento = () => {
               const temNome = tipo.nome && tipo.nome.trim() !== '';
               const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
               if (temNome && temPreco) {
-                quantidadeTotalLote += tipo.quantidade ? parseInt(tipo.quantidade) : 0;
+                quantidadeTotalLote += limparQuantidade(tipo.quantidade) || 0;
               }
             });
 
@@ -385,90 +381,86 @@ const PublicarEvento = () => {
               .select();
 
             if (loteError) {
-              console.error('❌ ERRO AO INSERIR LOTE:', loteError);
-              throw new Error(`Erro ao salvar lote "${lote.nome}": ${loteError.message}`);
+              throw new Error(`Erro ao salvar lote: ${loteError.message}`);
             }
 
             lotesMap.set(lote.id, loteInserido[0].id);
-            console.log(`✅ Lote "${lote.nome}" salvo! ID: ${loteInserido[0].id}`);
           }
         }
       }
 
-      // ====== 6. SALVAR INGRESSOS ======
+      // ====== 6. SALVAR INGRESSOS (COM LIMPEZA DE QUANTIDADE) ======
       const ingressosParaSalvar = [];
       let contadorIngresso = 0;
       
-      setoresIngressos.forEach((setor, setorIndex) => {
+      setoresIngressos.forEach((setor) => {
         if (setor.usaLotes) {
-          setor.lotes.forEach((lote, loteIndex) => {
-            lote.tiposIngresso.forEach((tipo, tipoIndex) => {
+          setor.lotes.forEach((lote) => {
+            lote.tiposIngresso.forEach((tipo) => {
               const temNome = tipo.nome && tipo.nome.trim() !== '';
               const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
               
               if (temNome && temPreco) {
-                const quantidade = tipo.quantidade ? parseInt(tipo.quantidade) : null;
+                const quantidadeLimpa = limparQuantidade(tipo.quantidade);
                 const preco = parseFloat(tipo.preco);
                 const loteIdReal = lotesMap.get(lote.id);
                 const codigo = Date.now() + contadorIngresso;
                 
-                const ingressoData = {
+                console.log(`🎟️ PROCESSANDO: ${tipo.nome} - Qtd original: "${tipo.quantidade}" - Qtd limpa: ${quantidadeLimpa}`);
+                
+                ingressosParaSalvar.push({
                   evento_id: eventoIdCriado,
                   setor: setor.nome,
                   lote_id: loteIdReal,
                   tipo: tipo.nome,
                   valor: preco.toString(),
-                  quantidade: quantidade,
+                  quantidade: quantidadeLimpa,
                   vendidos: 0,
                   status_ingresso: 'disponivel',
                   user_id: user.id,
                   codigo: codigo
-                };
+                });
                 
-                ingressosParaSalvar.push(ingressoData);
                 contadorIngresso++;
-                
-                console.log(`🎟️ Ingresso: ${tipo.nome} - R$ ${preco} - Qtd: ${quantidade === null ? 'ILIMITADO' : quantidade}`);
               }
             });
           });
         } else {
-          setor.tiposIngresso.forEach((tipo, tipoIndex) => {
+          setor.tiposIngresso.forEach((tipo) => {
             const temNome = tipo.nome && tipo.nome.trim() !== '';
             const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
             
             if (temNome && temPreco) {
-              const quantidade = tipo.quantidade ? parseInt(tipo.quantidade) : null;
+              const quantidadeLimpa = limparQuantidade(tipo.quantidade);
               const preco = parseFloat(tipo.preco);
               const codigo = Date.now() + contadorIngresso;
               
-              const ingressoData = {
+              console.log(`🎟️ PROCESSANDO: ${tipo.nome} - Qtd original: "${tipo.quantidade}" - Qtd limpa: ${quantidadeLimpa}`);
+              
+              ingressosParaSalvar.push({
                 evento_id: eventoIdCriado,
                 setor: setor.nome,
                 lote_id: null,
                 tipo: tipo.nome,
                 valor: preco.toString(),
-                quantidade: quantidade,
+                quantidade: quantidadeLimpa,
                 vendidos: 0,
                 status_ingresso: 'disponivel',
                 user_id: user.id,
                 codigo: codigo
-              };
+              });
               
-              ingressosParaSalvar.push(ingressoData);
               contadorIngresso++;
-              
-              console.log(`🎟️ Ingresso: ${tipo.nome} - R$ ${preco} - Qtd: ${quantidade === null ? 'ILIMITADO' : quantidade}`);
             }
           });
         }
       });
 
-      console.log(`📋 TOTAL DE INGRESSOS A SALVAR: ${ingressosParaSalvar.length}`);
-      console.log('📄 DADOS COMPLETOS:', JSON.stringify(ingressosParaSalvar, null, 2));
+      console.log(`📋 INGRESSOS A SALVAR: ${ingressosParaSalvar.length}`);
+      console.log('📄 DADOS:', JSON.stringify(ingressosParaSalvar, null, 2));
 
       if (ingressosParaSalvar.length === 0) {
-        throw new Error('Nenhum ingresso válido para salvar!');
+        throw new Error('Nenhum ingresso válido!');
       }
 
       const { data: ingressosInseridos, error: ingressosError } = await supabase
@@ -477,18 +469,18 @@ const PublicarEvento = () => {
         .select();
 
       if (ingressosError) {
-        console.error('❌ ERRO AO INSERIR INGRESSOS:', ingressosError);
+        console.error('❌ ERRO:', ingressosError);
         throw new Error(`Erro ao salvar ingressos: ${ingressosError.message}`);
       }
 
       console.log(`✅✅✅ ${ingressosInseridos.length} INGRESSOS SALVOS!`);
       
-      alert(`✅ Evento criado! ${ingressosInseridos.length} ingressos salvos.`);
+      alert(`✅ Evento criado com ${ingressosInseridos.length} ingressos!`);
       router.push(`/publicar-evento/complemento?evento=${eventoIdCriado}`);
       
     } catch (error) {
       console.error('💥 ERRO:', error);
-      alert(`❌ ERRO: ${error.message}`);
+      alert(`❌ ${error.message}`);
       
       if (eventoIdCriado) {
         await supabase.from('eventos').delete().eq('id', eventoIdCriado);
@@ -528,9 +520,6 @@ const PublicarEvento = () => {
       </div>
       
       <h1>Publicar Novo Evento - Passo 1/2</h1>
-      <p style={{ color: '#666', marginBottom: '20px' }}>
-        Preencha as informações básicas e configure os setores e ingressos
-      </p>
       
       <form onSubmit={handleSubmit}>
         <div className="form-section">
@@ -538,46 +527,25 @@ const PublicarEvento = () => {
           
           <div className="form-group">
             <label>Título do Evento *</label>
-            <input
-              type="text"
-              name="titulo"
-              value={formData.titulo}
-              onChange={handleFormChange}
-              placeholder="Ex: Show da Banda X"
-              required
-            />
+            <input type="text" name="titulo" value={formData.titulo} onChange={handleFormChange} placeholder="Ex: Show da Banda X" required />
           </div>
 
           <div className="form-group">
             <label>Descrição do Evento *</label>
-            <textarea
-              name="descricao"
-              value={formData.descricao}
-              onChange={handleFormChange}
-              placeholder="Descreva seu evento..."
-              required
-            />
+            <textarea name="descricao" value={formData.descricao} onChange={handleFormChange} placeholder="Descreva seu evento..." required />
           </div>
 
           <div className="form-group">
             <label>Imagem do Evento *</label>
             <div className="image-upload-container">
-              <input
-                type="file"
-                ref={fileInputRef}
-                accept="image/jpeg,image/png,image/gif"
-                onChange={handleImageChange}
-                className="image-input"
-              />
+              <input type="file" ref={fileInputRef} accept="image/jpeg,image/png,image/gif" onChange={handleImageChange} className="image-input" />
               
               {imagemPreview ? (
                 <div className="image-preview-container">
                   <img src={imagemPreview} alt="Preview" className="image-preview" />
                   <div className="image-info">
-                    <p>✅ {imagem?.name || 'Imagem selecionada'}</p>
-                    <button type="button" onClick={removeImage} className="btn-remove-image">
-                      Remover Imagem
-                    </button>
+                    <p>✅ {imagem?.name}</p>
+                    <button type="button" onClick={removeImage} className="btn-remove-image">Remover</button>
                   </div>
                 </div>
               ) : (
@@ -593,48 +561,23 @@ const PublicarEvento = () => {
 
           <div className="form-group">
             <label>Nome do Local *</label>
-            <input
-              type="text"
-              name="localNome" 
-              value={formData.localNome}
-              onChange={handleFormChange}
-              placeholder="Ex: Teatro Maria Della Costa"
-              required
-            />
+            <input type="text" name="localNome" value={formData.localNome} onChange={handleFormChange} placeholder="Ex: Teatro Maria Della Costa" required />
           </div>
 
           <div className="form-group">
             <label>Endereço do Local (opcional)</label>
-            <input
-              type="text"
-              name="localEndereco"
-              value={formData.localEndereco}
-              onChange={handleFormChange}
-              placeholder="Ex: Rua Exemplo, 123"
-            />
+            <input type="text" name="localEndereco" value={formData.localEndereco} onChange={handleFormChange} placeholder="Ex: Rua Exemplo, 123" />
           </div>
 
           <div className="form-row">
             <div className="form-group">
               <label>Data do Evento *</label>
-              <input
-                type="date"
-                name="data"
-                value={formData.data}
-                onChange={handleFormChange}
-                required
-              />
+              <input type="date" name="data" value={formData.data} onChange={handleFormChange} required />
             </div>
 
             <div className="form-group">
               <label>Horário *</label>
-              <input
-                type="time"
-                name="hora"
-                value={formData.hora}
-                onChange={handleFormChange}
-                required
-              />
+              <input type="time" name="hora" value={formData.hora} onChange={handleFormChange} required />
             </div>
           </div>
         </div>
@@ -643,11 +586,7 @@ const PublicarEvento = () => {
           <h2>Configuração de Assentos</h2>
           <div className="form-group">
             <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={temLugarMarcado}
-                onChange={(e) => setTemLugarMarcado(e.target.checked)}
-              />
+              <input type="checkbox" checked={temLugarMarcado} onChange={(e) => setTemLugarMarcado(e.target.checked)} />
               Evento com lugar marcado
             </label>
           </div>
@@ -656,20 +595,11 @@ const PublicarEvento = () => {
         <div className="form-section">
           <h2>👤 Visibilidade do Produtor</h2>
           <div style={{ background: '#e3f2fd', padding: '15px', borderRadius: '8px', border: '2px solid #2196f3' }}>
-            <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={aparecerComoProdutor}
-                onChange={(e) => setAparecerComoProdutor(e.target.checked)}
-                style={{ width: '20px', height: '20px' }}
-              />
-              <div style={{ flex: 1 }}>
-                <span style={{ fontWeight: 'bold', fontSize: '15px', color: '#1976d2' }}>
-                  Aparecer como produtor na página do evento
-                </span>
-                <p style={{ margin: '5px 0 0 0', fontSize: '13px', color: '#555' }}>
-                  Seu nome e informações de contato serão exibidos publicamente
-                </p>
+            <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <input type="checkbox" checked={aparecerComoProdutor} onChange={(e) => setAparecerComoProdutor(e.target.checked)} style={{ width: '20px', height: '20px' }} />
+              <div>
+                <span style={{ fontWeight: 'bold', fontSize: '15px', color: '#1976d2' }}>Aparecer como produtor</span>
+                <p style={{ margin: '5px 0 0 0', fontSize: '13px', color: '#555' }}>Seu nome será exibido publicamente</p>
               </div>
             </label>
           </div>
@@ -677,14 +607,11 @@ const PublicarEvento = () => {
 
         <div className="form-section">
           <h2>Setores e Ingressos *</h2>
-          <p style={{ color: '#666', fontSize: '14px', marginBottom: '15px' }}>
-            💡 Preencha <strong>nome</strong> e <strong>preço</strong> (obrigatórios). Quantidade é opcional - deixe vazio para ilimitado.
-          </p>
           <SetorManager onSetoresChange={setSetoresIngressos} />
         </div>
 
         <button type="submit" className="btn-submit" disabled={isSubmitting}>
-          {isSubmitting ? '⏳ Salvando...' : '➡️ Avançar para Cupons e Produtos'}
+          {isSubmitting ? '⏳ Salvando...' : '➡️ Avançar'}
         </button>
       </form>
     </div>
