@@ -241,7 +241,8 @@ const PublicarEvento = () => {
               const preco = parseFloat(tipo.preco) || 0;
               
               if (tipo.nome && tipo.nome.trim() !== '' && preco > 0) {
-                const quantidade = parseInt(tipo.quantidade) || 0;
+                // CORRIGIDO: Se não tem quantidade, usa 999999 (ilimitado)
+                const quantidade = tipo.quantidade && tipo.quantidade.trim() !== '' ? parseInt(tipo.quantidade) : 999999;
                 totalIngressosEvento += quantidade;
                 somaPrecos += preco;
                 totalTipos++;
@@ -253,7 +254,8 @@ const PublicarEvento = () => {
             const preco = parseFloat(tipo.preco) || 0;
             
             if (tipo.nome && tipo.nome.trim() !== '' && preco > 0) {
-              const quantidade = parseInt(tipo.quantidade) || 0;
+              // CORRIGIDO: Se não tem quantidade, usa 999999 (ilimitado)
+              const quantidade = tipo.quantidade && tipo.quantidade.trim() !== '' ? parseInt(tipo.quantidade) : 999999;
               totalIngressosEvento += quantidade;
               somaPrecos += preco;
               totalTipos++;
@@ -313,7 +315,7 @@ const PublicarEvento = () => {
               evento_id: eventoId,
               setor: setor.nome,
               nome: lote.nome,
-              quantidade_total: parseInt(lote.quantidadeTotal) || 0,
+              quantidade_total: parseInt(lote.quantidadeTotal) || 999999,
               quantidade_vendida: 0,
               data_inicio: lote.dataInicio || null,
               data_fim: lote.dataFim || null,
@@ -345,7 +347,8 @@ const PublicarEvento = () => {
               const preco = parseFloat(tipo.preco) || 0;
               
               if (tipo.nome && tipo.nome.trim() !== '' && preco > 0) {
-                const quantidade = parseInt(tipo.quantidade) || 0;
+                // CORRIGIDO: Se não tem quantidade, usa 999999 (ilimitado)
+                const quantidade = tipo.quantidade && tipo.quantidade.trim() !== '' ? parseInt(tipo.quantidade) : 999999;
                 const timestamp = Date.now().toString().slice(-8);
                 const codigoNumerico = parseInt(`${eventoId}${setorIndex}${loteIndex}${tipoIndex}${timestamp}`);
                 const loteIdReal = lotesMap.get(lote.id);
@@ -370,7 +373,8 @@ const PublicarEvento = () => {
             const preco = parseFloat(tipo.preco) || 0;
             
             if (tipo.nome && tipo.nome.trim() !== '' && preco > 0) {
-              const quantidade = parseInt(tipo.quantidade) || 0;
+              // CORRIGIDO: Se não tem quantidade, usa 999999 (ilimitado)
+              const quantidade = tipo.quantidade && tipo.quantidade.trim() !== '' ? parseInt(tipo.quantidade) : 999999;
               const timestamp = Date.now().toString().slice(-8);
               const codigoNumerico = parseInt(`${eventoId}${setorIndex}${tipoIndex}${timestamp}`);
               
@@ -392,6 +396,8 @@ const PublicarEvento = () => {
       });
 
       if (ingressosParaSalvar.length > 0) {
+        console.log('📝 Ingressos a salvar:', ingressosParaSalvar);
+
         const { error: ingressosError } = await supabase
           .from('ingressos')
           .insert(ingressosParaSalvar);
