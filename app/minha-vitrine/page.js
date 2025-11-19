@@ -1,4 +1,4 @@
-'use client';  //deploy
+'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -226,7 +226,7 @@ export default function MinhaVitrinePage() {
         <h2>📱 Redes Sociais</h2>
         <div className="form-group">
           <label>Instagram</label>
-          <input type="text" value={perfil.instagram} onChange={(e) => handlePerfilChange('instagram', e.target.value)} placeholder="@seu usuario" />
+          <input type="text" value={perfil.instagram} onChange={(e) => handlePerfilChange('instagram', e.target.value)} placeholder="@seuusuario" />
         </div>
         <div className="form-group">
           <label>Facebook</label>
@@ -286,6 +286,9 @@ export default function MinhaVitrinePage() {
             </Link>
             <Link href="/minha-vitrine/organizar" className="btn-submit" style={{ flex: 1, minWidth: '200px', background: '#9b59b6', textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               🎭 Organizar
+            </Link>
+            <Link href="/minha-vitrine/analytics" className="btn-submit" style={{ flex: 1, minWidth: '200px', background: '#e74c3c', textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              📊 Analytics
             </Link>
           </>
         )}
