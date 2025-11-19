@@ -32,11 +32,11 @@ const PublicarEvento = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef(null);
 
-  // FUNÇÃO PARA LIMPAR QUANTIDADE VAZIA
-  const limparQuantidade = (valor) => {
-    if (valor === '' || valor === null || valor === undefined) return null;
+  // FUNÇÃO PARA PROCESSAR QUANTIDADE (RETORNA 0 SE VAZIO)
+  const processarQuantidade = (valor) => {
+    if (valor === '' || valor === null || valor === undefined) return 0;
     const num = parseInt(valor);
-    return isNaN(num) ? null : num;
+    return isNaN(num) ? 0 : num;
   };
 
   useEffect(() => {
@@ -244,8 +244,8 @@ const PublicarEvento = () => {
               const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
               
               if (temNome && temPreco) {
-                const qtd = limparQuantidade(tipo.quantidade);
-                totalIngressosEvento += qtd || 0;
+                const qtd = processarQuantidade(tipo.quantidade);
+                totalIngressosEvento += qtd;
                 somaPrecos += parseFloat(tipo.preco);
                 totalTipos++;
               }
@@ -257,8 +257,8 @@ const PublicarEvento = () => {
             const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
             
             if (temNome && temPreco) {
-              const qtd = limparQuantidade(tipo.quantidade);
-              totalIngressosEvento += qtd || 0;
+              const qtd = processarQuantidade(tipo.quantidade);
+              totalIngressosEvento += qtd;
               somaPrecos += parseFloat(tipo.preco);
               totalTipos++;
             }
@@ -320,7 +320,7 @@ const PublicarEvento = () => {
               const temNome = tipo.nome && tipo.nome.trim() !== '';
               const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
               if (temNome && temPreco) {
-                capacidadeTotalSetor += limparQuantidade(tipo.quantidade) || 0;
+                capacidadeTotalSetor += processarQuantidade(tipo.quantidade);
               }
             });
           });
@@ -329,7 +329,7 @@ const PublicarEvento = () => {
             const temNome = tipo.nome && tipo.nome.trim() !== '';
             const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
             if (temNome && temPreco) {
-              capacidadeTotalSetor += limparQuantidade(tipo.quantidade) || 0;
+              capacidadeTotalSetor += processarQuantidade(tipo.quantidade);
             }
           });
         }
@@ -359,7 +359,7 @@ const PublicarEvento = () => {
               const temNome = tipo.nome && tipo.nome.trim() !== '';
               const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
               if (temNome && temPreco) {
-                quantidadeTotalLote += limparQuantidade(tipo.quantidade) || 0;
+                quantidadeTotalLote += processarQuantidade(tipo.quantidade);
               }
             });
 
@@ -389,7 +389,7 @@ const PublicarEvento = () => {
         }
       }
 
-      // ====== 6. SALVAR INGRESSOS (COM LIMPEZA DE QUANTIDADE) ======
+      // ====== 6. SALVAR INGRESSOS (COM QUANTIDADE CORRETA) ======
       const ingressosParaSalvar = [];
       let contadorIngresso = 0;
       
@@ -401,12 +401,12 @@ const PublicarEvento = () => {
               const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
               
               if (temNome && temPreco) {
-                const quantidadeLimpa = limparQuantidade(tipo.quantidade);
+                const quantidadeProcessada = processarQuantidade(tipo.quantidade);
                 const preco = parseFloat(tipo.preco);
                 const loteIdReal = lotesMap.get(lote.id);
                 const codigo = Date.now() + contadorIngresso;
                 
-                console.log(`🎟️ PROCESSANDO: ${tipo.nome} - Qtd original: "${tipo.quantidade}" - Qtd limpa: ${quantidadeLimpa}`);
+                console.log(`🎟️ PROCESSANDO: ${tipo.nome} - Qtd original: "${tipo.quantidade}" - Qtd processada: ${quantidadeProcessada}`);
                 
                 ingressosParaSalvar.push({
                   evento_id: eventoIdCriado,
@@ -414,7 +414,7 @@ const PublicarEvento = () => {
                   lote_id: loteIdReal,
                   tipo: tipo.nome,
                   valor: preco.toString(),
-                  quantidade: quantidadeLimpa,
+                  quantidade: quantidadeProcessada,
                   vendidos: 0,
                   status_ingresso: 'disponivel',
                   user_id: user.id,
@@ -431,11 +431,11 @@ const PublicarEvento = () => {
             const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
             
             if (temNome && temPreco) {
-              const quantidadeLimpa = limparQuantidade(tipo.quantidade);
+              const quantidadeProcessada = processarQuantidade(tipo.quantidade);
               const preco = parseFloat(tipo.preco);
               const codigo = Date.now() + contadorIngresso;
               
-              console.log(`🎟️ PROCESSANDO: ${tipo.nome} - Qtd original: "${tipo.quantidade}" - Qtd limpa: ${quantidadeLimpa}`);
+              console.log(`🎟️ PROCESSANDO: ${tipo.nome} - Qtd original: "${tipo.quantidade}" - Qtd processada: ${quantidadeProcessada}`);
               
               ingressosParaSalvar.push({
                 evento_id: eventoIdCriado,
@@ -443,7 +443,7 @@ const PublicarEvento = () => {
                 lote_id: null,
                 tipo: tipo.nome,
                 valor: preco.toString(),
-                quantidade: quantidadeLimpa,
+                quantidade: quantidadeProcessada,
                 vendidos: 0,
                 status_ingresso: 'disponivel',
                 user_id: user.id,
