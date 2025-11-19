@@ -14,9 +14,9 @@ export default function AdminPage() {
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [eventos, setEventos] = useState([]);
-  const [eventosFiltrados, setEventosFiltrados] = useState([]);
+  const [produtores, setProdutores] = useState({});
   const [carregando, setCarregando] = useState(true);
-  const [filtroData, setFiltroData] = useState('todos');
+  const [abaAtiva, setAbaAtiva] = useState('pendentes');
   const [buscaNome, setBuscaNome] = useState('');
   const [buscaProdutor, setBuscaProdutor] = useState('');
   const [eventoExpandido, setEventoExpandido] = useState(null);
@@ -29,10 +29,6 @@ export default function AdminPage() {
     }
   }, []);
 
-  useEffect(() => {
-    aplicarFiltros();
-  }, [eventos, filtroData, buscaNome, buscaProdutor]);
-
   const carregarEventos = async () => {
     setCarregando(true);
     try {
@@ -43,48 +39,72 @@ export default function AdminPage() {
 
       if (error) throw error;
       
-      setEventos(eventosData || []); 
+      setEventos(eventosData || []);
+      
+      // Buscar dados dos produtores
+      const userIds = [...new Set(eventosData.map(e => e.user_id))];
+      const produtoresData = {};
+      
+      for (const userId of userIds) {
+        const { data: produtorData } = await supabase
+          .from('produtores')
+          .select('*')
+          .eq('user_id', userId)
+          .single();
+        
+        if (produtorData) {
+          produtoresData[userId] = produtorData;
+        }
+      }
+      
+      setProdutores(produtoresData);
     } catch (error) {
       console.error('Erro ao carregar eventos:', error);
       alert(`Erro ao carregar eventos: ${error.message}`);
     } finally {
-      setCarregando(false); 
+      setCarregando(false);
     }
   };
 
-  const aplicarFiltros = () => {
+  const eventoJaAconteceu = (evento) => {
+    const agora = new Date();
+    const dataEvento = new Date(`${evento.data}T${evento.hora}`);
+    const umaHoraDepois = new Date(dataEvento.getTime() + 60 * 60 * 1000);
+    return agora > umaHoraDepois;
+  };
+
+  const filtrarEventos = () => {
     let resultado = [...eventos];
     
-    if (filtroData === 'ultimos5') {
-      const hoje = new Date();
-      const ultimos5Dias = new Date(hoje.getTime() - 5 * 24 * 60 * 60 * 1000);
-      resultado = resultado.filter(e => {
-        const dataEvento = new Date(e.data);
-        return dataEvento >= ultimos5Dias && dataEvento <= hoje;
-      });
-    } else if (filtroData === 'proximos5') {
-      const hoje = new Date();
-      const proximos5Dias = new Date(hoje.getTime() + 5 * 24 * 60 * 60 * 1000);
-      resultado = resultado.filter(e => {
-        const dataEvento = new Date(e.data);
-        return dataEvento >= hoje && dataEvento <= proximos5Dias;
-      });
+    // Filtro por aba
+    if (abaAtiva === 'pendentes') {
+      resultado = resultado.filter(e => e.status === 'pendente' || !e.status);
+    } else if (abaAtiva === 'aprovados') {
+      resultado = resultado.filter(e => e.status === 'aprovado' && !eventoJaAconteceu(e));
+    } else if (abaAtiva === 'passados') {
+      resultado = resultado.filter(e => e.status === 'aprovado' && eventoJaAconteceu(e));
+    } else if (abaAtiva === 'rejeitados') {
+      resultado = resultado.filter(e => e.status === 'rejeitado');
     }
     
+    // Filtro por nome
     if (buscaNome.trim()) {
       resultado = resultado.filter(e => 
         e.nome?.toLowerCase().includes(buscaNome.toLowerCase())
       );
     }
     
+    // Filtro por produtor
     if (buscaProdutor.trim()) {
-      resultado = resultado.filter(e => 
-        e.user_id?.toLowerCase().includes(buscaProdutor.toLowerCase()) ||
-        e.produtor_nome?.toLowerCase().includes(buscaProdutor.toLowerCase())
-      );
+      resultado = resultado.filter(e => {
+        const produtor = produtores[e.user_id];
+        return e.user_id?.toLowerCase().includes(buscaProdutor.toLowerCase()) ||
+               e.produtor_nome?.toLowerCase().includes(buscaProdutor.toLowerCase()) ||
+               produtor?.nome_completo?.toLowerCase().includes(buscaProdutor.toLowerCase());
+      });
     }
     
-    setEventosFiltrados(resultado);
+    return resultado;
   };
 
   const calcularEstatisticas = (evento) => {
@@ -156,13 +176,14 @@ export default function AdminPage() {
   };
 
   const limparFiltros = () => {
-    setFiltroData('todos');
     setBuscaNome('');
     setBuscaProdutor('');
   };
 
+  const eventosFiltrados = filtrarEventos();
   const pendentesCount = eventos.filter(e => e.status === 'pendente' || !e.status).length;
-  const aprovadosCount = eventos.filter(e => e.status === 'aprovado').length;
+  const aprovadosCount = eventos.filter(e => e.status === 'aprovado' && !eventoJaAconteceu(e)).length;
+  const passadosCount = eventos.filter(e => e.status === 'aprovado' && eventoJaAconteceu(e)).length;
   const rejeitadosCount = eventos.filter(e => e.status === 'rejeitado').length;
 
   if (!isAuthenticated) {
@@ -195,6 +216,7 @@ export default function AdminPage() {
         <div className="admin-stats">
           <span className="stat-pendente">Pendentes: {pendentesCount}</span>
           <span className="stat-aprovado">Aprovados: {aprovadosCount}</span>
+          <span className="stat-passado">Passados: {passadosCount}</span>
           <span className="stat-rejeitado">Rejeitados: {rejeitadosCount}</span>
         </div>
         <button onClick={handleLogout} className="btn-logout">Sair</button>
@@ -204,39 +226,41 @@ export default function AdminPage() {
         <button onClick={carregarEventos} className="btn-recargar">
           🔄 Recarregar
         </button>
-        <Link href="/admin/rejeitados" className="btn-ver-rejeitados">
-          🗑️ Ver Rejeitados
-        </Link>
       </div>
 
+      {/* ABAS DE NAVEGAÇÃO */}
+      <div className="abas-container">
+        <button 
+          className={`aba ${abaAtiva === 'pendentes' ? 'aba-ativa' : ''}`}
+          onClick={() => setAbaAtiva('pendentes')}
+        >
+          ⏳ Pendentes ({pendentesCount})
+        </button>
+        <button 
+          className={`aba ${abaAtiva === 'aprovados' ? 'aba-ativa' : ''}`}
+          onClick={() => setAbaAtiva('aprovados')}
+        >
+          ✅ Aprovados Futuros ({aprovadosCount})
+        </button>
+        <button 
+          className={`aba ${abaAtiva === 'passados' ? 'aba-ativa' : ''}`}
+          onClick={() => setAbaAtiva('passados')}
+        >
+          📅 Aprovados Passados ({passadosCount})
+        </button>
+        <button 
+          className={`aba ${abaAtiva === 'rejeitados' ? 'aba-ativa' : ''}`}
+          onClick={() => setAbaAtiva('rejeitados')}
+        >
+          ❌ Rejeitados ({rejeitadosCount})
+        </button>
+      </div>
+
+      {/* FILTROS */}
       <div className="filtros-container">
         <h2>🔍 Filtros de Busca</h2>
         
         <div className="filtros-grid">
-          <div className="filtro-group">
-            <label>📅 Filtro Rápido de Data:</label>
-            <div className="filtro-botoes">
-              <button 
-                className={filtroData === 'todos' ? 'active' : ''}
-                onClick={() => setFiltroData('todos')}
-              >
-                Todos
-              </button>
-              <button 
-                className={filtroData === 'ultimos5' ? 'active' : ''}
-                onClick={() => setFiltroData('ultimos5')}
-              >
-                Últimos 5 Dias
-              </button>
-              <button 
-                className={filtroData === 'proximos5' ? 'active' : ''}
-                onClick={() => setFiltroData('proximos5')}
-              >
-                Próximos 5 Dias
-              </button>
-            </div>
-          </div>
-
           <div className="filtro-group">
             <label>🎭 Buscar por Nome do Evento:</label>
             <input
@@ -249,7 +273,7 @@ export default function AdminPage() {
           </div>
 
           <div className="filtro-group">
-            <label>👤 Buscar por Produtor (ID ou Nome):</label>
+            <label>👤 Buscar por Produtor:</label>
             <input
               type="text"
               placeholder="Digite o ID ou nome do produtor..."
@@ -269,15 +293,17 @@ export default function AdminPage() {
         </p>
       </div>
 
+      {/* LISTA DE EVENTOS */}
       {carregando ? (
         <div className="admin-loading">Carregando eventos...</div>
       ) : (
         <div className="eventos-list">
           {eventosFiltrados.length === 0 ? (
-            <p className="no-events">Nenhum evento encontrado com os filtros atuais.</p>
+            <p className="no-events">Nenhum evento encontrado nesta categoria.</p>
           ) : (
             eventosFiltrados.map(evento => {
               const stats = calcularEstatisticas(evento);
+              const produtor = produtores[evento.user_id];
               const isExpanded = eventoExpandido === evento.id;
               
               return (
@@ -292,7 +318,7 @@ export default function AdminPage() {
                   <div className="card-info">
                     <p><strong>📅 Data:</strong> {evento.data} às {evento.hora}</p>
                     <p><strong>📍 Local:</strong> {evento.local}</p>
-                    <p><strong>👤 Produtor:</strong> {evento.user_id}</p>
+                    <p><strong>👤 Produtor:</strong> {produtor?.nome_completo || evento.produtor_nome || evento.user_id}</p>
                     <p><strong>🆔 ID do Evento:</strong> {evento.id}</p>
                   </div>
 
@@ -328,6 +354,35 @@ export default function AdminPage() {
                           <span className="stat-value">R$ {stats.lucroPlataforma}</span>
                         </div>
                       </div>
+                      
+                      {produtor && (
+                        <>
+                          <h4 style={{ marginTop: '20px', marginBottom: '10px' }}>💳 Dados do Produtor</h4>
+                          <div className="produtor-dados">
+                            <p><strong>Nome Completo:</strong> {produtor.nome_completo}</p>
+                            {produtor.nome_empresa && <p><strong>Empresa:</strong> {produtor.nome_empresa}</p>}
+                            <p><strong>Email:</strong> {produtor.email}</p>
+                            
+                            <h5 style={{ marginTop: '15px', marginBottom: '10px' }}>💸 Forma de Pagamento Preferida:</h5>
+                            <p><strong>Preferência:</strong> {produtor.forma_pagamento === 'apenas_pix' ? 'Apenas PIX' : produtor.forma_pagamento === 'apenas_transferencia' ? 'Apenas Transferência' : 'Ambos (PIX e Transferência)'}</p>
+                            
+                            {(produtor.forma_pagamento === 'apenas_pix' || produtor.forma_pagamento === 'ambos') && (
+                              <div style={{ background: '#e8f5e9', padding: '10px', borderRadius: '5px', marginTop: '10px' }}>
+                                <p style={{ margin: 0 }}><strong>🔑 Chave PIX:</strong> {produtor.chave_pix}</p>
+                                <p style={{ margin: '5px 0 0 0' }}><strong>Tipo:</strong> {produtor.tipo_chave_pix?.toUpperCase()}</p>
+                              </div>
+                            )}
+                            
+                            {(produtor.forma_pagamento === 'apenas_transferencia' || produtor.forma_pagamento === 'ambos') && produtor.dados_bancarios && (
+                              <div style={{ background: '#e3f2fd', padding: '10px', borderRadius: '5px', marginTop: '10px' }}>
+                                <p style={{ margin: 0 }}><strong>🏦 Dados Bancários:</strong></p>
+                                <p style={{ margin: '5px 0 0 0', whiteSpace: 'pre-wrap' }}>{produtor.dados_bancarios}</p>
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      )}
+                      
                       <p className="taxa-info">
                         <small>📋 Plano escolhido: Taxa Cliente {stats.taxaCliente}% | Taxa Produtor {stats.taxaProdutor}%</small>
                       </p>
