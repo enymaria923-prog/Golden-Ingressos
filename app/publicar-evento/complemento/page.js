@@ -294,7 +294,7 @@ function ComplementoContent() {
 
             if (cuponsProdutosData.length > 0) {
               await supabase
-                .from('cupons_produtos')
+                .from('cupom_ingresso_preco')
                 .insert(cuponsProdutosData);
             }
           }
