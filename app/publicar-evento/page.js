@@ -130,31 +130,27 @@ const PublicarEvento = () => {
       return;
     }
 
-    // ====== VALIDAÇÃO MELHORADA - SÓ EXIGE NOME E PREÇO ======
+    // VALIDAÇÃO - SÓ EXIGE NOME E PREÇO
     let temIngressoValido = false;
 
     for (const setor of setoresIngressos) {
-      // Validar nome do setor
       if (!setor.nome || setor.nome.trim() === '') {
         alert('Por favor, preencha o nome de todos os setores!');
         return;
       }
 
       if (setor.usaLotes) {
-        // SE USA LOTES
         if (!setor.lotes || setor.lotes.length === 0) {
           alert(`O setor "${setor.nome}" está configurado para usar lotes, mas não tem nenhum lote criado!`);
           return;
         }
 
         for (const lote of setor.lotes) {
-          // Validar nome do lote
           if (!lote.nome || lote.nome.trim() === '') {
             alert(`Preencha o nome do lote no setor "${setor.nome}"!`);
             return;
           }
 
-          // Validar datas (se preenchidas)
           if (lote.dataInicio && lote.dataFim) {
             const inicio = new Date(lote.dataInicio);
             const fim = new Date(lote.dataFim);
@@ -164,9 +160,7 @@ const PublicarEvento = () => {
             }
           }
 
-          // Validar ingressos do lote - SÓ EXIGE NOME E PREÇO
           for (const tipo of lote.tiposIngresso) {
-            // Se preencheu nome OU preço, deve preencher os dois
             if (tipo.nome || tipo.preco) {
               if (!tipo.nome || tipo.nome.trim() === '') {
                 alert(`Preencha o nome do ingresso no lote "${lote.nome}" do setor "${setor.nome}"!`);
@@ -176,16 +170,12 @@ const PublicarEvento = () => {
                 alert(`Preencha um preço válido (maior que zero) no lote "${lote.nome}" do setor "${setor.nome}"!`);
                 return;
               }
-              
-              // Se chegou aqui, tem pelo menos um ingresso válido
               temIngressoValido = true;
             }
           }
         }
       } else {
-        // SE NÃO USA LOTES
         for (const tipo of setor.tiposIngresso) {
-          // Se preencheu nome OU preço, deve preencher os dois
           if (tipo.nome || tipo.preco) {
             if (!tipo.nome || tipo.nome.trim() === '') {
               alert(`Preencha o nome do ingresso no setor "${setor.nome}"!`);
@@ -195,8 +185,6 @@ const PublicarEvento = () => {
               alert(`Preencha um preço válido (maior que zero) no setor "${setor.nome}"!`);
               return;
             }
-            
-            // Se chegou aqui, tem pelo menos um ingresso válido
             temIngressoValido = true;
           }
         }
@@ -252,7 +240,6 @@ const PublicarEvento = () => {
             lote.tiposIngresso.forEach(tipo => {
               const preco = parseFloat(tipo.preco) || 0;
               
-              // Só conta se tiver nome E preço
               if (tipo.nome && tipo.nome.trim() !== '' && preco > 0) {
                 const quantidade = parseInt(tipo.quantidade) || 0;
                 totalIngressosEvento += quantidade;
@@ -265,7 +252,6 @@ const PublicarEvento = () => {
           setor.tiposIngresso.forEach(tipo => {
             const preco = parseFloat(tipo.preco) || 0;
             
-            // Só conta se tiver nome E preço
             if (tipo.nome && tipo.nome.trim() !== '' && preco > 0) {
               const quantidade = parseInt(tipo.quantidade) || 0;
               totalIngressosEvento += quantidade;
@@ -358,7 +344,6 @@ const PublicarEvento = () => {
             lote.tiposIngresso.forEach((tipo, tipoIndex) => {
               const preco = parseFloat(tipo.preco) || 0;
               
-              // Só salva se tiver nome E preço
               if (tipo.nome && tipo.nome.trim() !== '' && preco > 0) {
                 const quantidade = parseInt(tipo.quantidade) || 0;
                 const timestamp = Date.now().toString().slice(-8);
@@ -384,7 +369,6 @@ const PublicarEvento = () => {
           setor.tiposIngresso.forEach((tipo, tipoIndex) => {
             const preco = parseFloat(tipo.preco) || 0;
             
-            // Só salva se tiver nome E preço
             if (tipo.nome && tipo.nome.trim() !== '' && preco > 0) {
               const quantidade = parseInt(tipo.quantidade) || 0;
               const timestamp = Date.now().toString().slice(-8);
@@ -418,6 +402,7 @@ const PublicarEvento = () => {
 
         console.log('✅ Ingressos salvos com sucesso!');
       }
+      
       router.push(`/publicar-evento/complemento?evento=${eventoId}`);
     } catch (error) {
       console.error('💥 Erro:', error);
