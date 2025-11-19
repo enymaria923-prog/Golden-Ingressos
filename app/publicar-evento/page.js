@@ -61,7 +61,7 @@ const PublicarEvento = () => {
       
       setLoading(false);
     } catch (error) {
-      console.error('💥 Erro:', error);
+      console.error('Erro ao verificar usuário:', error);
       setLoading(false);
     }
   };
@@ -130,7 +130,7 @@ const PublicarEvento = () => {
       return;
     }
 
-    // VALIDAÇÃO - SÓ EXIGE NOME E PREÇO
+    // VALIDAÇÃO MELHORADA
     let temIngressoValido = false;
 
     for (const setor of setoresIngressos) {
@@ -160,32 +160,50 @@ const PublicarEvento = () => {
             }
           }
 
+          // Verifica se há pelo menos um tipo de ingresso válido no lote
+          const ingressosValidosNoLote = lote.tiposIngresso.filter(tipo => 
+            tipo.nome && tipo.nome.trim() !== '' && tipo.preco && parseFloat(tipo.preco) > 0
+          );
+
+          if (ingressosValidosNoLote.length === 0) {
+            alert(`O lote "${lote.nome}" do setor "${setor.nome}" precisa ter pelo menos um tipo de ingresso com nome e preço!`);
+            return;
+          }
+
           for (const tipo of lote.tiposIngresso) {
-            if (tipo.nome || tipo.preco) {
-              if (!tipo.nome || tipo.nome.trim() === '') {
-                alert(`Preencha o nome do ingresso no lote "${lote.nome}" do setor "${setor.nome}"!`);
-                return;
-              }
+            if (tipo.nome && tipo.nome.trim() !== '') {
               if (!tipo.preco || parseFloat(tipo.preco) <= 0) {
-                alert(`Preencha um preço válido (maior que zero) no lote "${lote.nome}" do setor "${setor.nome}"!`);
+                alert(`O ingresso "${tipo.nome}" no lote "${lote.nome}" precisa ter um preço válido!`);
                 return;
               }
               temIngressoValido = true;
+            } else if (tipo.preco && parseFloat(tipo.preco) > 0) {
+              alert(`Há um preço definido sem nome de ingresso no lote "${lote.nome}"!`);
+              return;
             }
           }
         }
       } else {
+        // Verifica se há pelo menos um tipo de ingresso válido no setor
+        const ingressosValidosNoSetor = setor.tiposIngresso.filter(tipo => 
+          tipo.nome && tipo.nome.trim() !== '' && tipo.preco && parseFloat(tipo.preco) > 0
+        );
+
+        if (ingressosValidosNoSetor.length === 0) {
+          alert(`O setor "${setor.nome}" precisa ter pelo menos um tipo de ingresso com nome e preço!`);
+          return;
+        }
+
         for (const tipo of setor.tiposIngresso) {
-          if (tipo.nome || tipo.preco) {
-            if (!tipo.nome || tipo.nome.trim() === '') {
-              alert(`Preencha o nome do ingresso no setor "${setor.nome}"!`);
-              return;
-            }
+          if (tipo.nome && tipo.nome.trim() !== '') {
             if (!tipo.preco || parseFloat(tipo.preco) <= 0) {
-              alert(`Preencha um preço válido (maior que zero) no setor "${setor.nome}"!`);
+              alert(`O ingresso "${tipo.nome}" no setor "${setor.nome}" precisa ter um preço válido!`);
               return;
             }
             temIngressoValido = true;
+          } else if (tipo.preco && parseFloat(tipo.preco) > 0) {
+            alert(`Há um preço definido sem nome de ingresso no setor "${setor.nome}"!`);
+            return;
           }
         }
       }
@@ -229,7 +247,7 @@ const PublicarEvento = () => {
         publicUrl = publicUrlData.publicUrl;
       }
 
-      // ====== 2. CALCULAR TOTAIS ======
+      // ====== 2. CALCULAR TOTAIS (CORRIGIDO) ======
       let totalIngressosEvento = 0;
       let somaPrecos = 0;
       let totalTipos = 0;
@@ -238,10 +256,10 @@ const PublicarEvento = () => {
         if (setor.usaLotes) {
           setor.lotes.forEach(lote => {
             lote.tiposIngresso.forEach(tipo => {
-              const preco = parseFloat(tipo.preco) || 0;
-              
-              if (tipo.nome && tipo.nome.trim() !== '' && preco > 0) {
-                const quantidade = parseInt(tipo.quantidade) || 0;
+              if (tipo.nome && tipo.nome.trim() !== '' && tipo.preco && parseFloat(tipo.preco) > 0) {
+                const preco = parseFloat(tipo.preco);
+                const quantidade = parseInt(tipo.quantidade) || 0; // 0 se vazio
+                
                 totalIngressosEvento += quantidade;
                 somaPrecos += preco;
                 totalTipos++;
@@ -250,10 +268,10 @@ const PublicarEvento = () => {
           });
         } else {
           setor.tiposIngresso.forEach(tipo => {
-            const preco = parseFloat(tipo.preco) || 0;
-            
-            if (tipo.nome && tipo.nome.trim() !== '' && preco > 0) {
-              const quantidade = parseInt(tipo.quantidade) || 0;
+            if (tipo.nome && tipo.nome.trim() !== '' && tipo.preco && parseFloat(tipo.preco) > 0) {
+              const preco = parseFloat(tipo.preco);
+              const quantidade = parseInt(tipo.quantidade) || 0; // 0 se vazio
+              
               totalIngressosEvento += quantidade;
               somaPrecos += preco;
               totalTipos++;
@@ -263,6 +281,12 @@ const PublicarEvento = () => {
       });
 
       const precoMedioEvento = totalTipos > 0 ? (somaPrecos / totalTipos) : 0;
+
+      console.log('📊 Totais calculados:', {
+        totalIngressosEvento,
+        precoMedioEvento,
+        totalTipos
+      });
 
       // ====== 3. CRIAR EVENTO ======
       const eventData = {
@@ -309,11 +333,19 @@ const PublicarEvento = () => {
       for (const setor of setoresIngressos) {
         if (setor.usaLotes && setor.lotes && setor.lotes.length > 0) {
           for (const lote of setor.lotes) {
+            // Calcular quantidade total do lote
+            let quantidadeTotalLote = 0;
+            lote.tiposIngresso.forEach(tipo => {
+              if (tipo.nome && tipo.nome.trim() !== '' && tipo.preco && parseFloat(tipo.preco) > 0) {
+                quantidadeTotalLote += parseInt(tipo.quantidade) || 0;
+              }
+            });
+
             const loteData = {
               evento_id: eventoId,
               setor: setor.nome,
               nome: lote.nome,
-              quantidade_total: parseInt(lote.quantidadeTotal) || 0,
+              quantidade_total: quantidadeTotalLote,
               quantidade_vendida: 0,
               data_inicio: lote.dataInicio || null,
               data_fim: lote.dataFim || null,
@@ -331,21 +363,22 @@ const PublicarEvento = () => {
             }
 
             lotesMap.set(lote.id, loteInserido[0].id);
+            console.log(`✅ Lote "${lote.nome}" salvo com ID:`, loteInserido[0].id);
           }
         }
       }
 
-      // ====== 5. SALVAR INGRESSOS ======
+      // ====== 5. SALVAR INGRESSOS (CORRIGIDO) ======
       const ingressosParaSalvar = [];
       
       setoresIngressos.forEach((setor, setorIndex) => {
         if (setor.usaLotes) {
           setor.lotes.forEach((lote, loteIndex) => {
             lote.tiposIngresso.forEach((tipo, tipoIndex) => {
-              const preco = parseFloat(tipo.preco) || 0;
-              
-              if (tipo.nome && tipo.nome.trim() !== '' && preco > 0) {
+              // SÓ SALVA SE TIVER NOME E PREÇO VÁLIDOS
+              if (tipo.nome && tipo.nome.trim() !== '' && tipo.preco && parseFloat(tipo.preco) > 0) {
                 const quantidade = parseInt(tipo.quantidade) || 0;
+                const preco = parseFloat(tipo.preco);
                 const timestamp = Date.now().toString().slice(-8);
                 const codigoNumerico = parseInt(`${eventoId}${setorIndex}${loteIndex}${tipoIndex}${timestamp}`);
                 const loteIdReal = lotesMap.get(lote.id);
@@ -367,10 +400,10 @@ const PublicarEvento = () => {
           });
         } else {
           setor.tiposIngresso.forEach((tipo, tipoIndex) => {
-            const preco = parseFloat(tipo.preco) || 0;
-            
-            if (tipo.nome && tipo.nome.trim() !== '' && preco > 0) {
+            // SÓ SALVA SE TIVER NOME E PREÇO VÁLIDOS
+            if (tipo.nome && tipo.nome.trim() !== '' && tipo.preco && parseFloat(tipo.preco) > 0) {
               const quantidade = parseInt(tipo.quantidade) || 0;
+              const preco = parseFloat(tipo.preco);
               const timestamp = Date.now().toString().slice(-8);
               const codigoNumerico = parseInt(`${eventoId}${setorIndex}${tipoIndex}${timestamp}`);
               
@@ -391,24 +424,34 @@ const PublicarEvento = () => {
         }
       });
 
-      if (ingressosParaSalvar.length > 0) {
-        console.log('📝 Ingressos a salvar:', ingressosParaSalvar);
+      console.log('📝 Ingressos a salvar:', ingressosParaSalvar.length);
+      console.log('📋 Dados dos ingressos:', ingressosParaSalvar);
 
+      if (ingressosParaSalvar.length > 0) {
         const { error: ingressosError } = await supabase
           .from('ingressos')
           .insert(ingressosParaSalvar);
 
         if (ingressosError) {
+          console.error('❌ Erro detalhado ao salvar ingressos:', ingressosError);
           throw new Error(`Erro ao salvar ingressos: ${ingressosError.message}`);
         }
 
         console.log('✅ Ingressos salvos com sucesso!');
+      } else {
+        throw new Error('Nenhum ingresso válido para salvar!');
       }
       
+      alert('✅ Evento salvo! Redirecionando para configurações finais...');
       router.push(`/publicar-evento/complemento?evento=${eventoId}`);
+      
     } catch (error) {
-      console.error('💥 Erro:', error);
+      console.error('💥 Erro completo:', error);
       alert(`❌ Erro: ${error.message}`);
+      
+      if (uploadedFilePath) {
+        await supabase.storage.from('imagens_eventos').remove([uploadedFilePath]);
+      }
     } finally {
       setIsSubmitting(false);
     }
