@@ -115,7 +115,6 @@ const PublicarEvento = () => {
       return;
     }
 
-    // VALIDAÇÕES BÁSICAS
     if (!formData.titulo || !formData.descricao || !formData.data || !formData.hora || !formData.localNome || !imagem) {
       alert('Por favor, preencha todos os campos obrigatórios, incluindo a imagem!');
       return;
@@ -238,8 +237,8 @@ const PublicarEvento = () => {
               const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
               
               if (temNome && temPreco) {
-                const quantidade = parseInt(tipo.quantidade) || 0;
-                totalIngressosEvento += quantidade;
+                const qtd = tipo.quantidade ? parseInt(tipo.quantidade) : 0;
+                totalIngressosEvento += qtd;
                 somaPrecos += parseFloat(tipo.preco);
                 totalTipos++;
               }
@@ -251,8 +250,8 @@ const PublicarEvento = () => {
             const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
             
             if (temNome && temPreco) {
-              const quantidade = parseInt(tipo.quantidade) || 0;
-              totalIngressosEvento += quantidade;
+              const qtd = tipo.quantidade ? parseInt(tipo.quantidade) : 0;
+              totalIngressosEvento += qtd;
               somaPrecos += parseFloat(tipo.preco);
               totalTipos++;
             }
@@ -308,8 +307,8 @@ const PublicarEvento = () => {
       eventoIdCriado = insertedData[0].id;
       console.log('✅ Evento criado! ID:', eventoIdCriado);
 
-      // ====== 4. SALVAR SETORES NA NOVA TABELA ======
-      const setoresMap = new Map(); // mapeia nome do setor -> ID do setor no BD
+      // ====== 4. SALVAR SETORES ======
+      const setoresMap = new Map();
 
       for (const setor of setoresIngressos) {
         let capacidadeTotalSetor = 0;
@@ -320,7 +319,7 @@ const PublicarEvento = () => {
               const temNome = tipo.nome && tipo.nome.trim() !== '';
               const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
               if (temNome && temPreco) {
-                capacidadeTotalSetor += parseInt(tipo.quantidade) || 0;
+                capacidadeTotalSetor += tipo.quantidade ? parseInt(tipo.quantidade) : 0;
               }
             });
           });
@@ -329,7 +328,7 @@ const PublicarEvento = () => {
             const temNome = tipo.nome && tipo.nome.trim() !== '';
             const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
             if (temNome && temPreco) {
-              capacidadeTotalSetor += parseInt(tipo.quantidade) || 0;
+              capacidadeTotalSetor += tipo.quantidade ? parseInt(tipo.quantidade) : 0;
             }
           });
         }
@@ -364,7 +363,7 @@ const PublicarEvento = () => {
               const temNome = tipo.nome && tipo.nome.trim() !== '';
               const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
               if (temNome && temPreco) {
-                quantidadeTotalLote += parseInt(tipo.quantidade) || 0;
+                quantidadeTotalLote += tipo.quantidade ? parseInt(tipo.quantidade) : 0;
               }
             });
 
@@ -379,8 +378,6 @@ const PublicarEvento = () => {
               ativo: true,
               user_id: user.id
             };
-
-            console.log('📦 Salvando lote:', loteData);
 
             const { data: loteInserido, error: loteError } = await supabase
               .from('lotes')
@@ -398,7 +395,7 @@ const PublicarEvento = () => {
         }
       }
 
-      // ====== 6. SALVAR INGRESSOS (FINALMENTE!) ======
+      // ====== 6. SALVAR INGRESSOS ======
       const ingressosParaSalvar = [];
       let contadorIngresso = 0;
       
@@ -410,7 +407,7 @@ const PublicarEvento = () => {
               const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
               
               if (temNome && temPreco) {
-                const quantidade = parseInt(tipo.quantidade) || 0;
+                const quantidade = tipo.quantidade ? parseInt(tipo.quantidade) : null;
                 const preco = parseFloat(tipo.preco);
                 const loteIdReal = lotesMap.get(lote.id);
                 const codigo = Date.now() + contadorIngresso;
@@ -431,7 +428,7 @@ const PublicarEvento = () => {
                 ingressosParaSalvar.push(ingressoData);
                 contadorIngresso++;
                 
-                console.log(`🎟️ Ingresso preparado: ${tipo.nome} - R$ ${preco} - Qtd: ${quantidade}`);
+                console.log(`🎟️ Ingresso: ${tipo.nome} - R$ ${preco} - Qtd: ${quantidade === null ? 'ILIMITADO' : quantidade}`);
               }
             });
           });
@@ -441,7 +438,7 @@ const PublicarEvento = () => {
             const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
             
             if (temNome && temPreco) {
-              const quantidade = parseInt(tipo.quantidade) || 0;
+              const quantidade = tipo.quantidade ? parseInt(tipo.quantidade) : null;
               const preco = parseFloat(tipo.preco);
               const codigo = Date.now() + contadorIngresso;
               
@@ -461,7 +458,7 @@ const PublicarEvento = () => {
               ingressosParaSalvar.push(ingressoData);
               contadorIngresso++;
               
-              console.log(`🎟️ Ingresso preparado: ${tipo.nome} - R$ ${preco} - Qtd: ${quantidade}`);
+              console.log(`🎟️ Ingresso: ${tipo.nome} - R$ ${preco} - Qtd: ${quantidade === null ? 'ILIMITADO' : quantidade}`);
             }
           });
         }
@@ -471,41 +468,33 @@ const PublicarEvento = () => {
       console.log('📄 DADOS COMPLETOS:', JSON.stringify(ingressosParaSalvar, null, 2));
 
       if (ingressosParaSalvar.length === 0) {
-        throw new Error('Nenhum ingresso válido para salvar! Verifique se preencheu nome e preço.');
+        throw new Error('Nenhum ingresso válido para salvar!');
       }
 
-      // SALVAR TODOS DE UMA VEZ
       const { data: ingressosInseridos, error: ingressosError } = await supabase
         .from('ingressos')
         .insert(ingressosParaSalvar)
         .select();
 
       if (ingressosError) {
-        console.error('❌ ERRO DETALHADO AO INSERIR INGRESSOS:', ingressosError);
-        console.error('📄 Dados que tentamos inserir:', ingressosParaSalvar);
+        console.error('❌ ERRO AO INSERIR INGRESSOS:', ingressosError);
         throw new Error(`Erro ao salvar ingressos: ${ingressosError.message}`);
       }
 
-      console.log(`✅✅✅ ${ingressosInseridos.length} INGRESSOS SALVOS COM SUCESSO!`);
-      console.log('🎉 Ingressos inseridos:', ingressosInseridos);
+      console.log(`✅✅✅ ${ingressosInseridos.length} INGRESSOS SALVOS!`);
       
-      alert(`✅ Evento criado! ${ingressosInseridos.length} ingressos salvos. Redirecionando...`);
+      alert(`✅ Evento criado! ${ingressosInseridos.length} ingressos salvos.`);
       router.push(`/publicar-evento/complemento?evento=${eventoIdCriado}`);
       
     } catch (error) {
-      console.error('💥💥💥 ERRO FATAL:', error);
-      console.error('Stack trace:', error.stack);
-      alert(`❌ ERRO: ${error.message}\n\nVerifique o console (F12) para mais detalhes.`);
+      console.error('💥 ERRO:', error);
+      alert(`❌ ERRO: ${error.message}`);
       
-      // Rollback: deletar evento se foi criado
       if (eventoIdCriado) {
-        console.log('🔄 Fazendo rollback do evento...');
         await supabase.from('eventos').delete().eq('id', eventoIdCriado);
       }
       
-      // Rollback: deletar imagem
       if (uploadedFilePath) {
-        console.log('🔄 Fazendo rollback da imagem...');
         await supabase.storage.from('imagens_eventos').remove([uploadedFilePath]);
       }
     } finally {
@@ -689,7 +678,7 @@ const PublicarEvento = () => {
         <div className="form-section">
           <h2>Setores e Ingressos *</h2>
           <p style={{ color: '#666', fontSize: '14px', marginBottom: '15px' }}>
-            💡 <strong>Dica:</strong> Preencha <strong>nome</strong> e <strong>preço</strong> dos ingressos. Quantidade é opcional (deixe em branco para ilimitado)!
+            💡 Preencha <strong>nome</strong> e <strong>preço</strong> (obrigatórios). Quantidade é opcional - deixe vazio para ilimitado.
           </p>
           <SetorManager onSetoresChange={setSetoresIngressos} />
         </div>
