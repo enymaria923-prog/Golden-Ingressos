@@ -3,7 +3,6 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { createClient } from '../../../../../utils/supabase/client';
 import CategoriaSelector from '../../../../publicar-evento/components/CategoriaSelector';
-import SelecionarTaxa from '../../../../publicar-evento/components/SelecionarTaxa';
 import '../../../../publicar-evento/PublicarEvento.css';
 import '../../admin.css';
 
