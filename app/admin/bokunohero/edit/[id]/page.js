@@ -10,7 +10,7 @@ export default function EditarEventoPage() {
   const supabase = createClient();
   const router = useRouter();
   const params = useParams();
-  const eventoId = params.id;
+  const eventoId = params.id; // isso esta
   
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
