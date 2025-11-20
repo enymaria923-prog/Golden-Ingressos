@@ -348,7 +348,30 @@ const PublicarEvento = () => {
         
         console.log(`✅ Setor "${setor.nome}" salvo!`);
       }
+// ====== 4. SALVAR SETORES NA TABELA ======
+for (const setor of setoresIngressos) {
+  // USAR A CAPACIDADE QUE O USUÁRIO DIGITOU!
+  let capacidadeTotalSetor = setor.capacidadeTotal !== null && setor.capacidadeTotal !== '' 
+    ? parseInt(setor.capacidadeTotal) 
+    : 0;
 
+  console.log(`📦 Salvando setor "${setor.nome}" com capacidade: ${capacidadeTotalSetor}`);
+
+  const { error: setorError } = await supabase
+    .from('setores')
+    .insert([{
+      eventos_id: eventoIdCriado,
+      nome: setor.nome,
+      capacidade_total: capacidadeTotalSetor
+    }]);
+
+  if (setorError) {
+    console.error('❌ Erro ao salvar setor:', setorError);
+    throw new Error(`Erro ao salvar setor: ${setorError.message}`);
+  }
+  
+  console.log(`✅ Setor "${setor.nome}" salvo com capacidade: ${capacidadeTotalSetor}`);
+}
       // ====== 5. SALVAR LOTES ======
       const lotesMap = new Map();
 
@@ -395,91 +418,135 @@ const PublicarEvento = () => {
           }
         }
       }
+// ====== 5. SALVAR LOTES ======
+const lotesMap = new Map();
 
-      // ====== 6. SALVAR INGRESSOS ======
-      const ingressosParaSalvar = [];
-      let contadorIngresso = 0;
-      
-      setoresIngressos.forEach((setor) => {
-        if (setor.usaLotes) {
-          setor.lotes.forEach((lote) => {
-            lote.tiposIngresso.forEach((tipo) => {
-              const temNome = tipo.nome && tipo.nome.trim() !== '';
-              const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
-              
-              if (temNome && temPreco) {
-                const quantidade = tipo.quantidade;
-                const preco = parseFloat(tipo.preco);
-                const loteIdReal = lotesMap.get(lote.id);
-                const codigo = Date.now() + contadorIngresso;
-                
-                console.log(`🎟️ Ingresso: ${tipo.nome} - Qtd: ${quantidade === null ? 'NULL (ilimitado)' : quantidade}`);
-                
-                ingressosParaSalvar.push({
-                  evento_id: eventoIdCriado,
-                  setor: setor.nome,
-                  lote_id: loteIdReal,
-                  tipo: tipo.nome,
-                  valor: preco.toString(),
-                  quantidade: quantidade,
-                  vendidos: 0,
-                  status_ingresso: 'disponivel',
-                  user_id: user.id,
-                  codigo: codigo
-                });
-                
-                contadorIngresso++;
-              }
-            });
-          });
-        } else {
-          setor.tiposIngresso.forEach((tipo) => {
-            const temNome = tipo.nome && tipo.nome.trim() !== '';
-            const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
-            
-            if (temNome && temPreco) {
-              const quantidade = tipo.quantidade;
-              const preco = parseFloat(tipo.preco);
-              const codigo = Date.now() + contadorIngresso;
-              
-              console.log(`🎟️ Ingresso: ${tipo.nome} - Qtd: ${quantidade === null ? 'NULL (ilimitado)' : quantidade}`);
-              
-              ingressosParaSalvar.push({
-                evento_id: eventoIdCriado,
-                setor: setor.nome,
-                lote_id: null,
-                tipo: tipo.nome,
-                valor: preco.toString(),
-                quantidade: quantidade,
-                vendidos: 0,
-                status_ingresso: 'disponivel',
-                user_id: user.id,
-                codigo: codigo
-              });
-              
-              contadorIngresso++;
-            }
-          });
-        }
-      });
+for (const setor of setoresIngressos) {
+  if (setor.usaLotes && setor.lotes && setor.lotes.length > 0) {
+    for (const lote of setor.lotes) {
+      // USAR A QUANTIDADE QUE O USUÁRIO DIGITOU!
+      const quantidadeTotalLote = lote.quantidadeTotal !== null && lote.quantidadeTotal !== '' 
+        ? parseInt(lote.quantidadeTotal) 
+        : 0;
 
-      console.log(`📋 TOTAL: ${ingressosParaSalvar.length} ingressos`);
+      const loteData = {
+        evento_id: eventoIdCriado,
+        setor: setor.nome,
+        nome: lote.nome,
+        quantidade_total: quantidadeTotalLote,
+        quantidade_vendida: 0,
+        data_inicio: lote.dataInicio || null,
+        data_fim: lote.dataFim || null,
+        ativo: true,
+        user_id: user.id
+      };
 
-      if (ingressosParaSalvar.length === 0) {
-        throw new Error('Nenhum ingresso válido!');
-      }
-
-      const { data: ingressosInseridos, error: ingressosError } = await supabase
-        .from('ingressos')
-        .insert(ingressosParaSalvar)
+      const { data: loteInserido, error: loteError } = await supabase
+        .from('lotes')
+        .insert([loteData])
         .select();
 
-      if (ingressosError) {
-        console.error('❌ ERRO:', ingressosError);
-        throw new Error(`Erro ao salvar ingressos: ${ingressosError.message}`);
+      if (loteError) {
+        throw new Error(`Erro ao salvar lote: ${loteError.message}`);
       }
 
-      console.log(`✅✅✅ ${ingressosInseridos.length} INGRESSOS SALVOS!`);
+      lotesMap.set(lote.id, loteInserido[0].id);
+      console.log(`✅ Lote "${lote.nome}" salvo com quantidade: ${quantidadeTotalLote}`);
+    }
+  }
+}
+    // ====== 6. SALVAR INGRESSOS ======
+const ingressosParaSalvar = [];
+let contadorIngresso = 0;
+
+setoresIngressos.forEach((setor) => {
+  if (setor.usaLotes) {
+    setor.lotes.forEach((lote) => {
+      lote.tiposIngresso.forEach((tipo) => {
+        const temNome = tipo.nome && tipo.nome.trim() !== '';
+        const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
+        
+        if (temNome && temPreco) {
+          // USAR A QUANTIDADE QUE O USUÁRIO DIGITOU!
+          const quantidade = tipo.quantidade !== null && tipo.quantidade !== '' 
+            ? parseInt(tipo.quantidade) 
+            : 0;
+          
+          const preco = parseFloat(tipo.preco);
+          const loteIdReal = lotesMap.get(lote.id);
+          const codigo = Date.now() + contadorIngresso;
+          
+          console.log(`🎟️ Ingresso: ${tipo.nome} - Qtd: ${quantidade}`);
+          
+          ingressosParaSalvar.push({
+            evento_id: eventoIdCriado,
+            setor: setor.nome,
+            lote_id: loteIdReal,
+            tipo: tipo.nome,
+            valor: preco.toString(),
+            quantidade: quantidade,
+            vendidos: 0,
+            status_ingresso: 'disponivel',
+            user_id: user.id,
+            codigo: codigo
+          });
+          
+          contadorIngresso++;
+        }
+      });
+    });
+  } else {
+    setor.tiposIngresso.forEach((tipo) => {
+      const temNome = tipo.nome && tipo.nome.trim() !== '';
+      const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
+      
+      if (temNome && temPreco) {
+        // USAR A QUANTIDADE QUE O USUÁRIO DIGITOU!
+        const quantidade = tipo.quantidade !== null && tipo.quantidade !== '' 
+          ? parseInt(tipo.quantidade) 
+          : 0;
+        
+        const preco = parseFloat(tipo.preco);
+        const codigo = Date.now() + contadorIngresso;
+        
+        console.log(`🎟️ Ingresso: ${tipo.nome} - Qtd: ${quantidade}`);
+        
+        ingressosParaSalvar.push({
+          evento_id: eventoIdCriado,
+          setor: setor.nome,
+          lote_id: null,
+          tipo: tipo.nome,
+          valor: preco.toString(),
+          quantidade: quantidade,
+          vendidos: 0,
+          status_ingresso: 'disponivel',
+          user_id: user.id,
+          codigo: codigo
+        });
+        
+        contadorIngresso++;
+      }
+    });
+  }
+});
+
+console.log(`📋 TOTAL: ${ingressosParaSalvar.length} ingressos`);
+
+if (ingressosParaSalvar.length === 0) {
+  throw new Error('Nenhum ingresso válido!');
+}
+
+const { data: ingressosInseridos, error: ingressosError } = await supabase
+  .from('ingressos')
+  .insert(ingressosParaSalvar)
+  .select();
+
+if (ingressosError) {
+  console.error('❌ ERRO:', ingressosError);
+  throw new Error(`Erro ao salvar ingressos: ${ingressosError.message}`);
+}
+
+console.log(`✅✅✅ ${ingressosInseridos.length} INGRESSOS SALVOS!`);
       
       alert(`✅ Evento criado com ${ingressosInseridos.length} ingressos!`);
       router.push(`/publicar-evento/complemento?evento=${eventoIdCriado}`);
