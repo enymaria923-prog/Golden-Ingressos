@@ -758,9 +758,9 @@ const PublicarEvento = () => {
           {/* ========== IMAGENS DA DESCRIÇÃO ========== */}
           <div className="form-group">
             <label>Imagens Adicionais na Descrição (opcional)</label>
-            <p style={{ fontSize: '13px', color: '#666', marginBottom: '10px' }}>
+            <span className="label-info-text">
               Adicione imagens com textos opcionais antes e depois de cada uma
-            </p>
+            </span>
             
             <input 
               type="file" 
@@ -775,86 +775,72 @@ const PublicarEvento = () => {
               type="button" 
               onClick={() => imagemDescricaoInputRef.current.click()}
               className="btn-adicionar"
-              style={{ marginBottom: '15px' }}
             >
               📸 Adicionar Imagens
             </button>
 
-            {imagensDescricao.map((img, index) => (
-              <div key={index} style={{ 
-                border: '2px solid #ddd', 
-                borderRadius: '8px', 
-                padding: '15px', 
-                marginBottom: '15px',
-                backgroundColor: '#f9f9f9'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                  <strong>Imagem {index + 1}</strong>
-                  <div style={{ display: 'flex', gap: '5px' }}>
-                    {index > 0 && (
+            <div className="imagem-descricao-container">
+              {imagensDescricao.map((img, index) => (
+                <div key={index} className="secao-imagem-item">
+                  <div className="imagem-descricao-header">
+                    <strong>Imagem {index + 1}</strong>
+                    <div className="imagem-controles-grupo">
+                      {index > 0 && (
+                        <button 
+                          type="button" 
+                          onClick={() => moverImagemDescricao(index, 'up')}
+                          className="btn-ordem-imagem"
+                        >
+                          ⬆️
+                        </button>
+                      )}
+                      {index < imagensDescricao.length - 1 && (
+                        <button 
+                          type="button" 
+                          onClick={() => moverImagemDescricao(index, 'down')}
+                          className="btn-ordem-imagem"
+                        >
+                          ⬇️
+                        </button>
+                      )}
                       <button 
                         type="button" 
-                        onClick={() => moverImagemDescricao(index, 'up')}
-                        style={{ padding: '5px 10px', fontSize: '12px' }}
+                        onClick={() => removerImagemDescricao(index)}
+                        className="btn-remover-pequeno"
                       >
-                        ⬆️
+                        🗑️
                       </button>
-                    )}
-                    {index < imagensDescricao.length - 1 && (
-                      <button 
-                        type="button" 
-                        onClick={() => moverImagemDescricao(index, 'down')}
-                        style={{ padding: '5px 10px', fontSize: '12px' }}
-                      >
-                        ⬇️
-                      </button>
-                    )}
-                    <button 
-                      type="button" 
-                      onClick={() => removerImagemDescricao(index)}
-                      className="btn-remove-image"
-                      style={{ padding: '5px 10px', fontSize: '12px' }}
-                    >
-                      🗑️ Remover
-                    </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label>Texto antes da imagem:</label>
+                    <textarea
+                      value={img.textoAntes}
+                      onChange={(e) => atualizarTextoImagem(index, 'textoAntes', e.target.value)}
+                      placeholder="Texto que aparece antes da imagem (opcional)"
+                      className="textarea-imagem-desc"
+                    />
+                  </div>
+
+                  <img 
+                    src={img.preview} 
+                    alt={`Preview ${index + 1}`} 
+                    className="imagem-descricao-preview"
+                  />
+
+                  <div>
+                    <label>Texto depois da imagem:</label>
+                    <textarea
+                      value={img.textoDepois}
+                      onChange={(e) => atualizarTextoImagem(index, 'textoDepois', e.target.value)}
+                      placeholder="Texto que aparece depois da imagem (opcional)"
+                      className="textarea-imagem-desc"
+                    />
                   </div>
                 </div>
-
-                <div style={{ marginBottom: '10px' }}>
-                  <label style={{ fontSize: '13px', fontWeight: 'bold' }}>Texto antes da imagem:</label>
-                  <textarea
-                    value={img.textoAntes}
-                    onChange={(e) => atualizarTextoImagem(index, 'textoAntes', e.target.value)}
-                    placeholder="Texto que aparece antes da imagem (opcional)"
-                    rows="2"
-                    style={{ width: '100%', marginTop: '5px', padding: '8px' }}
-                  />
-                </div>
-
-                <img 
-                  src={img.preview} 
-                  alt={`Preview ${index + 1}`} 
-                  style={{ 
-                    width: '100%', 
-                    maxHeight: '300px', 
-                    objectFit: 'contain',
-                    borderRadius: '5px',
-                    marginBottom: '10px'
-                  }} 
-                />
-
-                <div>
-                  <label style={{ fontSize: '13px', fontWeight: 'bold' }}>Texto depois da imagem:</label>
-                  <textarea
-                    value={img.textoDepois}
-                    onChange={(e) => atualizarTextoImagem(index, 'textoDepois', e.target.value)}
-                    placeholder="Texto que aparece depois da imagem (opcional)"
-                    rows="2"
-                    style={{ width: '100%', marginTop: '5px', padding: '8px' }}
-                  />
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
 
           <CategoriaSelector onCategoriasChange={setCategorias} />
