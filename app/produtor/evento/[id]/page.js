@@ -527,152 +527,7 @@ export default function EventoDetalhesPage() {
                       gap: '12px' 
                     }}>
                       {lote.tipos.map((tipo, tipoIndex) => (
-                        <div>📈 Total: <strong style={{ color: '#3498db' }}>{totalProduto}</strong></div>
-                      {produto.tamanho && (
-                        <div>📏 Tamanho: <strong>{produto.tamanho}</strong></div>
-                      )}
-                      {produto.tipo_produto && (
-                        <div>🏷️ Tipo: <strong>{produto.tipo_produto}</strong></div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {evento.imagem_url && (
-          <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
-            <h2 style={{ color: '#5d34a4', marginTop: 0 }}>🖼️ Imagem do Evento</h2>
-            <img 
-              src={evento.imagem_url} 
-              alt={evento.nome}
-              style={{ 
-                width: '100%', 
-                maxWidth: '600px', 
-                height: 'auto',
-                borderRadius: '8px',
-                display: 'block',
-                margin: '0 auto'
-              }}
-            />
-          </div>
-        )}
-
-      </div>
-
-      {/* Modal - Adicionar Ingressos */}
-      {mostrarModalIngressos && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.7)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            padding: '30px',
-            borderRadius: '12px',
-            maxWidth: '600px',
-            width: '90%'
-          }}>
-            <h2 style={{ color: '#5d34a4', marginTop: 0 }}>➕ Adicionar Mais Ingressos</h2>
-            
-            <div style={{ 
-              padding: '30px', 
-              textAlign: 'center', 
-              color: '#95a5a6',
-              border: '2px dashed #ddd',
-              borderRadius: '8px',
-              marginBottom: '20px'
-            }}>
-              <p style={{ fontSize: '48px', margin: '0 0 15px 0' }}>🚧</p>
-              <p>Funcionalidade em desenvolvimento</p>
-            </div>
-            
-            <button
-              onClick={() => setMostrarModalIngressos(false)}
-              style={{
-                width: '100%',
-                backgroundColor: '#95a5a6',
-                color: 'white',
-                padding: '12px',
-                border: 'none',
-                borderRadius: '8px',
-                fontWeight: 'bold',
-                cursor: 'pointer'
-              }}
-            >
-              Fechar
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Modal - Nova Sessão */}
-      {mostrarModalSessao && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.7)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            padding: '30px',
-            borderRadius: '12px',
-            maxWidth: '600px',
-            width: '90%'
-          }}>
-            <h2 style={{ color: '#9b59b6', marginTop: 0 }}>🎬 Abrir Nova Sessão</h2>
-            
-            <div style={{ 
-              padding: '30px', 
-              textAlign: 'center', 
-              color: '#95a5a6',
-              border: '2px dashed #ddd',
-              borderRadius: '8px',
-              marginBottom: '20px'
-            }}>
-              <p style={{ fontSize: '48px', margin: '0 0 15px 0' }}>🚧</p>
-              <p>Funcionalidade em desenvolvimento</p>
-            </div>
-            
-            <button
-              onClick={() => setMostrarModalSessao(false)}
-              style={{
-                width: '100%',
-                backgroundColor: '#95a5a6',
-                color: 'white',
-                padding: '12px',
-                border: 'none',
-                borderRadius: '8px',
-                fontWeight: 'bold',
-                cursor: 'pointer'
-              }}
-            >
-              Fechar
-            </button>
-          </div>
-        </div>
-      )}
-
-    </div>
-  );
-} key={tipoIndex} style={{ 
+                        <div key={tipoIndex} style={{ 
                           backgroundColor: '#f8f9fa',
                           padding: '12px',
                           borderRadius: '6px',
@@ -828,4 +683,149 @@ export default function EventoDetalhesPage() {
                       <div>💰 Preço: <strong>R$ {produto.preco.toFixed(2)}</strong></div>
                       <div>✅ Vendidos: <strong style={{ color: '#27ae60' }}>{produto.quantidade_vendida || 0}</strong></div>
                       <div>📊 Disponíveis: <strong style={{ color: '#e67e22' }}>{produto.quantidade_disponivel}</strong></div>
-                      <div
+                      <div>📈 Total: <strong style={{ color: '#3498db' }}>{totalProduto}</strong></div>
+                      {produto.tamanho && (
+                        <div>📏 Tamanho: <strong>{produto.tamanho}</strong></div>
+                      )}
+                      {produto.tipo_produto && (
+                        <div>🏷️ Tipo: <strong>{produto.tipo_produto}</strong></div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {evento.imagem_url && (
+          <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+            <h2 style={{ color: '#5d34a4', marginTop: 0 }}>🖼️ Imagem do Evento</h2>
+            <img 
+              src={evento.imagem_url} 
+              alt={evento.nome}
+              style={{ 
+                width: '100%', 
+                maxWidth: '600px', 
+                height: 'auto',
+                borderRadius: '8px',
+                display: 'block',
+                margin: '0 auto'
+              }}
+            />
+          </div>
+        )}
+
+      </div>
+
+      {/* Modal - Adicionar Ingressos */}
+      {mostrarModalIngressos && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.7)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '30px',
+            borderRadius: '12px',
+            maxWidth: '600px',
+            width: '90%'
+          }}>
+            <h2 style={{ color: '#5d34a4', marginTop: 0 }}>➕ Adicionar Mais Ingressos</h2>
+            
+            <div style={{ 
+              padding: '30px', 
+              textAlign: 'center', 
+              color: '#95a5a6',
+              border: '2px dashed #ddd',
+              borderRadius: '8px',
+              marginBottom: '20px'
+            }}>
+              <p style={{ fontSize: '48px', margin: '0 0 15px 0' }}>🚧</p>
+              <p>Funcionalidade em desenvolvimento</p>
+            </div>
+            
+            <button
+              onClick={() => setMostrarModalIngressos(false)}
+              style={{
+                width: '100%',
+                backgroundColor: '#95a5a6',
+                color: 'white',
+                padding: '12px',
+                border: 'none',
+                borderRadius: '8px',
+                fontWeight: 'bold',
+                cursor: 'pointer'
+              }}
+            >
+              Fechar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal - Nova Sessão */}
+      {mostrarModalSessao && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.7)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '30px',
+            borderRadius: '12px',
+            maxWidth: '600px',
+            width: '90%'
+          }}>
+            <h2 style={{ color: '#9b59b6', marginTop: 0 }}>🎬 Abrir Nova Sessão</h2>
+            
+            <div style={{ 
+              padding: '30px', 
+              textAlign: 'center', 
+              color: '#95a5a6',
+              border: '2px dashed #ddd',
+              borderRadius: '8px',
+              marginBottom: '20px'
+            }}>
+              <p style={{ fontSize: '48px', margin: '0 0 15px 0' }}>🚧</p>
+              <p>Funcionalidade em desenvolvimento</p>
+            </div>
+            
+            <button
+              onClick={() => setMostrarModalSessao(false)}
+              style={{
+                width: '100%',
+                backgroundColor: '#95a5a6',
+                color: 'white',
+                padding: '12px',
+                border: 'none',
+                borderRadius: '8px',
+                fontWeight: 'bold',
+                cursor: 'pointer'
+              }}
+            >
+              Fechar
+            </button>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
