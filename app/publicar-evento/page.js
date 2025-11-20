@@ -16,11 +16,16 @@ const PublicarEvento = () => {
   const [formData, setFormData] = useState({
     titulo: '',
     descricao: '',
-    data: '',
-    hora: '',
     localNome: '', 
-    localEndereco: '' 
+    localEndereco: '',
+    cidade: ''
   });
+  
+  // Múltiplas datas e horários
+  const [datasHorarios, setDatasHorarios] = useState([{ data: '', hora: '' }]);
+  
+  // Imagens da descrição
+  const [imagensDescricao, setImagensDescricao] = useState([]);
   
   const [categorias, setCategorias] = useState([]);
   const [temLugarMarcado, setTemLugarMarcado] = useState(false);
@@ -31,6 +36,7 @@ const PublicarEvento = () => {
   const [imagemPreview, setImagemPreview] = useState(null); 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef(null);
+  const imagemDescricaoInputRef = useRef(null);
 
   useEffect(() => {
     checkUser();
@@ -71,6 +77,74 @@ const PublicarEvento = () => {
     setFormData(prev => ({...prev, [name]: value}));
   };
 
+  // ========== MÚLTIPLAS DATAS/HORÁRIOS ==========
+  const adicionarDataHorario = () => {
+    setDatasHorarios([...datasHorarios, { data: '', hora: '' }]);
+  };
+
+  const removerDataHorario = (index) => {
+    if (datasHorarios.length > 1) {
+      setDatasHorarios(datasHorarios.filter((_, i) => i !== index));
+    }
+  };
+
+  const handleDataHorarioChange = (index, field, value) => {
+    const novasDatas = [...datasHorarios];
+    novasDatas[index][field] = value;
+    setDatasHorarios(novasDatas);
+  };
+
+  // ========== IMAGENS DA DESCRIÇÃO ==========
+  const handleImagemDescricaoChange = (e) => {
+    const files = Array.from(e.target.files);
+    
+    files.forEach(file => {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Imagem muito grande. Máximo 5MB por imagem.');
+        return;
+      }
+      
+      if (!file.type.match('image/jpeg') && !file.type.match('image/png') && !file.type.match('image/gif')) {
+        alert('Apenas JPG, PNG ou GIF são aceitos.');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagensDescricao(prev => [...prev, {
+          file: file,
+          preview: e.target.result,
+          textoAntes: '',
+          textoDepois: ''
+        }]);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    e.target.value = '';
+  };
+
+  const atualizarTextoImagem = (index, field, value) => {
+    const novasImagens = [...imagensDescricao];
+    novasImagens[index][field] = value;
+    setImagensDescricao(novasImagens);
+  };
+
+  const removerImagemDescricao = (index) => {
+    setImagensDescricao(imagensDescricao.filter((_, i) => i !== index));
+  };
+
+  const moverImagemDescricao = (index, direction) => {
+    const novasImagens = [...imagensDescricao];
+    const novoIndex = direction === 'up' ? index - 1 : index + 1;
+    
+    if (novoIndex >= 0 && novoIndex < novasImagens.length) {
+      [novasImagens[index], novasImagens[novoIndex]] = [novasImagens[novoIndex], novasImagens[index]];
+      setImagensDescricao(novasImagens);
+    }
+  };
+
+  // ========== IMAGEM PRINCIPAL ==========
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -115,10 +189,19 @@ const PublicarEvento = () => {
       return;
     }
 
-    if (!formData.titulo || !formData.descricao || !formData.data || !formData.hora || !formData.localNome || !imagem) {
+    // Validações básicas
+    if (!formData.titulo || !formData.descricao || !formData.localNome || !imagem) {
       alert('Por favor, preencha todos os campos obrigatórios, incluindo a imagem!');
       return;
     }
+
+    // Validar datas e horários
+    const datasValidas = datasHorarios.filter(dh => dh.data && dh.hora);
+    if (datasValidas.length === 0) {
+      alert('Por favor, adicione pelo menos uma data e horário!');
+      return;
+    }
+
     if (categorias.length === 0) {
       alert('Por favor, selecione pelo menos uma categoria!');
       return;
@@ -129,16 +212,13 @@ const PublicarEvento = () => {
       return;
     }
 
-    console.log('🔍 SETORES RECEBIDOS DO FORMULÁRIO:', JSON.stringify(setoresIngressos, null, 2));
-
-    // ====== VALIDAÇÃO COMPLETA ======
+    // Validação dos setores (mantém a lógica original)
     for (const setor of setoresIngressos) {
       if (!setor.nome || setor.nome.trim() === '') {
         alert('Por favor, preencha o nome de todos os setores!');
         return;
       }
 
-      // Verifica se tem capacidade no setor OU nos tipos de ingresso
       const temCapacidadeSetor = setor.capacidadeDefinida && setor.capacidadeDefinida > 0;
       
       let temCapacidadeTipos = false;
@@ -165,7 +245,7 @@ const PublicarEvento = () => {
         return;
       }
 
-      // Validação dos tipos de ingresso
+      // Validação dos tipos de ingresso (mantém a lógica original)
       if (setor.usaLotes) {
         if (!setor.lotes || setor.lotes.length === 0) {
           alert(`O setor "${setor.nome}" está configurado para usar lotes, mas não tem nenhum lote criado!`);
@@ -227,11 +307,12 @@ const PublicarEvento = () => {
     let publicUrl = '';
     let uploadedFilePath = null;
     let eventoIdCriado = null;
+    let imagensDescricaoUploadadas = [];
 
     try {
       console.log('👤 Publicando como usuário:', user.id);
 
-      // ====== 1. UPLOAD DA IMAGEM ======
+      // ====== 1. UPLOAD DA IMAGEM PRINCIPAL ======
       if (imagem) {
         const fileExtension = imagem.name.split('.').pop();
         const timestamp = Date.now();
@@ -258,24 +339,52 @@ const PublicarEvento = () => {
         console.log('✅ Imagem carregada:', publicUrl);
       }
 
-      // ====== 2. CALCULAR TOTAIS DO EVENTO ======
-      // Regra: Se tem capacidade no SETOR, usa ela. Se não, soma as quantidades dos TIPOS.
+      // ====== 2. UPLOAD DAS IMAGENS DA DESCRIÇÃO ======
+      for (let i = 0; i < imagensDescricao.length; i++) {
+        const img = imagensDescricao[i];
+        const fileExtension = img.file.name.split('.').pop();
+        const timestamp = Date.now();
+        const randomStr = Math.random().toString(36).substring(7);
+        const filePath = `eventos/${user.id}/descricao/${timestamp}-${i}-${randomStr}.${fileExtension}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('imagens_eventos')
+          .upload(filePath, img.file, { 
+            cacheControl: '3600', 
+            upsert: false 
+          });
+
+        if (uploadError) {
+          throw new Error(`Erro ao fazer upload da imagem ${i + 1}: ${uploadError.message}`);
+        }
+        
+        const { data: publicUrlData } = supabase.storage
+          .from('imagens_eventos')
+          .getPublicUrl(filePath);
+        
+        imagensDescricaoUploadadas.push({
+          url: publicUrlData.publicUrl,
+          textoAntes: img.textoAntes,
+          textoDepois: img.textoDepois,
+          ordem: i,
+          filePath: filePath
+        });
+
+        console.log(`✅ Imagem descrição ${i + 1} carregada`);
+      }
+
+      // ====== 3. CALCULAR TOTAIS DO EVENTO (mantém lógica original) ======
       let totalIngressosEvento = 0;
       let somaPrecos = 0;
       let totalTipos = 0;
 
-      console.log('🔢 INICIANDO CÁLCULO DE TOTAIS...');
-
       setoresIngressos.forEach(setor => {
         const capacidadeSetor = setor.capacidadeDefinida;
         
-        // Se o setor tem capacidade definida, usa ela
         if (capacidadeSetor && parseInt(capacidadeSetor) > 0) {
           const capacidade = parseInt(capacidadeSetor);
           totalIngressosEvento += capacidade;
-          console.log(`  📦 [${setor.nome}] Usando capacidade do setor: ${capacidade}`);
         } else {
-          // Se não tem capacidade no setor, soma as quantidades dos tipos
           if (setor.usaLotes) {
             setor.lotes.forEach(lote => {
               lote.tiposIngresso.forEach(tipo => {
@@ -285,7 +394,6 @@ const PublicarEvento = () => {
                 if (temNome && temPreco) {
                   const qtd = tipo.quantidade ? parseInt(tipo.quantidade) : 0;
                   totalIngressosEvento += qtd;
-                  console.log(`  📊 [${setor.nome}][${lote.nome}][${tipo.nome}] Qtd: ${qtd}`);
                 }
               });
             });
@@ -297,13 +405,11 @@ const PublicarEvento = () => {
               if (temNome && temPreco) {
                 const qtd = tipo.quantidade ? parseInt(tipo.quantidade) : 0;
                 totalIngressosEvento += qtd;
-                console.log(`  📊 [${setor.nome}][${tipo.nome}] Qtd: ${qtd}`);
               }
             });
           }
         }
         
-        // Calcula preço médio (sempre soma todos os preços)
         if (setor.usaLotes) {
           setor.lotes.forEach(lote => {
             lote.tiposIngresso.forEach(tipo => {
@@ -329,22 +435,15 @@ const PublicarEvento = () => {
 
       const precoMedioEvento = totalTipos > 0 ? (somaPrecos / totalTipos) : 0;
 
-      console.log('📈 TOTAIS DO EVENTO:', {
-        totalIngressosEvento,
-        ingressosVendidos: 0,
-        ingressosDisponiveis: totalIngressosEvento,
-        precoMedioEvento,
-        totalTipos
-      });
-
-      // ====== 3. CRIAR EVENTO ======
+      // ====== 4. CRIAR EVENTO (usa primeira data/hora como principal) ======
       const eventData = {
         nome: formData.titulo,
         descricao: formData.descricao,
-        data: formData.data,
-        hora: formData.hora,
+        data: datasValidas[0].data,
+        hora: datasValidas[0].hora,
         local: formData.localNome,
         endereco: formData.localEndereco || null,
+        cidade: formData.cidade || null,
         categoria: categorias[0],
         tem_lugar_marcado: temLugarMarcado,
         mostrar_produtor: aparecerComoProdutor,
@@ -373,11 +472,48 @@ const PublicarEvento = () => {
       eventoIdCriado = insertedData[0].id;
       console.log('✅ Evento criado! ID:', eventoIdCriado);
 
-      // ====== 4. SALVAR SETORES ======
+      // ====== 5. SALVAR TODAS AS DATAS/HORÁRIOS ======
+      const datasParaSalvar = datasValidas.map(dh => ({
+        evento_id: eventoIdCriado,
+        data: dh.data,
+        hora: dh.hora
+      }));
+
+      const { error: datasError } = await supabase
+        .from('eventos_datas')
+        .insert(datasParaSalvar);
+
+      if (datasError) {
+        throw new Error(`Erro ao salvar datas: ${datasError.message}`);
+      }
+
+      console.log(`✅ ${datasValidas.length} datas/horários salvos`);
+
+      // ====== 6. SALVAR IMAGENS DA DESCRIÇÃO ======
+      if (imagensDescricaoUploadadas.length > 0) {
+        const imagensParaSalvar = imagensDescricaoUploadadas.map(img => ({
+          evento_id: eventoIdCriado,
+          imagem_url: img.url,
+          texto_antes: img.textoAntes || null,
+          texto_depois: img.textoDepois || null,
+          ordem: img.ordem
+        }));
+
+        const { error: imagensError } = await supabase
+          .from('eventos_imagens_descricao')
+          .insert(imagensParaSalvar);
+
+        if (imagensError) {
+          throw new Error(`Erro ao salvar imagens da descrição: ${imagensError.message}`);
+        }
+
+        console.log(`✅ ${imagensDescricaoUploadadas.length} imagens da descrição salvassalvam`);
+      }
+
+      // ====== 7-10. SALVAR SETORES, LOTES E INGRESSOS (mantém lógica original) ======
       for (const setor of setoresIngressos) {
         let capacidadeCalculada = 0;
         
-        // Calcula a capacidade REAL (soma de todos os ingressos com quantidade definida)
         if (setor.usaLotes) {
           setor.lotes.forEach(lote => {
             lote.tiposIngresso.forEach(tipo => {
@@ -400,29 +536,20 @@ const PublicarEvento = () => {
         
         const capacidadeDefinida = setor.capacidadeDefinida || null;
 
-        console.log(`📦 Salvando setor "${setor.nome}"`, {
-          capacidadeDefinida: capacidadeDefinida || 'ilimitado/por demanda',
-          capacidadeCalculada: capacidadeCalculada || 'controlado pelo setor'
-        });
-
         const { error: setorError } = await supabase
           .from('setores')
           .insert([{
             eventos_id: eventoIdCriado,
             nome: setor.nome,
-            capacidade_calculada: capacidadeCalculada, // Soma real dos ingressos com qtd definida
-            capacidade_definida: capacidadeDefinida    // Limite opcional do setor
+            capacidade_calculada: capacidadeCalculada,
+            capacidade_definida: capacidadeDefinida
           }]);
 
         if (setorError) {
-          console.error('❌ Erro ao salvar setor:', setorError);
           throw new Error(`Erro ao salvar setor: ${setorError.message}`);
         }
-        
-        console.log(`✅ Setor "${setor.nome}" salvo!`);
       }
 
-      // ====== 5. SALVAR LOTES ======
       const lotesMap = new Map();
 
       for (const setor of setoresIngressos) {
@@ -430,7 +557,6 @@ const PublicarEvento = () => {
           for (const lote of setor.lotes) {
             let quantidadeTotalLote = 0;
             
-            // Somar TODAS as quantidades dos tipos de ingresso deste lote
             lote.tiposIngresso.forEach(tipo => {
               const temNome = tipo.nome && tipo.nome.trim() !== '';
               const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
@@ -451,8 +577,6 @@ const PublicarEvento = () => {
               user_id: user.id
             };
 
-            console.log(`🎫 Salvando lote "${lote.nome}" com quantidade: ${quantidadeTotalLote}`);
-
             const { data: loteInserido, error: loteError } = await supabase
               .from('lotes')
               .insert([loteData])
@@ -463,12 +587,10 @@ const PublicarEvento = () => {
             }
 
             lotesMap.set(lote.id, loteInserido[0].id);
-            console.log(`✅ Lote "${lote.nome}" salvo com ID: ${loteInserido[0].id}`);
           }
         }
       }
 
-      // ====== 6. SALVAR INGRESSOS ======
       const ingressosParaSalvar = [];
       let contadorIngresso = 0;
 
@@ -484,8 +606,6 @@ const PublicarEvento = () => {
                 const preco = parseFloat(tipo.preco);
                 const loteIdReal = lotesMap.get(lote.id);
                 const codigo = Date.now() + contadorIngresso;
-                
-                console.log(`🎟️ Ingresso: [${setor.nome}][${lote.nome}][${tipo.nome}] Qtd: ${quantidade} | Preço: R$ ${preco}`);
                 
                 ingressosParaSalvar.push({
                   evento_id: eventoIdCriado,
@@ -514,8 +634,6 @@ const PublicarEvento = () => {
               const preco = parseFloat(tipo.preco);
               const codigo = Date.now() + contadorIngresso;
               
-              console.log(`🎟️ Ingresso: [${setor.nome}][${tipo.nome}] Qtd: ${quantidade} | Preço: R$ ${preco}`);
-              
               ingressosParaSalvar.push({
                 evento_id: eventoIdCriado,
                 setor: setor.nome,
@@ -535,9 +653,6 @@ const PublicarEvento = () => {
         }
       });
 
-      console.log(`📋 TOTAL DE INGRESSOS A SALVAR: ${ingressosParaSalvar.length}`);
-      console.log('📄 DADOS COMPLETOS:', JSON.stringify(ingressosParaSalvar, null, 2));
-
       if (ingressosParaSalvar.length === 0) {
         throw new Error('Nenhum ingresso válido para salvar!');
       }
@@ -548,28 +663,29 @@ const PublicarEvento = () => {
         .select();
 
       if (ingressosError) {
-        console.error('❌ ERRO AO SALVAR INGRESSOS:', ingressosError);
         throw new Error(`Erro ao salvar ingressos: ${ingressosError.message}`);
       }
 
-      console.log(`✅✅✅ SUCESSO! ${ingressosInseridos.length} INGRESSOS SALVOS NO BANCO!`);
+      console.log(`✅✅✅ SUCESSO! ${ingressosInseridos.length} INGRESSOS SALVOS!`);
       
-      alert(`✅ Evento "${formData.titulo}" criado com sucesso!\n\n🎫 ${ingressosInseridos.length} tipos de ingresso cadastrados\n📊 Total de ${totalIngressosEvento} ingressos disponíveis`);
+      alert(`✅ Evento "${formData.titulo}" criado com sucesso!\n\n🎫 ${ingressosInseridos.length} tipos de ingresso\n📊 ${totalIngressosEvento} ingressos totais\n📅 ${datasValidas.length} datas/horários\n🖼️ ${imagensDescricaoUploadadas.length} imagens na descrição`);
       
       router.push(`/publicar-evento/complemento?evento=${eventoIdCriado}`);
       
     } catch (error) {
-      console.error('💥 ERRO GERAL:', error);
+      console.error('💥 ERRO:', error);
       alert(`❌ Erro ao criar evento: ${error.message}`);
       
       if (eventoIdCriado) {
-        console.log('🗑️ Fazendo rollback do evento...');
         await supabase.from('eventos').delete().eq('id', eventoIdCriado);
       }
       
       if (uploadedFilePath) {
-        console.log('🗑️ Removendo imagem do storage...');
         await supabase.storage.from('imagens_eventos').remove([uploadedFilePath]);
+      }
+
+      for (const img of imagensDescricaoUploadadas) {
+        await supabase.storage.from('imagens_eventos').remove([img.filePath]);
       }
     } finally {
       setIsSubmitting(false);
@@ -618,7 +734,7 @@ const PublicarEvento = () => {
           </div>
 
           <div className="form-group">
-            <label>Imagem do Evento *</label>
+            <label>Imagem Principal do Evento *</label>
             <div className="image-upload-container">
               <input type="file" ref={fileInputRef} accept="image/jpeg,image/png,image/gif" onChange={handleImageChange} className="image-input" />
               
@@ -639,6 +755,108 @@ const PublicarEvento = () => {
             </div>
           </div>
 
+          {/* ========== IMAGENS DA DESCRIÇÃO ========== */}
+          <div className="form-group">
+            <label>Imagens Adicionais na Descrição (opcional)</label>
+            <p style={{ fontSize: '13px', color: '#666', marginBottom: '10px' }}>
+              Adicione imagens com textos opcionais antes e depois de cada uma
+            </p>
+            
+            <input 
+              type="file" 
+              ref={imagemDescricaoInputRef} 
+              accept="image/jpeg,image/png,image/gif" 
+              onChange={handleImagemDescricaoChange}
+              multiple
+              style={{ display: 'none' }}
+            />
+            
+            <button 
+              type="button" 
+              onClick={() => imagemDescricaoInputRef.current.click()}
+              className="btn-adicionar"
+              style={{ marginBottom: '15px' }}
+            >
+              📸 Adicionar Imagens
+            </button>
+
+            {imagensDescricao.map((img, index) => (
+              <div key={index} style={{ 
+                border: '2px solid #ddd', 
+                borderRadius: '8px', 
+                padding: '15px', 
+                marginBottom: '15px',
+                backgroundColor: '#f9f9f9'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <strong>Imagem {index + 1}</strong>
+                  <div style={{ display: 'flex', gap: '5px' }}>
+                    {index > 0 && (
+                      <button 
+                        type="button" 
+                        onClick={() => moverImagemDescricao(index, 'up')}
+                        style={{ padding: '5px 10px', fontSize: '12px' }}
+                      >
+                        ⬆️
+                      </button>
+                    )}
+                    {index < imagensDescricao.length - 1 && (
+                      <button 
+                        type="button" 
+                        onClick={() => moverImagemDescricao(index, 'down')}
+                        style={{ padding: '5px 10px', fontSize: '12px' }}
+                      >
+                        ⬇️
+                      </button>
+                    )}
+                    <button 
+                      type="button" 
+                      onClick={() => removerImagemDescricao(index)}
+                      className="btn-remove-image"
+                      style={{ padding: '5px 10px', fontSize: '12px' }}
+                    >
+                      🗑️ Remover
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '10px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: 'bold' }}>Texto antes da imagem:</label>
+                  <textarea
+                    value={img.textoAntes}
+                    onChange={(e) => atualizarTextoImagem(index, 'textoAntes', e.target.value)}
+                    placeholder="Texto que aparece antes da imagem (opcional)"
+                    rows="2"
+                    style={{ width: '100%', marginTop: '5px', padding: '8px' }}
+                  />
+                </div>
+
+                <img 
+                  src={img.preview} 
+                  alt={`Preview ${index + 1}`} 
+                  style={{ 
+                    width: '100%', 
+                    maxHeight: '300px', 
+                    objectFit: 'contain',
+                    borderRadius: '5px',
+                    marginBottom: '10px'
+                  }} 
+                />
+
+                <div>
+                  <label style={{ fontSize: '13px', fontWeight: 'bold' }}>Texto depois da imagem:</label>
+                  <textarea
+                    value={img.textoDepois}
+                    onChange={(e) => atualizarTextoImagem(index, 'textoDepois', e.target.value)}
+                    placeholder="Texto que aparece depois da imagem (opcional)"
+                    rows="2"
+                    style={{ width: '100%', marginTop: '5px', padding: '8px' }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+
           <CategoriaSelector onCategoriasChange={setCategorias} />
 
           <div className="form-group">
@@ -646,21 +864,81 @@ const PublicarEvento = () => {
             <input type="text" name="localNome" value={formData.localNome} onChange={handleFormChange} placeholder="Ex: Teatro Maria Della Costa" required />
           </div>
 
-          <div className="form-group">
-            <label>Endereço do Local (opcional)</label>
-            <input type="text" name="localEndereco" value={formData.localEndereco} onChange={handleFormChange} placeholder="Ex: Rua Exemplo, 123" />
-          </div>
-
           <div className="form-row">
             <div className="form-group">
-              <label>Data do Evento *</label>
-              <input type="date" name="data" value={formData.data} onChange={handleFormChange} required />
+              <label>Cidade *</label>
+              <input 
+                type="text" 
+                name="cidade" 
+                value={formData.cidade} 
+                onChange={handleFormChange} 
+                placeholder="Ex: São Paulo" 
+                required 
+              />
             </div>
 
             <div className="form-group">
-              <label>Horário *</label>
-              <input type="time" name="hora" value={formData.hora} onChange={handleFormChange} required />
+              <label>Endereço do Local (opcional)</label>
+              <input type="text" name="localEndereco" value={formData.localEndereco} onChange={handleFormChange} placeholder="Ex: Rua Exemplo, 123" />
             </div>
+          </div>
+
+          {/* ========== MÚLTIPLAS DATAS E HORÁRIOS ========== */}
+          <div className="form-group">
+            <label>Datas e Horários do Evento *</label>
+            <p style={{ fontSize: '13px', color: '#666', marginBottom: '10px' }}>
+              Para eventos com temporada, adicione múltiplas datas
+            </p>
+            
+            {datasHorarios.map((dh, index) => (
+              <div key={index} style={{ 
+                display: 'flex', 
+                gap: '10px', 
+                marginBottom: '10px',
+                alignItems: 'center',
+                padding: '10px',
+                backgroundColor: '#f5f5f5',
+                borderRadius: '5px'
+              }}>
+                <div style={{ flex: 1 }}>
+                  <input 
+                    type="date" 
+                    value={dh.data} 
+                    onChange={(e) => handleDataHorarioChange(index, 'data', e.target.value)}
+                    required
+                    style={{ width: '100%' }}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <input 
+                    type="time" 
+                    value={dh.hora} 
+                    onChange={(e) => handleDataHorarioChange(index, 'hora', e.target.value)}
+                    required
+                    style={{ width: '100%' }}
+                  />
+                </div>
+                {datasHorarios.length > 1 && (
+                  <button 
+                    type="button" 
+                    onClick={() => removerDataHorario(index)}
+                    className="btn-remove-image"
+                    style={{ padding: '8px 12px', minWidth: 'auto' }}
+                  >
+                    🗑️
+                  </button>
+                )}
+              </div>
+            ))}
+            
+            <button 
+              type="button" 
+              onClick={adicionarDataHorario}
+              className="btn-adicionar"
+              style={{ marginTop: '5px' }}
+            >
+              ➕ Adicionar Outra Data/Horário
+            </button>
           </div>
         </div>
 
