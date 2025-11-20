@@ -142,7 +142,6 @@ function ComplementoContent() {
 
   const calcularRecebimento = (taxaComprador, taxaProdutor) => {
     const valorBase = 10000;
-    const taxaTotal = taxaComprador + taxaProdutor;
     const recebimento = valorBase + (valorBase * (taxaProdutor / 100));
     return recebimento.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   };
@@ -409,104 +408,6 @@ function ComplementoContent() {
                   onChange={() => {}}
                   style={{ width: '24px', height: '24px', cursor: 'pointer' }}
                 />
-                <h3 style={{ margin: 0, color: '#9C27B0', fontSize: '22px', fontWeight: 'bold' }}>💜 Absorção Total</h3>
-              </div>
-              <div style={{ fontSize: '15px', color: '#333', marginBottom: '20px', lineHeight: '1.8' }}>
-                <p style={{ margin: '8px 0' }}><strong>Taxa do Cliente:</strong> <span style={{ fontSize: '18px', color: '#9C27B0' }}>0%</span></p>
-                <p style={{ margin: '8px 0' }}><strong>Você paga:</strong> <span style={{ fontSize: '18px', color: '#f44336' }}>8% da arrecadação</span></p>
-                <div style={{ background: 'rgba(156, 39, 176, 0.1)', padding: '12px', borderRadius: '8px', marginTop: '15px' }}>
-                  <p style={{ margin: 0, fontSize: '13px', color: '#666' }}>💵 Exemplo: R$ 10.000 em vendas</p>
-                  <p style={{ margin: '8px 0 0 0', fontSize: '20px', fontWeight: 'bold', color: '#9C27B0' }}>
-                    Você recebe: {calcularRecebimentoAbsorcao()}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-          </div>
-
-          <div style={{ marginTop: '30px', padding: '20px', background: 'linear-gradient(135deg, #e3f2fd 0%, #e8f5e9 100%)', borderRadius: '12px', border: '2px solid #2196F3' }}>
-            <h4 style={{ margin: '0 0 10px 0', color: '#1976d2', fontSize: '18px' }}>💡 Dica Importante:</h4>
-            <p style={{ margin: 0, color: '#555', lineHeight: '1.7', fontSize: '15px' }}>
-              Os planos <strong>Premium</strong> e <strong>Padrão</strong> oferecem bônus sobre suas vendas, aumentando sua receita final! 
-              Quanto maior a taxa para o cliente, maior o seu lucro. 📈
-            </p>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: '20px', marginTop: '30px' }}>
-          <button 
-            type="button"
-            onClick={() => router.push('/produtor')}
-            style={{ 
-              flex: 1,
-              background: '#757575', 
-              color: 'white', 
-              border: 'none', 
-              padding: '18px 30px', 
-              borderRadius: '12px', 
-              fontSize: '17px', 
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              transition: 'all 0.3s',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-            }}
-            onMouseOver={(e) => e.target.style.background = '#616161'}
-            onMouseOut={(e) => e.target.style.background = '#757575'}
-          >
-            ⬅️ Voltar
-          </button>
-          <button 
-            type="submit" 
-            disabled={isSubmitting}
-            style={{ 
-              flex: 2,
-              background: isSubmitting ? '#ccc' : 'linear-gradient(135deg, #4CAF50 0%, #45a049 100%)', 
-              color: 'white', 
-              border: 'none', 
-              padding: '18px 30px', 
-              borderRadius: '12px', 
-              fontSize: '20px', 
-              fontWeight: 'bold',
-              cursor: isSubmitting ? 'not-allowed' : 'pointer',
-              boxShadow: isSubmitting ? 'none' : '0 6px 20px rgba(76, 175, 80, 0.5)',
-              transition: 'all 0.3s',
-              textTransform: 'uppercase',
-              letterSpacing: '1px'
-            }}
-            onMouseOver={(e) => {
-              if (!isSubmitting) {
-                e.target.style.transform = 'translateY(-2px)';
-                e.target.style.boxShadow = '0 8px 24px rgba(76, 175, 80, 0.6)';
-              }
-            }}
-            onMouseOut={(e) => {
-              if (!isSubmitting) {
-                e.target.style.transform = 'translateY(0)';
-                e.target.style.boxShadow = '0 6px 20px rgba(76, 175, 80, 0.5)';
-              }
-            }}
-          >
-            {isSubmitting ? '⏳ Publicando...' : '🚀 Publicar Evento'}
-          </button>
-        </div>
-      </form>
-    </div>
-  );
-}
-
-export default function PublicarEventoComplemento() {
-  return (
-    <Suspense fallback={
-      <div style={{ fontFamily: 'sans-serif', padding: '50px', textAlign: 'center' }}>
-        <h2>🔄 Carregando...</h2>
-      </div>
-    }>
-      <ComplementoContent />
-    </Suspense>
-  );
-}'pointer' }}
-                />
                 <h3 style={{ margin: 0, color: '#FF8C00', fontSize: '22px', fontWeight: 'bold' }}>💎 Premium</h3>
               </div>
               <div style={{ fontSize: '15px', color: '#333', marginBottom: '20px', lineHeight: '1.8' }}>
@@ -658,4 +559,102 @@ export default function PublicarEventoComplemento() {
                   type="radio" 
                   checked={taxa.taxaComprador === 0} 
                   onChange={() => {}}
-                  style={{ width: '24px', height: '24px', cursor:
+                  style={{ width: '24px', height: '24px', cursor: 'pointer' }}
+                />
+                <h3 style={{ margin: 0, color: '#9C27B0', fontSize: '22px', fontWeight: 'bold' }}>💜 Absorção Total</h3>
+              </div>
+              <div style={{ fontSize: '15px', color: '#333', marginBottom: '20px', lineHeight: '1.8' }}>
+                <p style={{ margin: '8px 0' }}><strong>Taxa do Cliente:</strong> <span style={{ fontSize: '18px', color: '#9C27B0' }}>0%</span></p>
+                <p style={{ margin: '8px 0' }}><strong>Você paga:</strong> <span style={{ fontSize: '18px', color: '#f44336' }}>8% da arrecadação</span></p>
+                <div style={{ background: 'rgba(156, 39, 176, 0.1)', padding: '12px', borderRadius: '8px', marginTop: '15px' }}>
+                  <p style={{ margin: 0, fontSize: '13px', color: '#666' }}>💵 Exemplo: R$ 10.000 em vendas</p>
+                  <p style={{ margin: '8px 0 0 0', fontSize: '20px', fontWeight: 'bold', color: '#9C27B0' }}>
+                    Você recebe: {calcularRecebimentoAbsorcao()}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <div style={{ marginTop: '30px', padding: '20px', background: 'linear-gradient(135deg, #e3f2fd 0%, #e8f5e9 100%)', borderRadius: '12px', border: '2px solid #2196F3' }}>
+            <h4 style={{ margin: '0 0 10px 0', color: '#1976d2', fontSize: '18px' }}>💡 Dica Importante:</h4>
+            <p style={{ margin: 0, color: '#555', lineHeight: '1.7', fontSize: '15px' }}>
+              Os planos <strong>Premium</strong> e <strong>Padrão</strong> oferecem bônus sobre suas vendas, aumentando sua receita final! 
+              Quanto maior a taxa para o cliente, maior o seu lucro. 📈
+            </p>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '20px', marginTop: '30px' }}>
+          <button 
+            type="button"
+            onClick={() => router.push('/produtor')}
+            style={{ 
+              flex: 1,
+              background: '#757575', 
+              color: 'white', 
+              border: 'none', 
+              padding: '18px 30px', 
+              borderRadius: '12px', 
+              fontSize: '17px', 
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              transition: 'all 0.3s',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+            }}
+            onMouseOver={(e) => e.target.style.background = '#616161'}
+            onMouseOut={(e) => e.target.style.background = '#757575'}
+          >
+            ⬅️ Voltar
+          </button>
+          <button 
+            type="submit" 
+            disabled={isSubmitting}
+            style={{ 
+              flex: 2,
+              background: isSubmitting ? '#ccc' : 'linear-gradient(135deg, #4CAF50 0%, #45a049 100%)', 
+              color: 'white', 
+              border: 'none', 
+              padding: '18px 30px', 
+              borderRadius: '12px', 
+              fontSize: '20px', 
+              fontWeight: 'bold',
+              cursor: isSubmitting ? 'not-allowed' : 'pointer',
+              boxShadow: isSubmitting ? 'none' : '0 6px 20px rgba(76, 175, 80, 0.5)',
+              transition: 'all 0.3s',
+              textTransform: 'uppercase',
+              letterSpacing: '1px'
+            }}
+            onMouseOver={(e) => {
+              if (!isSubmitting) {
+                e.target.style.transform = 'translateY(-2px)';
+                e.target.style.boxShadow = '0 8px 24px rgba(76, 175, 80, 0.6)';
+              }
+            }}
+            onMouseOut={(e) => {
+              if (!isSubmitting) {
+                e.target.style.transform = 'translateY(0)';
+                e.target.style.boxShadow = '0 6px 20px rgba(76, 175, 80, 0.5)';
+              }
+            }}
+          >
+            {isSubmitting ? '⏳ Publicando...' : '🚀 Publicar Evento'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+export default function PublicarEventoComplemento() {
+  return (
+    <Suspense fallback={
+      <div style={{ fontFamily: 'sans-serif', padding: '50px', textAlign: 'center' }}>
+        <h2>🔄 Carregando...</h2>
+      </div>
+    }>
+      <ComplementoContent />
+    </Suspense>
+  );
+}
