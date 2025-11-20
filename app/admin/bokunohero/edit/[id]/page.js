@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { createClient } from '../../../../../../utils/supabase/client';
+import { createClient } from '../../../../../utils/supabase/client';
 import CategoriaSelector from '../../../../publicar-evento/components/CategoriaSelector';
 import '../../../../publicar-evento/PublicarEvento.css';
 import '../../admin.css';
