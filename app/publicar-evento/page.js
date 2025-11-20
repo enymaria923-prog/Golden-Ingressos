@@ -264,13 +264,16 @@ const PublicarEvento = () => {
       let somaPrecos = 0;
       let totalTipos = 0;
 
+      console.log('🔢 INICIANDO CÁLCULO DE TOTAIS...');
+
       setoresIngressos.forEach(setor => {
         const capacidadeSetor = setor.capacidadeDefinida;
         
         // Se o setor tem capacidade definida, usa ela
-        if (capacidadeSetor && capacidadeSetor > 0) {
-          totalIngressosEvento += capacidadeSetor;
-          console.log(`  📦 [${setor.nome}] Usando capacidade do setor: ${capacidadeSetor}`);
+        if (capacidadeSetor && parseInt(capacidadeSetor) > 0) {
+          const capacidade = parseInt(capacidadeSetor);
+          totalIngressosEvento += capacidade;
+          console.log(`  📦 [${setor.nome}] Usando capacidade do setor: ${capacidade}`);
         } else {
           // Se não tem capacidade no setor, soma as quantidades dos tipos
           if (setor.usaLotes) {
@@ -328,6 +331,8 @@ const PublicarEvento = () => {
 
       console.log('📈 TOTAIS DO EVENTO:', {
         totalIngressosEvento,
+        ingressosVendidos: 0,
+        ingressosDisponiveis: totalIngressosEvento,
         precoMedioEvento,
         totalTipos
       });
