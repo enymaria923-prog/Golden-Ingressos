@@ -1,4 +1,76 @@
-'use client';
+{/* ========== IMAGENS DA DESCRIÇÃO ========== */}
+          <div className="form-group">
+            <label>Imagens Adicionais na Descrição (opcional)</label>
+            <p style={{ fontSize: '13px', color: '#666', marginBottom: '10px' }}>
+              Adicione imagens com textos opcionais antes e depois de cada uma
+            </p>
+            
+            <input 
+              type="file" 
+              ref={imagemDescricaoInputRef} 
+              accept="image/jpeg,image/png,image/gif" 
+              onChange={handleImagemDescricaoChange}
+              multiple
+              style={{ display: 'none' }}
+            />
+            
+            <button 
+              type="button" 
+              onClick={() => imagemDescricaoInputRef.current.click()}
+              style={{
+                backgroundColor: '#4CAF50',
+                color: 'white',
+                border: 'none',
+                padding: '10px 20px',
+                borderRadius: '5px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                marginBottom: '15px'
+              }}
+            >
+              📸 Adicionar Imagens
+            </button>
+
+            {imagensDescricao.map((img, index) => (
+              <div key={index} style={{ 
+                border: '1px solid #ddd', 
+                borderRadius: '6px', 
+                padding: '15px', 
+                marginBottom: '15px',
+                backgroundColor: '#fff'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <strong>Imagem {index + 1}</strong>
+                  <div style={{ display: 'flex', gap: '5px' }}>
+                    {index > 0 && (
+                      <button 
+                        type="button" 
+                        onClick={() => moverImagemDescricao(index, 'up')}
+                        style={{ padding: '5px 10px', fontSize: '12px' }}
+                      >
+                        ⬆️
+                      </button>
+                    )}
+                    {index < imagensDescricao.length - 1 && (
+                      <button 
+                        type="button" 
+                        onClick={() => moverImagemDescricao(index, 'down')}
+                        style={{ padding: '5px 10px', fontSize: '12px' }}
+                      >
+                        ⬇️
+                      </button>
+                    )}
+                    <button 
+                      type="button" 
+                      onClick={() => removerImagemDescricao(index)}
+                      style={{ padding: '5px 10px', fontSize: '12px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px' }}
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom:'use client';
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '../../utils/supabase/client';
@@ -758,9 +830,9 @@ const PublicarEvento = () => {
           {/* ========== IMAGENS DA DESCRIÇÃO ========== */}
           <div className="form-group">
             <label>Imagens Adicionais na Descrição (opcional)</label>
-            <span className="label-info-text">
+            <p style={{ fontSize: '13px', color: '#666', marginBottom: '10px' }}>
               Adicione imagens com textos opcionais antes e depois de cada uma
-            </span>
+            </p>
             
             <input 
               type="file" 
@@ -774,73 +846,90 @@ const PublicarEvento = () => {
             <button 
               type="button" 
               onClick={() => imagemDescricaoInputRef.current.click()}
-              className="btn-adicionar"
+              style={{
+                backgroundColor: '#4CAF50',
+                color: 'white',
+                border: 'none',
+                padding: '10px 20px',
+                borderRadius: '5px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                marginBottom: '15px'
+              }}
             >
               📸 Adicionar Imagens
             </button>
 
-            <div className="imagem-descricao-container">
-              {imagensDescricao.map((img, index) => (
-                <div key={index} className="secao-imagem-item">
-                  <div className="imagem-descricao-header">
-                    <strong>Imagem {index + 1}</strong>
-                    <div className="imagem-controles-grupo">
-                      {index > 0 && (
-                        <button 
-                          type="button" 
-                          onClick={() => moverImagemDescricao(index, 'up')}
-                          className="btn-ordem-imagem"
-                        >
-                          ⬆️
-                        </button>
-                      )}
-                      {index < imagensDescricao.length - 1 && (
-                        <button 
-                          type="button" 
-                          onClick={() => moverImagemDescricao(index, 'down')}
-                          className="btn-ordem-imagem"
-                        >
-                          ⬇️
-                        </button>
-                      )}
+            {imagensDescricao.map((img, index) => (
+              <div key={index} style={{ 
+                border: '1px solid #ddd', 
+                padding: '15px', 
+                marginBottom: '15px'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                  <strong>Imagem {index + 1}</strong>
+                  <div>
+                    {index > 0 && (
                       <button 
                         type="button" 
-                        onClick={() => removerImagemDescricao(index)}
-                        className="btn-remover-pequeno"
+                        onClick={() => moverImagemDescricao(index, 'up')}
+                        style={{ marginRight: '5px' }}
                       >
-                        🗑️
+                        ⬆️
                       </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label>Texto antes da imagem:</label>
-                    <textarea
-                      value={img.textoAntes}
-                      onChange={(e) => atualizarTextoImagem(index, 'textoAntes', e.target.value)}
-                      placeholder="Texto que aparece antes da imagem (opcional)"
-                      className="textarea-imagem-desc"
-                    />
-                  </div>
-
-                  <img 
-                    src={img.preview} 
-                    alt={`Preview ${index + 1}`} 
-                    className="imagem-descricao-preview"
-                  />
-
-                  <div>
-                    <label>Texto depois da imagem:</label>
-                    <textarea
-                      value={img.textoDepois}
-                      onChange={(e) => atualizarTextoImagem(index, 'textoDepois', e.target.value)}
-                      placeholder="Texto que aparece depois da imagem (opcional)"
-                      className="textarea-imagem-desc"
-                    />
+                    )}
+                    {index < imagensDescricao.length - 1 && (
+                      <button 
+                        type="button" 
+                        onClick={() => moverImagemDescricao(index, 'down')}
+                        style={{ marginRight: '5px' }}
+                      >
+                        ⬇️
+                      </button>
+                    )}
+                    <button 
+                      type="button" 
+                      onClick={() => removerImagemDescricao(index)}
+                    >
+                      🗑️ Remover
+                    </button>
                   </div>
                 </div>
-              ))}
-            </div>
+
+                <div style={{ marginBottom: '10px' }}>
+                  <label>Texto antes da imagem:</label>
+                  <textarea
+                    value={img.textoAntes}
+                    onChange={(e) => atualizarTextoImagem(index, 'textoAntes', e.target.value)}
+                    placeholder="Texto que aparece antes da imagem (opcional)"
+                    rows="2"
+                    style={{ width: '100%', padding: '8px' }}
+                  />
+                </div>
+
+                <img 
+                  src={img.preview} 
+                  alt={`Preview ${index + 1}`} 
+                  style={{ 
+                    width: '100%', 
+                    maxHeight: '300px', 
+                    objectFit: 'contain',
+                    marginBottom: '10px'
+                  }} 
+                />
+
+                <div>
+                  <label>Texto depois da imagem:</label>
+                  <textarea
+                    value={img.textoDepois}
+                    onChange={(e) => atualizarTextoImagem(index, 'textoDepois', e.target.value)}
+                    placeholder="Texto que aparece depois da imagem (opcional)"
+                    rows="2"
+                    style={{ width: '100%', padding: '8px' }}
+                  />
+                </div>
+              </div>
+            ))}
           </div>
 
           <CategoriaSelector onCategoriasChange={setCategorias} />
@@ -872,44 +961,29 @@ const PublicarEvento = () => {
           {/* ========== MÚLTIPLAS DATAS E HORÁRIOS ========== */}
           <div className="form-group">
             <label>Datas e Horários do Evento *</label>
-            <p style={{ fontSize: '13px', color: '#666', marginBottom: '10px' }}>
+            <span className="label-info-text">
               Para eventos com temporada, adicione múltiplas datas
-            </p>
+            </span>
             
             {datasHorarios.map((dh, index) => (
-              <div key={index} style={{ 
-                display: 'flex', 
-                gap: '10px', 
-                marginBottom: '10px',
-                alignItems: 'center',
-                padding: '10px',
-                backgroundColor: '#f5f5f5',
-                borderRadius: '5px'
-              }}>
-                <div style={{ flex: 1 }}>
-                  <input 
-                    type="date" 
-                    value={dh.data} 
-                    onChange={(e) => handleDataHorarioChange(index, 'data', e.target.value)}
-                    required
-                    style={{ width: '100%' }}
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <input 
-                    type="time" 
-                    value={dh.hora} 
-                    onChange={(e) => handleDataHorarioChange(index, 'hora', e.target.value)}
-                    required
-                    style={{ width: '100%' }}
-                  />
-                </div>
+              <div key={index} className="data-horario-row">
+                <input 
+                  type="date" 
+                  value={dh.data} 
+                  onChange={(e) => handleDataHorarioChange(index, 'data', e.target.value)}
+                  required
+                />
+                <input 
+                  type="time" 
+                  value={dh.hora} 
+                  onChange={(e) => handleDataHorarioChange(index, 'hora', e.target.value)}
+                  required
+                />
                 {datasHorarios.length > 1 && (
                   <button 
                     type="button" 
                     onClick={() => removerDataHorario(index)}
-                    className="btn-remove-image"
-                    style={{ padding: '8px 12px', minWidth: 'auto' }}
+                    className="btn-remover-pequeno"
                   >
                     🗑️
                   </button>
@@ -921,7 +995,6 @@ const PublicarEvento = () => {
               type="button" 
               onClick={adicionarDataHorario}
               className="btn-adicionar"
-              style={{ marginTop: '5px' }}
             >
               ➕ Adicionar Outra Data/Horário
             </button>
