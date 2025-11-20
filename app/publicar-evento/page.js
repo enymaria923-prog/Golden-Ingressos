@@ -1,76 +1,4 @@
-{/* ========== IMAGENS DA DESCRIÇÃO ========== */}
-          <div className="form-group">
-            <label>Imagens Adicionais na Descrição (opcional)</label>
-            <p style={{ fontSize: '13px', color: '#666', marginBottom: '10px' }}>
-              Adicione imagens com textos opcionais antes e depois de cada uma
-            </p>
-            
-            <input 
-              type="file" 
-              ref={imagemDescricaoInputRef} 
-              accept="image/jpeg,image/png,image/gif" 
-              onChange={handleImagemDescricaoChange}
-              multiple
-              style={{ display: 'none' }}
-            />
-            
-            <button 
-              type="button" 
-              onClick={() => imagemDescricaoInputRef.current.click()}
-              style={{
-                backgroundColor: '#4CAF50',
-                color: 'white',
-                border: 'none',
-                padding: '10px 20px',
-                borderRadius: '5px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                marginBottom: '15px'
-              }}
-            >
-              📸 Adicionar Imagens
-            </button>
-
-            {imagensDescricao.map((img, index) => (
-              <div key={index} style={{ 
-                border: '1px solid #ddd', 
-                borderRadius: '6px', 
-                padding: '15px', 
-                marginBottom: '15px',
-                backgroundColor: '#fff'
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                  <strong>Imagem {index + 1}</strong>
-                  <div style={{ display: 'flex', gap: '5px' }}>
-                    {index > 0 && (
-                      <button 
-                        type="button" 
-                        onClick={() => moverImagemDescricao(index, 'up')}
-                        style={{ padding: '5px 10px', fontSize: '12px' }}
-                      >
-                        ⬆️
-                      </button>
-                    )}
-                    {index < imagensDescricao.length - 1 && (
-                      <button 
-                        type="button" 
-                        onClick={() => moverImagemDescricao(index, 'down')}
-                        style={{ padding: '5px 10px', fontSize: '12px' }}
-                      >
-                        ⬇️
-                      </button>
-                    )}
-                    <button 
-                      type="button" 
-                      onClick={() => removerImagemDescricao(index)}
-                      style={{ padding: '5px 10px', fontSize: '12px', backgroundColor: '#dc3545', color: 'white', border: 'none', borderRadius: '4px' }}
-                    >
-                      🗑️
-                    </button>
-                  </div>
-                </div>
-
-                <div style={{ marginBottom:'use client';
+'use client';
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '../../utils/supabase/client';
@@ -93,12 +21,8 @@ const PublicarEvento = () => {
     cidade: ''
   });
   
-  // Múltiplas datas e horários
   const [datasHorarios, setDatasHorarios] = useState([{ data: '', hora: '' }]);
-  
-  // Imagens da descrição
   const [imagensDescricao, setImagensDescricao] = useState([]);
-  
   const [categorias, setCategorias] = useState([]);
   const [temLugarMarcado, setTemLugarMarcado] = useState(false);
   const [aparecerComoProdutor, setAparecerComoProdutor] = useState(true);
@@ -149,7 +73,6 @@ const PublicarEvento = () => {
     setFormData(prev => ({...prev, [name]: value}));
   };
 
-  // ========== MÚLTIPLAS DATAS/HORÁRIOS ==========
   const adicionarDataHorario = () => {
     setDatasHorarios([...datasHorarios, { data: '', hora: '' }]);
   };
@@ -166,7 +89,6 @@ const PublicarEvento = () => {
     setDatasHorarios(novasDatas);
   };
 
-  // ========== IMAGENS DA DESCRIÇÃO ==========
   const handleImagemDescricaoChange = (e) => {
     const files = Array.from(e.target.files);
     
@@ -216,7 +138,6 @@ const PublicarEvento = () => {
     }
   };
 
-  // ========== IMAGEM PRINCIPAL ==========
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -261,13 +182,11 @@ const PublicarEvento = () => {
       return;
     }
 
-    // Validações básicas
     if (!formData.titulo || !formData.descricao || !formData.localNome || !imagem) {
       alert('Por favor, preencha todos os campos obrigatórios, incluindo a imagem!');
       return;
     }
 
-    // Validar datas e horários
     const datasValidas = datasHorarios.filter(dh => dh.data && dh.hora);
     if (datasValidas.length === 0) {
       alert('Por favor, adicione pelo menos uma data e horário!');
@@ -284,7 +203,6 @@ const PublicarEvento = () => {
       return;
     }
 
-    // Validação dos setores (mantém a lógica original)
     for (const setor of setoresIngressos) {
       if (!setor.nome || setor.nome.trim() === '') {
         alert('Por favor, preencha o nome de todos os setores!');
@@ -317,7 +235,6 @@ const PublicarEvento = () => {
         return;
       }
 
-      // Validação dos tipos de ingresso (mantém a lógica original)
       if (setor.usaLotes) {
         if (!setor.lotes || setor.lotes.length === 0) {
           alert(`O setor "${setor.nome}" está configurado para usar lotes, mas não tem nenhum lote criado!`);
@@ -384,7 +301,6 @@ const PublicarEvento = () => {
     try {
       console.log('👤 Publicando como usuário:', user.id);
 
-      // ====== 1. UPLOAD DA IMAGEM PRINCIPAL ======
       if (imagem) {
         const fileExtension = imagem.name.split('.').pop();
         const timestamp = Date.now();
@@ -411,7 +327,6 @@ const PublicarEvento = () => {
         console.log('✅ Imagem carregada:', publicUrl);
       }
 
-      // ====== 2. UPLOAD DAS IMAGENS DA DESCRIÇÃO ======
       for (let i = 0; i < imagensDescricao.length; i++) {
         const img = imagensDescricao[i];
         const fileExtension = img.file.name.split('.').pop();
@@ -445,7 +360,6 @@ const PublicarEvento = () => {
         console.log(`✅ Imagem descrição ${i + 1} carregada`);
       }
 
-      // ====== 3. CALCULAR TOTAIS DO EVENTO (mantém lógica original) ======
       let totalIngressosEvento = 0;
       let somaPrecos = 0;
       let totalTipos = 0;
@@ -507,7 +421,6 @@ const PublicarEvento = () => {
 
       const precoMedioEvento = totalTipos > 0 ? (somaPrecos / totalTipos) : 0;
 
-      // ====== 4. CRIAR EVENTO (usa primeira data/hora como principal) ======
       const eventData = {
         nome: formData.titulo,
         descricao: formData.descricao,
@@ -544,7 +457,6 @@ const PublicarEvento = () => {
       eventoIdCriado = insertedData[0].id;
       console.log('✅ Evento criado! ID:', eventoIdCriado);
 
-      // ====== 5. SALVAR TODAS AS DATAS/HORÁRIOS ======
       const datasParaSalvar = datasValidas.map(dh => ({
         evento_id: eventoIdCriado,
         data: dh.data,
@@ -561,7 +473,6 @@ const PublicarEvento = () => {
 
       console.log(`✅ ${datasValidas.length} datas/horários salvos`);
 
-      // ====== 6. SALVAR IMAGENS DA DESCRIÇÃO ======
       if (imagensDescricaoUploadadas.length > 0) {
         const imagensParaSalvar = imagensDescricaoUploadadas.map(img => ({
           evento_id: eventoIdCriado,
@@ -579,10 +490,9 @@ const PublicarEvento = () => {
           throw new Error(`Erro ao salvar imagens da descrição: ${imagensError.message}`);
         }
 
-        console.log(`✅ ${imagensDescricaoUploadadas.length} imagens da descrição salvassalvam`);
+        console.log(`✅ ${imagensDescricaoUploadadas.length} imagens da descrição salvas`);
       }
 
-      // ====== 7-10. SALVAR SETORES, LOTES E INGRESSOS (mantém lógica original) ======
       for (const setor of setoresIngressos) {
         let capacidadeCalculada = 0;
         
@@ -827,7 +737,6 @@ const PublicarEvento = () => {
             </div>
           </div>
 
-          {/* ========== IMAGENS DA DESCRIÇÃO ========== */}
           <div className="form-group">
             <label>Imagens Adicionais na Descrição (opcional)</label>
             <p style={{ fontSize: '13px', color: '#666', marginBottom: '10px' }}>
@@ -863,17 +772,19 @@ const PublicarEvento = () => {
             {imagensDescricao.map((img, index) => (
               <div key={index} style={{ 
                 border: '1px solid #ddd', 
+                borderRadius: '6px', 
                 padding: '15px', 
-                marginBottom: '15px'
+                marginBottom: '15px',
+                backgroundColor: '#f9f9f9'
               }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                   <strong>Imagem {index + 1}</strong>
-                  <div>
+                  <div style={{ display: 'flex', gap: '5px' }}>
                     {index > 0 && (
                       <button 
                         type="button" 
                         onClick={() => moverImagemDescricao(index, 'up')}
-                        style={{ marginRight: '5px' }}
+                        style={{ padding: '5px 10px', fontSize: '12px', cursor: 'pointer' }}
                       >
                         ⬆️
                       </button>
@@ -882,7 +793,7 @@ const PublicarEvento = () => {
                       <button 
                         type="button" 
                         onClick={() => moverImagemDescricao(index, 'down')}
-                        style={{ marginRight: '5px' }}
+                        style={{ padding: '5px 10px', fontSize: '12px', cursor: 'pointer' }}
                       >
                         ⬇️
                       </button>
@@ -890,20 +801,37 @@ const PublicarEvento = () => {
                     <button 
                       type="button" 
                       onClick={() => removerImagemDescricao(index)}
+                      style={{ 
+                        padding: '5px 10px', 
+                        fontSize: '12px', 
+                        backgroundColor: '#dc3545', 
+                        color: 'white', 
+                        border: 'none', 
+                        borderRadius: '4px',
+                        cursor: 'pointer'
+                      }}
                     >
-                      🗑️ Remover
+                      🗑️
                     </button>
                   </div>
                 </div>
 
                 <div style={{ marginBottom: '10px' }}>
-                  <label>Texto antes da imagem:</label>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>
+                    Texto antes da imagem:
+                  </label>
                   <textarea
                     value={img.textoAntes}
                     onChange={(e) => atualizarTextoImagem(index, 'textoAntes', e.target.value)}
                     placeholder="Texto que aparece antes da imagem (opcional)"
                     rows="2"
-                    style={{ width: '100%', padding: '8px' }}
+                    style={{ 
+                      width: '100%', 
+                      padding: '8px', 
+                      borderRadius: '4px', 
+                      border: '1px solid #ddd',
+                      fontSize: '14px'
+                    }}
                   />
                 </div>
 
@@ -914,18 +842,28 @@ const PublicarEvento = () => {
                     width: '100%', 
                     maxHeight: '300px', 
                     objectFit: 'contain',
-                    marginBottom: '10px'
+                    marginBottom: '10px',
+                    borderRadius: '4px',
+                    border: '1px solid #ddd'
                   }} 
                 />
 
                 <div>
-                  <label>Texto depois da imagem:</label>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>
+                    Texto depois da imagem:
+                  </label>
                   <textarea
                     value={img.textoDepois}
                     onChange={(e) => atualizarTextoImagem(index, 'textoDepois', e.target.value)}
                     placeholder="Texto que aparece depois da imagem (opcional)"
                     rows="2"
-                    style={{ width: '100%', padding: '8px' }}
+                    style={{ 
+                      width: '100%', 
+                      padding: '8px', 
+                      borderRadius: '4px', 
+                      border: '1px solid #ddd',
+                      fontSize: '14px'
+                    }}
                   />
                 </div>
               </div>
@@ -958,7 +896,6 @@ const PublicarEvento = () => {
             </div>
           </div>
 
-          {/* ========== MÚLTIPLAS DATAS E HORÁRIOS ========== */}
           <div className="form-group">
             <label>Datas e Horários do Evento *</label>
             <span className="label-info-text">
