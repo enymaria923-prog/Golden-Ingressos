@@ -131,14 +131,41 @@ const PublicarEvento = () => {
 
     console.log('🔍 SETORES RECEBIDOS DO FORMULÁRIO:', JSON.stringify(setoresIngressos, null, 2));
 
-    let temIngressoValido = false;
-
+    // ====== VALIDAÇÃO COMPLETA ======
     for (const setor of setoresIngressos) {
       if (!setor.nome || setor.nome.trim() === '') {
         alert('Por favor, preencha o nome de todos os setores!');
         return;
       }
 
+      // Verifica se tem capacidade no setor OU nos tipos de ingresso
+      const temCapacidadeSetor = setor.capacidadeDefinida && setor.capacidadeDefinida > 0;
+      
+      let temCapacidadeTipos = false;
+      if (setor.usaLotes) {
+        temCapacidadeTipos = setor.lotes.some(lote => 
+          lote.tiposIngresso.some(tipo => {
+            const temNome = tipo.nome && tipo.nome.trim() !== '';
+            const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
+            const temQtd = tipo.quantidade && parseInt(tipo.quantidade) > 0;
+            return temNome && temPreco && temQtd;
+          })
+        );
+      } else {
+        temCapacidadeTipos = setor.tiposIngresso.some(tipo => {
+          const temNome = tipo.nome && tipo.nome.trim() !== '';
+          const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
+          const temQtd = tipo.quantidade && parseInt(tipo.quantidade) > 0;
+          return temNome && temPreco && temQtd;
+        });
+      }
+
+      if (!temCapacidadeSetor && !temCapacidadeTipos) {
+        alert(`⚠️ O setor "${setor.nome}" precisa ter capacidade definida no setor OU nos tipos de ingresso!`);
+        return;
+      }
+
+      // Validação dos tipos de ingresso
       if (setor.usaLotes) {
         if (!setor.lotes || setor.lotes.length === 0) {
           alert(`O setor "${setor.nome}" está configurado para usar lotes, mas não tem nenhum lote criado!`);
@@ -151,12 +178,13 @@ const PublicarEvento = () => {
             return;
           }
 
+          let temIngressoValidoNoLote = false;
           for (const tipo of lote.tiposIngresso) {
             const temNome = tipo.nome && tipo.nome.trim() !== '';
             const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
             
             if (temNome && temPreco) {
-              temIngressoValido = true;
+              temIngressoValidoNoLote = true;
             } else if (temNome && !temPreco) {
               alert(`O ingresso "${tipo.nome}" no lote "${lote.nome}" precisa ter um preço!`);
               return;
@@ -165,14 +193,20 @@ const PublicarEvento = () => {
               return;
             }
           }
+
+          if (!temIngressoValidoNoLote) {
+            alert(`O lote "${lote.nome}" precisa ter pelo menos um tipo de ingresso válido!`);
+            return;
+          }
         }
       } else {
+        let temIngressoValidoNoSetor = false;
         for (const tipo of setor.tiposIngresso) {
           const temNome = tipo.nome && tipo.nome.trim() !== '';
           const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
           
           if (temNome && temPreco) {
-            temIngressoValido = true;
+            temIngressoValidoNoSetor = true;
           } else if (temNome && !temPreco) {
             alert(`O ingresso "${tipo.nome}" no setor "${setor.nome}" precisa ter um preço!`);
             return;
@@ -181,12 +215,12 @@ const PublicarEvento = () => {
             return;
           }
         }
-      }
-    }
 
-    if (!temIngressoValido) {
-      alert('Adicione pelo menos um tipo de ingresso com nome e preço!');
-      return;
+        if (!temIngressoValidoNoSetor) {
+          alert(`O setor "${setor.nome}" precisa ter pelo menos um tipo de ingresso válido!`);
+          return;
+        }
+      }
     }
     
     setIsSubmitting(true);
@@ -225,23 +259,56 @@ const PublicarEvento = () => {
       }
 
       // ====== 2. CALCULAR TOTAIS DO EVENTO ======
+      // Regra: Se tem capacidade no SETOR, usa ela. Se não, soma as quantidades dos TIPOS.
       let totalIngressosEvento = 0;
       let somaPrecos = 0;
       let totalTipos = 0;
 
       setoresIngressos.forEach(setor => {
-        if (setor.usaLotes) {
-          setor.lotes.forEach(lote => {
-            lote.tiposIngresso.forEach(tipo => {
+        const capacidadeSetor = setor.capacidadeDefinida;
+        
+        // Se o setor tem capacidade definida, usa ela
+        if (capacidadeSetor && capacidadeSetor > 0) {
+          totalIngressosEvento += capacidadeSetor;
+          console.log(`  📦 [${setor.nome}] Usando capacidade do setor: ${capacidadeSetor}`);
+        } else {
+          // Se não tem capacidade no setor, soma as quantidades dos tipos
+          if (setor.usaLotes) {
+            setor.lotes.forEach(lote => {
+              lote.tiposIngresso.forEach(tipo => {
+                const temNome = tipo.nome && tipo.nome.trim() !== '';
+                const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
+                
+                if (temNome && temPreco) {
+                  const qtd = tipo.quantidade ? parseInt(tipo.quantidade) : 0;
+                  totalIngressosEvento += qtd;
+                  console.log(`  📊 [${setor.nome}][${lote.nome}][${tipo.nome}] Qtd: ${qtd}`);
+                }
+              });
+            });
+          } else {
+            setor.tiposIngresso.forEach(tipo => {
               const temNome = tipo.nome && tipo.nome.trim() !== '';
               const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
               
               if (temNome && temPreco) {
                 const qtd = tipo.quantidade ? parseInt(tipo.quantidade) : 0;
                 totalIngressosEvento += qtd;
+                console.log(`  📊 [${setor.nome}][${tipo.nome}] Qtd: ${qtd}`);
+              }
+            });
+          }
+        }
+        
+        // Calcula preço médio (sempre soma todos os preços)
+        if (setor.usaLotes) {
+          setor.lotes.forEach(lote => {
+            lote.tiposIngresso.forEach(tipo => {
+              const temNome = tipo.nome && tipo.nome.trim() !== '';
+              const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
+              if (temNome && temPreco) {
                 somaPrecos += parseFloat(tipo.preco);
                 totalTipos++;
-                console.log(`  📊 [${setor.nome}][${lote.nome}][${tipo.nome}] Qtd: ${qtd}`);
               }
             });
           });
@@ -249,13 +316,9 @@ const PublicarEvento = () => {
           setor.tiposIngresso.forEach(tipo => {
             const temNome = tipo.nome && tipo.nome.trim() !== '';
             const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
-            
             if (temNome && temPreco) {
-              const qtd = tipo.quantidade ? parseInt(tipo.quantidade) : 0;
-              totalIngressosEvento += qtd;
               somaPrecos += parseFloat(tipo.preco);
               totalTipos++;
-              console.log(`  📊 [${setor.nome}][${tipo.nome}] Qtd: ${qtd}`);
             }
           });
         }
@@ -307,16 +370,16 @@ const PublicarEvento = () => {
 
       // ====== 4. SALVAR SETORES ======
       for (const setor of setoresIngressos) {
-        let capacidadeTotalSetor = 0;
+        let capacidadeCalculada = 0;
         
-        // Somar TODAS as quantidades dos tipos de ingresso deste setor
+        // Calcula a capacidade REAL (soma de todos os ingressos com quantidade definida)
         if (setor.usaLotes) {
           setor.lotes.forEach(lote => {
             lote.tiposIngresso.forEach(tipo => {
               const temNome = tipo.nome && tipo.nome.trim() !== '';
               const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
               if (temNome && temPreco) {
-                capacidadeTotalSetor += tipo.quantidade ? parseInt(tipo.quantidade) : 0;
+                capacidadeCalculada += tipo.quantidade ? parseInt(tipo.quantidade) : 0;
               }
             });
           });
@@ -325,19 +388,25 @@ const PublicarEvento = () => {
             const temNome = tipo.nome && tipo.nome.trim() !== '';
             const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
             if (temNome && temPreco) {
-              capacidadeTotalSetor += tipo.quantidade ? parseInt(tipo.quantidade) : 0;
+              capacidadeCalculada += tipo.quantidade ? parseInt(tipo.quantidade) : 0;
             }
           });
         }
+        
+        const capacidadeDefinida = setor.capacidadeDefinida || null;
 
-        console.log(`📦 Salvando setor "${setor.nome}" com capacidade: ${capacidadeTotalSetor}`);
+        console.log(`📦 Salvando setor "${setor.nome}"`, {
+          capacidadeDefinida: capacidadeDefinida || 'ilimitado/por demanda',
+          capacidadeCalculada: capacidadeCalculada || 'controlado pelo setor'
+        });
 
         const { error: setorError } = await supabase
           .from('setores')
           .insert([{
             eventos_id: eventoIdCriado,
             nome: setor.nome,
-            capacidade_total: capacidadeTotalSetor
+            capacidade_calculada: capacidadeCalculada, // Soma real dos ingressos com qtd definida
+            capacidade_definida: capacidadeDefinida    // Limite opcional do setor
           }]);
 
         if (setorError) {
@@ -345,7 +414,7 @@ const PublicarEvento = () => {
           throw new Error(`Erro ao salvar setor: ${setorError.message}`);
         }
         
-        console.log(`✅ Setor "${setor.nome}" salvo com capacidade: ${capacidadeTotalSetor}`);
+        console.log(`✅ Setor "${setor.nome}" salvo!`);
       }
 
       // ====== 5. SALVAR LOTES ======
