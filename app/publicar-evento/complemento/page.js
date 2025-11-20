@@ -17,10 +17,9 @@ function ComplementoContent() {
   const [setoresIngressos, setSetoresIngressos] = useState([]);
   const [cupons, setCupons] = useState([]);
   const [produtos, setProdutos] = useState([]);
-  const [taxa, setTaxa] = useState({ taxaComprador: 15, taxaProdutor: 5 });
+  const [taxa, setTaxa] = useState({ taxaComprador: 18.5, taxaProdutor: 6.5 });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Memoriza o callback para evitar recriações
   const handleProdutosChange = useCallback((novosProdutos) => {
     setProdutos(novosProdutos);
   }, []);
@@ -139,6 +138,20 @@ function ComplementoContent() {
       alert('Erro ao carregar dados do evento!');
       router.push('/publicar-evento');
     }
+  };
+
+  const calcularRecebimento = (taxaComprador, taxaProdutor) => {
+    const valorBase = 10000;
+    const taxaTotal = taxaComprador + taxaProdutor;
+    const recebimento = valorBase + (valorBase * (taxaProdutor / 100));
+    return recebimento.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  };
+
+  const calcularRecebimentoAbsorcao = () => {
+    const valorBase = 10000;
+    const taxaAbsorcao = 8;
+    const recebimento = valorBase - (valorBase * (taxaAbsorcao / 100));
+    return recebimento.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   };
 
   const handleSubmit = async (e) => {
@@ -333,20 +346,20 @@ function ComplementoContent() {
 
   return (
     <div style={{ fontFamily: 'sans-serif', maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
-      <div style={{ background: '#5d34a4', color: 'white', padding: '20px', borderRadius: '12px', marginBottom: '30px' }}>
-        <h1 style={{ margin: '0 0 10px 0' }}>Publicar Evento - Passo 2/2</h1>
-        <p style={{ margin: 0, opacity: 0.9 }}>
+      <div style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', padding: '30px', borderRadius: '16px', marginBottom: '30px', boxShadow: '0 8px 16px rgba(0,0,0,0.2)' }}>
+        <h1 style={{ margin: '0 0 10px 0', fontSize: '32px' }}>Publicar Evento - Passo 2/2</h1>
+        <p style={{ margin: 0, opacity: 0.95, fontSize: '16px' }}>
           Configure cupons, produtos e escolha seu plano de taxas
         </p>
-        <p style={{ margin: '10px 0 0 0', fontSize: '14px' }}>
-          <strong>Evento:</strong> {evento.nome}
+        <p style={{ margin: '15px 0 0 0', fontSize: '15px', background: 'rgba(255,255,255,0.2)', padding: '10px 15px', borderRadius: '8px', display: 'inline-block' }}>
+          <strong>📅 Evento:</strong> {evento.nome}
         </p>
       </div>
 
       <form onSubmit={handleSubmit}>
         {setoresIngressos.length > 0 && (
-          <div style={{ background: 'white', padding: '30px', borderRadius: '12px', marginBottom: '20px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
-            <h2 style={{ color: '#5d34a4', marginTop: 0 }}>🎟️ Cupons de Desconto (Opcional)</h2>
+          <div style={{ background: 'white', padding: '30px', borderRadius: '16px', marginBottom: '25px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
+            <h2 style={{ color: '#667eea', marginTop: 0, fontSize: '24px', marginBottom: '20px' }}>🎟️ Cupons de Desconto (Opcional)</h2>
             <CupomManager 
               setoresIngressos={setoresIngressos} 
               onCuponsChange={handleCuponsChange} 
@@ -354,128 +367,92 @@ function ComplementoContent() {
           </div>
         )}
 
-        <div style={{ background: 'white', padding: '30px', borderRadius: '12px', marginBottom: '20px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
-          <h2 style={{ color: '#5d34a4', marginTop: 0 }}>🛍️ Produtos Adicionais (Opcional)</h2>
+        <div style={{ background: 'white', padding: '30px', borderRadius: '16px', marginBottom: '25px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
+          <h2 style={{ color: '#667eea', marginTop: 0, fontSize: '24px', marginBottom: '20px' }}>🛍️ Produtos Adicionais (Opcional)</h2>
           <ProdutoManager onProdutosChange={handleProdutosChange} cupons={cupons} />
         </div>
 
-        <div style={{ background: 'white', padding: '30px', borderRadius: '12px', marginBottom: '20px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
-          <h2 style={{ color: '#5d34a4', marginTop: 0 }}>💰 Escolha seu Plano de Taxas *</h2>
-          <p style={{ color: '#666', marginBottom: '20px' }}>
-            Selecione o plano que melhor se adequa ao seu evento
-          </p>
+        <div style={{ background: 'white', padding: '35px', borderRadius: '16px', marginBottom: '25px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
+          <div style={{ marginBottom: '30px' }}>
+            <h2 style={{ color: '#667eea', marginTop: 0, fontSize: '28px', marginBottom: '10px' }}>💰 Escolha seu Plano de Taxas *</h2>
+            <p style={{ color: '#666', fontSize: '15px', lineHeight: '1.6', margin: 0 }}>
+              Selecione o plano que melhor se adequa ao seu evento. Valores baseados em R$ 10.000 de vendas.
+            </p>
+          </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
+            
+            {/* PREMIUM */}
             <div 
-              onClick={() => setTaxa({ taxaComprador: 15, taxaProdutor: 5 })}
+              onClick={() => setTaxa({ taxaComprador: 18.5, taxaProdutor: 6.5 })}
               style={{ 
-                border: taxa.taxaComprador === 15 ? '3px solid #4CAF50' : '2px solid #ddd',
-                borderRadius: '12px', 
+                border: taxa.taxaComprador === 18.5 ? '4px solid #FFD700' : '2px solid #e0e0e0',
+                borderRadius: '16px', 
                 padding: '25px', 
                 cursor: 'pointer',
-                background: taxa.taxaComprador === 15 ? '#f1f8f4' : 'white',
-                transition: 'all 0.3s'
+                background: taxa.taxaComprador === 18.5 ? 'linear-gradient(135deg, #fff9e6 0%, #ffe6b3 100%)' : 'white',
+                transition: 'all 0.3s',
+                position: 'relative',
+                boxShadow: taxa.taxaComprador === 18.5 ? '0 8px 24px rgba(255, 215, 0, 0.4)' : '0 2px 8px rgba(0,0,0,0.1)',
+                transform: taxa.taxaComprador === 18.5 ? 'scale(1.02)' : 'scale(1)'
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
+              {taxa.taxaComprador === 18.5 && (
+                <div style={{ position: 'absolute', top: '-12px', right: '20px', background: '#FFD700', color: '#000', padding: '6px 16px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold', boxShadow: '0 4px 12px rgba(255, 215, 0, 0.4)' }}>
+                  🏆 RECOMENDADO
+                </div>
+              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
                 <input 
                   type="radio" 
-                  checked={taxa.taxaComprador === 15} 
+                  checked={taxa.taxaComprador === 18.5} 
                   onChange={() => {}}
-                  style={{ width: '20px', height: '20px' }}
+                  style={{ width: '24px', height: '24px', cursor: 'pointer' }}
                 />
-                <h3 style={{ margin: 0, color: '#4CAF50', fontSize: '20px' }}>Premium</h3>
+                <h3 style={{ margin: 0, color: '#9C27B0', fontSize: '22px', fontWeight: 'bold' }}>💜 Absorção Total</h3>
               </div>
-              <div style={{ fontSize: '14px', color: '#555', marginBottom: '15px' }}>
-                <p><strong>Taxa do Cliente:</strong> 15%</p>
-                <p><strong>Você recebe:</strong> +5% de bônus</p>
-              </div>
-              <div style={{ background: '#e8f5e9', padding: '12px', borderRadius: '8px', fontSize: '13px' }}>
-                <strong>✓ Visibilidade máxima</strong><br/>
-                <strong>✓ Destaque no site</strong><br/>
-                <strong>✓ Suporte prioritário</strong>
+              <div style={{ fontSize: '15px', color: '#333', marginBottom: '20px', lineHeight: '1.8' }}>
+                <p style={{ margin: '8px 0' }}><strong>Taxa do Cliente:</strong> <span style={{ fontSize: '18px', color: '#9C27B0' }}>0%</span></p>
+                <p style={{ margin: '8px 0' }}><strong>Você paga:</strong> <span style={{ fontSize: '18px', color: '#f44336' }}>8% da arrecadação</span></p>
+                <div style={{ background: 'rgba(156, 39, 176, 0.1)', padding: '12px', borderRadius: '8px', marginTop: '15px' }}>
+                  <p style={{ margin: 0, fontSize: '13px', color: '#666' }}>💵 Exemplo: R$ 10.000 em vendas</p>
+                  <p style={{ margin: '8px 0 0 0', fontSize: '20px', fontWeight: 'bold', color: '#9C27B0' }}>
+                    Você recebe: {calcularRecebimentoAbsorcao()}
+                  </p>
+                </div>
               </div>
             </div>
 
-            <div 
-              onClick={() => setTaxa({ taxaComprador: 10, taxaProdutor: 3 })}
-              style={{ 
-                border: taxa.taxaComprador === 10 ? '3px solid #2196F3' : '2px solid #ddd',
-                borderRadius: '12px', 
-                padding: '25px', 
-                cursor: 'pointer',
-                background: taxa.taxaComprador === 10 ? '#e3f2fd' : 'white',
-                transition: 'all 0.3s'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
-                <input 
-                  type="radio" 
-                  checked={taxa.taxaComprador === 10} 
-                  onChange={() => {}}
-                  style={{ width: '20px', height: '20px' }}
-                />
-                <h3 style={{ margin: 0, color: '#2196F3', fontSize: '20px' }}>Padrão</h3>
-              </div>
-              <div style={{ fontSize: '14px', color: '#555', marginBottom: '15px' }}>
-                <p><strong>Taxa do Cliente:</strong> 10%</p>
-                <p><strong>Você recebe:</strong> +3% de bônus</p>
-              </div>
-              <div style={{ background: '#e3f2fd', padding: '12px', borderRadius: '8px', fontSize: '13px' }}>
-                <strong>✓ Visibilidade padrão</strong><br/>
-                <strong>✓ Listagem básica</strong><br/>
-                <strong>✓ Suporte padrão</strong>
-              </div>
-            </div>
+          </div>
 
-            <div 
-              onClick={() => setTaxa({ taxaComprador: 8, taxaProdutor: 0 })}
-              style={{ 
-                border: taxa.taxaComprador === 8 ? '3px solid #FF9800' : '2px solid #ddd',
-                borderRadius: '12px', 
-                padding: '25px', 
-                cursor: 'pointer',
-                background: taxa.taxaComprador === 8 ? '#fff3e0' : 'white',
-                transition: 'all 0.3s'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
-                <input 
-                  type="radio" 
-                  checked={taxa.taxaComprador === 8} 
-                  onChange={() => {}}
-                  style={{ width: '20px', height: '20px' }}
-                />
-                <h3 style={{ margin: 0, color: '#FF9800', fontSize: '20px' }}>Econômico</h3>
-              </div>
-              <div style={{ fontSize: '14px', color: '#555', marginBottom: '15px' }}>
-                <p><strong>Taxa do Cliente:</strong> 8%</p>
-                <p><strong>Você recebe:</strong> 0% (sem bônus)</p>
-              </div>
-              <div style={{ background: '#fff3e0', padding: '12px', borderRadius: '8px', fontSize: '13px' }}>
-                <strong>🏆 MENOR TAXA DO MERCADO</strong><br/>
-                <strong>✓ Garanta o melhor preço</strong><br/>
-                <strong>✓ Atraia mais clientes</strong>
-              </div>
-            </div>
+          <div style={{ marginTop: '30px', padding: '20px', background: 'linear-gradient(135deg, #e3f2fd 0%, #e8f5e9 100%)', borderRadius: '12px', border: '2px solid #2196F3' }}>
+            <h4 style={{ margin: '0 0 10px 0', color: '#1976d2', fontSize: '18px' }}>💡 Dica Importante:</h4>
+            <p style={{ margin: 0, color: '#555', lineHeight: '1.7', fontSize: '15px' }}>
+              Os planos <strong>Premium</strong> e <strong>Padrão</strong> oferecem bônus sobre suas vendas, aumentando sua receita final! 
+              Quanto maior a taxa para o cliente, maior o seu lucro. 📈
+            </p>
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '15px' }}>
+        <div style={{ display: 'flex', gap: '20px', marginTop: '30px' }}>
           <button 
             type="button"
             onClick={() => router.push('/produtor')}
             style={{ 
               flex: 1,
-              background: '#9e9e9e', 
+              background: '#757575', 
               color: 'white', 
               border: 'none', 
-              padding: '15px 30px', 
-              borderRadius: '8px', 
-              fontSize: '16px', 
+              padding: '18px 30px', 
+              borderRadius: '12px', 
+              fontSize: '17px', 
               fontWeight: 'bold',
-              cursor: 'pointer'
+              cursor: 'pointer',
+              transition: 'all 0.3s',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
             }}
+            onMouseOver={(e) => e.target.style.background = '#616161'}
+            onMouseOut={(e) => e.target.style.background = '#757575'}
           >
             ⬅️ Voltar
           </button>
@@ -484,15 +461,30 @@ function ComplementoContent() {
             disabled={isSubmitting}
             style={{ 
               flex: 2,
-              background: isSubmitting ? '#ccc' : '#4CAF50', 
+              background: isSubmitting ? '#ccc' : 'linear-gradient(135deg, #4CAF50 0%, #45a049 100%)', 
               color: 'white', 
               border: 'none', 
-              padding: '15px 30px', 
-              borderRadius: '8px', 
-              fontSize: '18px', 
+              padding: '18px 30px', 
+              borderRadius: '12px', 
+              fontSize: '20px', 
               fontWeight: 'bold',
               cursor: isSubmitting ? 'not-allowed' : 'pointer',
-              boxShadow: '0 4px 12px rgba(76, 175, 80, 0.4)'
+              boxShadow: isSubmitting ? 'none' : '0 6px 20px rgba(76, 175, 80, 0.5)',
+              transition: 'all 0.3s',
+              textTransform: 'uppercase',
+              letterSpacing: '1px'
+            }}
+            onMouseOver={(e) => {
+              if (!isSubmitting) {
+                e.target.style.transform = 'translateY(-2px)';
+                e.target.style.boxShadow = '0 8px 24px rgba(76, 175, 80, 0.6)';
+              }
+            }}
+            onMouseOut={(e) => {
+              if (!isSubmitting) {
+                e.target.style.transform = 'translateY(0)';
+                e.target.style.boxShadow = '0 6px 20px rgba(76, 175, 80, 0.5)';
+              }
             }}
           >
             {isSubmitting ? '⏳ Publicando...' : '🚀 Publicar Evento'}
@@ -513,4 +505,157 @@ export default function PublicarEventoComplemento() {
       <ComplementoContent />
     </Suspense>
   );
-}
+}'pointer' }}
+                />
+                <h3 style={{ margin: 0, color: '#FF8C00', fontSize: '22px', fontWeight: 'bold' }}>💎 Premium</h3>
+              </div>
+              <div style={{ fontSize: '15px', color: '#333', marginBottom: '20px', lineHeight: '1.8' }}>
+                <p style={{ margin: '8px 0' }}><strong>Taxa do Cliente:</strong> <span style={{ fontSize: '18px', color: '#FF8C00' }}>18,5%</span></p>
+                <p style={{ margin: '8px 0' }}><strong>Você recebe:</strong> <span style={{ fontSize: '18px', color: '#4CAF50' }}>+6,5% de bônus</span></p>
+                <div style={{ background: 'rgba(255, 140, 0, 0.1)', padding: '12px', borderRadius: '8px', marginTop: '15px' }}>
+                  <p style={{ margin: 0, fontSize: '13px', color: '#666' }}>💵 Exemplo: R$ 10.000 em vendas</p>
+                  <p style={{ margin: '8px 0 0 0', fontSize: '20px', fontWeight: 'bold', color: '#FF8C00' }}>
+                    Você recebe: {calcularRecebimento(18.5, 6.5)}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* PADRÃO */}
+            <div 
+              onClick={() => setTaxa({ taxaComprador: 15, taxaProdutor: 5 })}
+              style={{ 
+                border: taxa.taxaComprador === 15 ? '4px solid #4CAF50' : '2px solid #e0e0e0',
+                borderRadius: '16px', 
+                padding: '25px', 
+                cursor: 'pointer',
+                background: taxa.taxaComprador === 15 ? 'linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%)' : 'white',
+                transition: 'all 0.3s',
+                position: 'relative',
+                boxShadow: taxa.taxaComprador === 15 ? '0 8px 24px rgba(76, 175, 80, 0.3)' : '0 2px 8px rgba(0,0,0,0.1)',
+                transform: taxa.taxaComprador === 15 ? 'scale(1.02)' : 'scale(1)'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+                <input 
+                  type="radio" 
+                  checked={taxa.taxaComprador === 15} 
+                  onChange={() => {}}
+                  style={{ width: '24px', height: '24px', cursor: 'pointer' }}
+                />
+                <h3 style={{ margin: 0, color: '#4CAF50', fontSize: '22px', fontWeight: 'bold' }}>✅ Padrão</h3>
+              </div>
+              <div style={{ fontSize: '15px', color: '#333', marginBottom: '20px', lineHeight: '1.8' }}>
+                <p style={{ margin: '8px 0' }}><strong>Taxa do Cliente:</strong> <span style={{ fontSize: '18px', color: '#4CAF50' }}>15%</span></p>
+                <p style={{ margin: '8px 0' }}><strong>Você recebe:</strong> <span style={{ fontSize: '18px', color: '#4CAF50' }}>+5% de bônus</span></p>
+                <div style={{ background: 'rgba(76, 175, 80, 0.1)', padding: '12px', borderRadius: '8px', marginTop: '15px' }}>
+                  <p style={{ margin: 0, fontSize: '13px', color: '#666' }}>💵 Exemplo: R$ 10.000 em vendas</p>
+                  <p style={{ margin: '8px 0 0 0', fontSize: '20px', fontWeight: 'bold', color: '#4CAF50' }}>
+                    Você recebe: {calcularRecebimento(15, 5)}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* ECONÔMICO */}
+            <div 
+              onClick={() => setTaxa({ taxaComprador: 10, taxaProdutor: 3 })}
+              style={{ 
+                border: taxa.taxaComprador === 10 ? '4px solid #2196F3' : '2px solid #e0e0e0',
+                borderRadius: '16px', 
+                padding: '25px', 
+                cursor: 'pointer',
+                background: taxa.taxaComprador === 10 ? 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)' : 'white',
+                transition: 'all 0.3s',
+                boxShadow: taxa.taxaComprador === 10 ? '0 8px 24px rgba(33, 150, 243, 0.3)' : '0 2px 8px rgba(0,0,0,0.1)',
+                transform: taxa.taxaComprador === 10 ? 'scale(1.02)' : 'scale(1)'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+                <input 
+                  type="radio" 
+                  checked={taxa.taxaComprador === 10} 
+                  onChange={() => {}}
+                  style={{ width: '24px', height: '24px', cursor: 'pointer' }}
+                />
+                <h3 style={{ margin: 0, color: '#2196F3', fontSize: '22px', fontWeight: 'bold' }}>💙 Econômico</h3>
+              </div>
+              <div style={{ fontSize: '15px', color: '#333', marginBottom: '20px', lineHeight: '1.8' }}>
+                <p style={{ margin: '8px 0' }}><strong>Taxa do Cliente:</strong> <span style={{ fontSize: '18px', color: '#2196F3' }}>10%</span></p>
+                <p style={{ margin: '8px 0' }}><strong>Você recebe:</strong> <span style={{ fontSize: '18px', color: '#4CAF50' }}>+3% de bônus</span></p>
+                <div style={{ background: 'rgba(33, 150, 243, 0.1)', padding: '12px', borderRadius: '8px', marginTop: '15px' }}>
+                  <p style={{ margin: 0, fontSize: '13px', color: '#666' }}>💵 Exemplo: R$ 10.000 em vendas</p>
+                  <p style={{ margin: '8px 0 0 0', fontSize: '20px', fontWeight: 'bold', color: '#2196F3' }}>
+                    Você recebe: {calcularRecebimento(10, 3)}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* COMPETITIVO */}
+            <div 
+              onClick={() => setTaxa({ taxaComprador: 8, taxaProdutor: 0 })}
+              style={{ 
+                border: taxa.taxaComprador === 8 ? '4px solid #FF5722' : '2px solid #e0e0e0',
+                borderRadius: '16px', 
+                padding: '25px', 
+                cursor: 'pointer',
+                background: taxa.taxaComprador === 8 ? 'linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%)' : 'white',
+                transition: 'all 0.3s',
+                position: 'relative',
+                boxShadow: taxa.taxaComprador === 8 ? '0 8px 24px rgba(255, 87, 34, 0.3)' : '0 2px 8px rgba(0,0,0,0.1)',
+                transform: taxa.taxaComprador === 8 ? 'scale(1.02)' : 'scale(1)'
+              }}
+            >
+              {taxa.taxaComprador === 8 && (
+                <div style={{ position: 'absolute', top: '-12px', right: '20px', background: '#FF5722', color: 'white', padding: '6px 16px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold', boxShadow: '0 4px 12px rgba(255, 87, 34, 0.4)' }}>
+                  🔥 MENOR TAXA
+                </div>
+              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+                <input 
+                  type="radio" 
+                  checked={taxa.taxaComprador === 8} 
+                  onChange={() => {}}
+                  style={{ width: '24px', height: '24px', cursor: 'pointer' }}
+                />
+                <h3 style={{ margin: 0, color: '#FF5722', fontSize: '22px', fontWeight: 'bold' }}>🚀 Competitivo</h3>
+              </div>
+              <div style={{ fontSize: '15px', color: '#333', marginBottom: '20px', lineHeight: '1.8' }}>
+                <p style={{ margin: '8px 0' }}><strong>Taxa do Cliente:</strong> <span style={{ fontSize: '18px', color: '#FF5722' }}>8%</span></p>
+                <p style={{ margin: '8px 0' }}><strong>Você recebe:</strong> <span style={{ fontSize: '18px', color: '#666' }}>0% (sem bônus)</span></p>
+                <div style={{ background: 'rgba(255, 87, 34, 0.1)', padding: '12px', borderRadius: '8px', marginTop: '15px' }}>
+                  <p style={{ margin: 0, fontSize: '13px', color: '#666' }}>💵 Exemplo: R$ 10.000 em vendas</p>
+                  <p style={{ margin: '8px 0 0 0', fontSize: '20px', fontWeight: 'bold', color: '#FF5722' }}>
+                    Você recebe: R$ 10.000,00
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* ABSORÇÃO DE TAXAS */}
+            <div 
+              onClick={() => setTaxa({ taxaComprador: 0, taxaProdutor: -8 })}
+              style={{ 
+                border: taxa.taxaComprador === 0 ? '4px solid #9C27B0' : '2px solid #e0e0e0',
+                borderRadius: '16px', 
+                padding: '25px', 
+                cursor: 'pointer',
+                background: taxa.taxaComprador === 0 ? 'linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%)' : 'white',
+                transition: 'all 0.3s',
+                position: 'relative',
+                boxShadow: taxa.taxaComprador === 0 ? '0 8px 24px rgba(156, 39, 176, 0.3)' : '0 2px 8px rgba(0,0,0,0.1)',
+                transform: taxa.taxaComprador === 0 ? 'scale(1.02)' : 'scale(1)'
+              }}
+            >
+              {taxa.taxaComprador === 0 && (
+                <div style={{ position: 'absolute', top: '-12px', right: '20px', background: '#9C27B0', color: 'white', padding: '6px 16px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold', boxShadow: '0 4px 12px rgba(156, 39, 176, 0.4)' }}>
+                  💜 SEM TAXA
+                </div>
+              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+                <input 
+                  type="radio" 
+                  checked={taxa.taxaComprador === 0} 
+                  onChange={() => {}}
+                  style={{ width: '24px', height: '24px', cursor:
