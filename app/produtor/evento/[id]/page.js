@@ -502,7 +502,7 @@ export default function EventoDetalhesPage() {
             <div style={{ fontSize: '14px', opacity: 0.9, marginTop: '5px' }}>
               Total a Receber
             </div>
-            <div style={{ fontSize: '11px', opacity: 0.8', marginTop: '5px' }}>
+            <div style={{ fontSize: '11px', opacity: 0.8, marginTop: '5px' }}>
               Vendas: R$ {valores.total.toFixed(2)}
               {bonusGolden !== 0 && ` ${bonusGolden > 0 ? '+' : ''}R$ ${bonusGolden.toFixed(2)}`}
             </div>
