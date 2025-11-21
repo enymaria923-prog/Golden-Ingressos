@@ -21,6 +21,7 @@ export default function EventoDetalhesPage() {
   useEffect(() => {
     carregarEvento();
   }, [eventoId]);
+
   const carregarEvento = async () => {
     try {
       const { data: eventoData, error: eventoError } = await supabase
@@ -31,6 +32,16 @@ export default function EventoDetalhesPage() {
 
       if (eventoError) throw eventoError;
       setEvento(eventoData);
+
+      // BUSCAR SETORES COM CAPACIDADE_DEFINIDA
+      const { data: setoresData, error: setoresError } = await supabase
+        .from('setores')
+        .select('*')
+        .eq('eventos_id', eventoId);
+
+      if (setoresError) {
+        console.error('Erro ao buscar setores:', setoresError);
+      }
 
       const { data: ingressosData, error: ingressosError } = await supabase
         .from('ingressos')
@@ -44,12 +55,7 @@ export default function EventoDetalhesPage() {
         .select('*')
         .eq('evento_id', eventoId);
 
-      // ✅ BUSCA DADOS DOS SETORES COM CAPACIDADE_DEFINIDA
-      const { data: setoresData } = await supabase
-        .from('setores')
-        .select('*')
-        .eq('evento_id', eventoId);
-
+      // BUSCA CUPONS COM DETALHAMENTO COMPLETO
       const { data: cuponsData } = await supabase
         .from('cupons')
         .select('*')
@@ -89,12 +95,13 @@ export default function EventoDetalhesPage() {
         const setorNome = ingresso.setor;
         
         if (!setoresMap.has(setorNome)) {
-          // ✅ Busca informações do setor na tabela setores
+          // Busca info do setor no banco
           const setorInfo = setoresData?.find(s => s.nome === setorNome);
           
           setoresMap.set(setorNome, {
             nome: setorNome,
-            capacidade_definida: setorInfo?.capacidade_definida || null,
+            capacidadeDefinida: setorInfo?.capacidade_definida || null,
+            capacidadeCalculada: setorInfo?.capacidade_calculada || null,
             lotes: new Map(),
             tiposSemLote: []
           });
@@ -103,7 +110,7 @@ export default function EventoDetalhesPage() {
         const setor = setoresMap.get(setorNome);
         const quantidade = parseInt(ingresso.quantidade) || 0;
         const vendidos = parseInt(ingresso.vendidos) || 0;
-        const disponiveis = quantidade - vendidos;
+        const disponiveis = quantidade > 0 ? (quantidade - vendidos) : 0;
         const preco = parseFloat(ingresso.valor) || 0;
 
         const tipoObj = {
@@ -133,7 +140,8 @@ export default function EventoDetalhesPage() {
 
       const setoresArray = Array.from(setoresMap.values()).map(setor => ({
         nome: setor.nome,
-        capacidade_definida: setor.capacidade_definida,
+        capacidadeDefinida: setor.capacidadeDefinida,
+        capacidadeCalculada: setor.capacidadeCalculada,
         lotes: Array.from(setor.lotes.values()),
         tiposSemLote: setor.tiposSemLote
       }));
@@ -155,31 +163,42 @@ export default function EventoDetalhesPage() {
       setLoading(false);
     }
   };
-  // ✅ CORRIGIDO - Calcula totais de um setor usando capacidade_definida
-  const calcularTotaisSetor = (setor) => {
-    let vendidos = 0, total = 0, bilheteria = 0;
 
+  // Calcula totais de um setor CORRIGIDO
+  const calcularTotaisSetor = (setor) => {
+    let vendidos = 0, bilheteria = 0;
+    let totalCalculado = 0;
+
+    // Soma vendidos e bilheteria
     setor.lotes.forEach(lote => {
       lote.tipos.forEach(tipo => {
         vendidos += tipo.vendidos;
-        total += tipo.quantidade;
         bilheteria += tipo.bilheteria;
+        totalCalculado += tipo.quantidade;
       });
     });
 
     setor.tiposSemLote.forEach(tipo => {
       vendidos += tipo.vendidos;
-      total += tipo.quantidade;
       bilheteria += tipo.bilheteria;
+      totalCalculado += tipo.quantidade;
     });
 
-    // ✅ Se tem capacidade definida, usa ela; senão usa o total calculado
-    const capacidadeTotal = setor.capacidade_definida || total;
-    const disponiveis = capacidadeTotal - vendidos;
+    // Se o setor tem capacidade definida, usa ela como total
+    // Se não tem, usa a soma dos tipos
+    const total = setor.capacidadeDefinida && setor.capacidadeDefinida > 0
+      ? setor.capacidadeDefinida
+      : totalCalculado;
+
+    const disponiveis = total - vendidos;
     
-    return { vendidos, disponiveis, total: capacidadeTotal, bilheteria };
+    // Define se o controle é por setor ou por tipo
+    const controladoPorSetor = setor.capacidadeDefinida && setor.capacidadeDefinida > 0;
+
+    return { vendidos, disponiveis, total, bilheteria, controladoPorSetor };
   };
 
+  // Calcula totais de um lote
   const calcularTotaisLote = (lote) => {
     let vendidos = 0, disponiveis = 0, total = 0, bilheteria = 0;
 
@@ -193,6 +212,7 @@ export default function EventoDetalhesPage() {
     return { vendidos, disponiveis, total, bilheteria };
   };
 
+  // Calcula ganho de taxas
   const calcularGanhoTaxas = (bilheteria) => {
     if (!evento) return 0;
     const taxaCliente = evento.TaxaCliente || 0;
@@ -207,7 +227,6 @@ export default function EventoDetalhesPage() {
     return bilheteria * (percentualBonus / 100);
   };
 
-  // ✅ CORRIGIDO - Usa os totais calculados corretamente
   const calcularTotaisIngressos = () => {
     let totalDisponibilizado = 0, totalVendido = 0;
 
@@ -294,11 +313,6 @@ export default function EventoDetalhesPage() {
     return `Taxa de ${taxa}%`;
   };
 
-  // ✅ Nova função para verificar se tem controle individual
-  const temControleIndividual = (setor) => {
-    return setor.tiposSemLote.some(tipo => tipo.quantidade > 0) || 
-           setor.lotes.some(lote => lote.tipos.some(tipo => tipo.quantidade > 0));
-  };
   if (loading) {
     return (
       <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px', textAlign: 'center', paddingTop: '100px' }}>
@@ -345,7 +359,7 @@ export default function EventoDetalhesPage() {
 
       <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
 
-        {/* Cards de informações */}
+        {/* Cards de informações - mantém igual */}
         <div style={{ 
           display: 'grid', 
           gridTemplateColumns: 'repeat(2, 1fr)', 
@@ -439,7 +453,7 @@ export default function EventoDetalhesPage() {
           </div>
         </div>
 
-        {/* ✅ Cards de totais gerais CORRIGIDOS */}
+        {/* Cards de totais gerais - USANDO DADOS CALCULADOS */}
         <div style={{ 
           display: 'grid', 
           gridTemplateColumns: 'repeat(4, 1fr)', 
@@ -556,7 +570,8 @@ export default function EventoDetalhesPage() {
             </button>
           </div>
         )}
-{/* ✅ DETALHAMENTO DE INGRESSOS COM LÓGICA CONDICIONAL */}
+
+        {/* DETALHAMENTO DE INGRESSOS COM TOTAIS CORRIGIDO */}
         <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '25px' }}>
           <h2 style={{ color: '#5d34a4', marginTop: 0, marginBottom: '20px' }}>🎫 Detalhamento de Ingressos</h2>
           
@@ -575,8 +590,7 @@ export default function EventoDetalhesPage() {
             setoresDetalhados.map((setor, setorIndex) => {
               const totaisSetor = calcularTotaisSetor(setor);
               const ganhoTaxasSetor = calcularGanhoTaxas(totaisSetor.bilheteria);
-              const temControle = temControleIndividual(setor);
-              const controlePorSetor = setor.capacidade_definida && !temControle;
+              const controladoPorSetor = totaisSetor.controladoPorSetor;
               
               return (
                 <div key={setorIndex} style={{ 
@@ -594,12 +608,25 @@ export default function EventoDetalhesPage() {
                     paddingBottom: '10px'
                   }}>
                     🏟️ Setor: {setor.nome}
+                    {controladoPorSetor && (
+                      <span style={{ 
+                        fontSize: '12px', 
+                        marginLeft: '10px',
+                        padding: '4px 10px',
+                        backgroundColor: '#e8f4f8',
+                        color: '#2196f3',
+                        borderRadius: '12px',
+                        fontWeight: 'normal'
+                      }}>
+                        📊 Controlado por Setor
+                      </span>
+                    )}
                   </h3>
 
-                  {/* ✅ TOTAIS DO SETOR - mostra disponível e total apenas se controlePorSetor */}
+                  {/* TOTAIS DO SETOR */}
                   <div style={{
                     display: 'grid',
-                    gridTemplateColumns: controlePorSetor ? 'repeat(5, 1fr)' : 'repeat(3, 1fr)',
+                    gridTemplateColumns: controladoPorSetor ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)',
                     gap: '10px',
                     marginBottom: '20px',
                     padding: '15px',
@@ -610,7 +637,9 @@ export default function EventoDetalhesPage() {
                       <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#27ae60' }}>{totaisSetor.vendidos}</div>
                       <div style={{ fontSize: '11px', color: '#666' }}>Vendidos</div>
                     </div>
-                    {controlePorSetor && (
+                    
+                    {/* Só mostra disponíveis/total se o controle é por setor */}
+                    {controladoPorSetor && (
                       <>
                         <div style={{ textAlign: 'center' }}>
                           <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#e67e22' }}>{totaisSetor.disponiveis}</div>
@@ -622,6 +651,7 @@ export default function EventoDetalhesPage() {
                         </div>
                       </>
                     )}
+                    
                     <div style={{ textAlign: 'center' }}>
                       <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#9b59b6' }}>R$ {totaisSetor.bilheteria.toFixed(2)}</div>
                       <div style={{ fontSize: '11px', color: '#666' }}>Bilheteria</div>
@@ -638,7 +668,6 @@ export default function EventoDetalhesPage() {
                   {setor.lotes.map((lote, loteIndex) => {
                     const totaisLote = calcularTotaisLote(lote);
                     const ganhoTaxasLote = calcularGanhoTaxas(totaisLote.bilheteria);
-                    const controlePorLote = lote.tipos.length > 0 && lote.tipos.every(t => t.quantidade === 0);
                     
                     return (
                       <div key={loteIndex} style={{ 
@@ -656,41 +685,43 @@ export default function EventoDetalhesPage() {
                           📦 {lote.nome}
                         </h4>
 
-                        {/* ✅ TOTAIS DO LOTE - mostra disponível e total apenas se NÃO controlePorLote */}
-                        {!controlePorLote && (
-                          <div style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(5, 1fr)',
-                            gap: '8px',
-                            marginBottom: '15px',
-                            padding: '12px',
-                            backgroundColor: '#f0f8ff',
-                            borderRadius: '6px'
-                          }}>
-                            <div style={{ textAlign: 'center' }}>
-                              <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#27ae60' }}>{totaisLote.vendidos}</div>
-                              <div style={{ fontSize: '10px', color: '#666' }}>Vendidos</div>
-                            </div>
-                            <div style={{ textAlign: 'center' }}>
-                              <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#e67e22' }}>{totaisLote.disponiveis}</div>
-                              <div style={{ fontSize: '10px', color: '#666' }}>Disponíveis</div>
-                            </div>
-                            <div style={{ textAlign: 'center' }}>
-                              <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#3498db' }}>{totaisLote.total}</div>
-                              <div style={{ fontSize: '10px', color: '#666' }}>Total</div>
-                            </div>
-                            <div style={{ textAlign: 'center' }}>
-                              <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#9b59b6' }}>R$ {totaisLote.bilheteria.toFixed(2)}</div>
-                              <div style={{ fontSize: '10px', color: '#666' }}>Bilheteria</div>
-                            </div>
-                            <div style={{ textAlign: 'center' }}>
-                              <div style={{ fontSize: '14px', fontWeight: 'bold', color: ganhoTaxasLote >= 0 ? '#27ae60' : '#e74c3c' }}>
-                                R$ {ganhoTaxasLote.toFixed(2)}
-                              </div>
-                              <div style={{ fontSize: '10px', color: '#666' }}>Ganho Taxas</div>
-                            </div>
+                        {/* TOTAIS DO LOTE */}
+                        <div style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(5, 1fr)',
+                          gap: '8px',
+                          marginBottom: '15px',
+                          padding: '12px',
+                          backgroundColor: '#f0f8ff',
+                          borderRadius: '6px'
+                        }}>
+                          <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#27ae60' }}>{totaisLote.vendidos}</div>
+                            <div style={{ fontSize: '10px', color: '#666' }}>Vendidos</div>
                           </div>
-                        )}
+                          {!controladoPorSetor && (
+                            <>
+                              <div style={{ textAlign: 'center' }}>
+                                <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#e67e22' }}>{totaisLote.disponiveis}</div>
+                                <div style={{ fontSize: '10px', color: '#666' }}>Disponíveis</div>
+                              </div>
+                              <div style={{ textAlign: 'center' }}>
+                                <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#3498db' }}>{totaisLote.total}</div>
+                                <div style={{ fontSize: '10px', color: '#666' }}>Total</div>
+                              </div>
+                            </>
+                          )}
+                          <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#9b59b6' }}>R$ {totaisLote.bilheteria.toFixed(2)}</div>
+                            <div style={{ fontSize: '10px', color: '#666' }}>Bilheteria</div>
+                          </div>
+                          <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: '14px', fontWeight: 'bold', color: ganhoTaxasLote >= 0 ? '#27ae60' : '#e74c3c' }}>
+                              R$ {ganhoTaxasLote.toFixed(2)}
+                            </div>
+                            <div style={{ fontSize: '10px', color: '#666' }}>Ganho Taxas</div>
+                          </div>
+                        </div>
 
                         <div style={{ 
                           display: 'grid', 
@@ -713,8 +744,7 @@ export default function EventoDetalhesPage() {
                                 <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.6' }}>
                                   <div>💰 Preço: <strong>R$ {tipo.preco.toFixed(2)}</strong></div>
                                   <div>✅ Vendidos: <strong style={{ color: '#27ae60' }}>{tipo.vendidos}</strong></div>
-                                  {/* ✅ Só mostra disponível e total se tipo.quantidade > 0 */}
-                                  {tipo.quantidade > 0 && (
+                                  {!controladoPorSetor && (
                                     <>
                                       <div>📊 Disponíveis: <strong style={{ color: '#e67e22' }}>{tipo.disponiveis}</strong></div>
                                       <div>📈 Total: <strong style={{ color: '#3498db' }}>{tipo.quantidade}</strong></div>
@@ -768,8 +798,7 @@ export default function EventoDetalhesPage() {
                               <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.6' }}>
                                 <div>💰 Preço: <strong>R$ {tipo.preco.toFixed(2)}</strong></div>
                                 <div>✅ Vendidos: <strong style={{ color: '#27ae60' }}>{tipo.vendidos}</strong></div>
-                                {/* ✅ Só mostra disponível e total se tipo.quantidade > 0 */}
-                                {tipo.quantidade > 0 && (
+                                {!controladoPorSetor && (
                                   <>
                                     <div>📊 Disponíveis: <strong style={{ color: '#e67e22' }}>{tipo.disponiveis}</strong></div>
                                     <div>📈 Total: <strong style={{ color: '#3498db' }}>{tipo.quantidade}</strong></div>
@@ -789,7 +818,8 @@ export default function EventoDetalhesPage() {
             })
           )}
         </div>
-{/* CUPONS DETALHADOS */}
+
+        {/* CUPONS DETALHADOS */}
         {cupons.length > 0 && (
           <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '25px' }}>
             <h2 style={{ color: '#5d34a4', marginTop: 0, marginBottom: '20px' }}>🎟️ Cupons de Desconto</h2>
@@ -1089,7 +1119,7 @@ export default function EventoDetalhesPage() {
         )}
 
       </div>
-{/* Modal - Adicionar Ingressos */}
+
       {mostrarModalIngressos && (
         <div style={{
           position: 'fixed',
@@ -1143,7 +1173,6 @@ export default function EventoDetalhesPage() {
         </div>
       )}
 
-      {/* Modal - Nova Sessão */}
       {mostrarModalSessao && (
         <div style={{
           position: 'fixed',
