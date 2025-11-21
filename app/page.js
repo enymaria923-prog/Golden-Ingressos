@@ -57,10 +57,8 @@ function CardEvento({ evento, isFavorito, userId }) {
 export default async function Index() {
   const supabase = createClient();
   
-  // Verifica se o usuário está logado
   const { data: { user } } = await supabase.auth.getUser();
   
-  // Busca eventos aprovados
   const { data: eventos, error } = await supabase
     .from('eventos')
     .select('*')
@@ -76,7 +74,6 @@ export default async function Index() {
     );
   }
 
-  // Se o usuário estiver logado, busca seus favoritos
   let favoritos = [];
   if (user) {
     const { data: favoritosData } = await supabase
@@ -94,7 +91,6 @@ export default async function Index() {
         <p>Encontre seu próximo evento inesquecível.</p>
       </header>
       
-      {/* Barra de Pesquisa */}
       <SearchBar />
       
       <div style={{ textAlign: 'center', marginBottom: '40px' }}>
@@ -104,7 +100,6 @@ export default async function Index() {
           </button>
         </Link>
         
-        {/* Botão condicional - mostra "Entrar" ou menu do usuário */}
         {user ? (
           <UserDropdown user={user} />
         ) : (
