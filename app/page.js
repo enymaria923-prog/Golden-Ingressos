@@ -2,7 +2,7 @@ import { createClient } from '../utils/supabase/server.js';
 import Link from 'next/link';
 import UserDropdown from './components/UserDropdown';
 import SearchBar from './components/SearchBar';
-import FavoritoButton from '../../components/FavoritoButton';
+
 
 // Componente do Cartão
 function CardEvento({ evento, isFavorito, userId }) {
