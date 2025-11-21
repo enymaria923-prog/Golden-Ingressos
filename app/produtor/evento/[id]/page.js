@@ -13,6 +13,7 @@ export default function EventoDetalhesPage() {
   const [evento, setEvento] = useState(null);
   const [setoresDetalhados, setSetoresDetalhados] = useState([]);
   const [produtos, setProdutos] = useState([]);
+  const [cupons, setCupons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mostrarModalSessao, setMostrarModalSessao] = useState(false);
   const [mostrarModalIngressos, setMostrarModalIngressos] = useState(false);
@@ -52,7 +53,22 @@ export default function EventoDetalhesPage() {
 
       console.log('📦 Lotes carregados:', lotesData);
 
-      // 4. Organiza dados por setores
+      // 4. Carrega cupons (se houver)
+      const { data: cuponsData } = await supabase
+        .from('cupons')
+        .select(`
+          *,
+          cupons_ingressos (
+            ingresso_id,
+            preco_com_cupom
+          )
+        `)
+        .eq('evento_id', eventoId);
+
+      console.log('🎟️ Cupons carregados:', cuponsData);
+      setCupons(cuponsData || []);
+
+      // 5. Organiza dados por setores
       const setoresMap = new Map();
 
       ingressosData?.forEach(ingresso => {
@@ -83,8 +99,9 @@ export default function EventoDetalhesPage() {
             id: ingresso.id,
             nome: ingresso.tipo,
             preco: parseFloat(ingresso.valor),
-            quantidade: ingresso.quantidade,
-            vendidos: ingresso.vendidos || 0
+            quantidade: ingresso.quantidade || 0,
+            vendidos: ingresso.vendidos || 0,
+            disponiveis: (ingresso.quantidade || 0) - (ingresso.vendidos || 0)
           });
         } else {
           // Ingresso sem lote
@@ -92,8 +109,9 @@ export default function EventoDetalhesPage() {
             id: ingresso.id,
             nome: ingresso.tipo,
             preco: parseFloat(ingresso.valor),
-            quantidade: ingresso.quantidade,
-            vendidos: ingresso.vendidos || 0
+            quantidade: ingresso.quantidade || 0,
+            vendidos: ingresso.vendidos || 0,
+            disponiveis: (ingresso.quantidade || 0) - (ingresso.vendidos || 0)
           });
         }
       });
@@ -108,7 +126,7 @@ export default function EventoDetalhesPage() {
       console.log('🏟️ Setores organizados:', setoresArray);
       setSetoresDetalhados(setoresArray);
 
-      // 5. Carrega produtos
+      // 6. Carrega produtos
       const { data: produtosData } = await supabase
         .from('produtos')
         .select('*')
@@ -168,6 +186,16 @@ export default function EventoDetalhesPage() {
     };
   };
 
+  const calcularTotaisCupons = () => {
+    let totalUsados = 0;
+    
+    cupons.forEach(cupom => {
+      totalUsados += cupom.quantidade_usada || 0;
+    });
+
+    return totalUsados;
+  };
+
   const calcularValorTotalVendas = () => {
     let valorIngressos = 0;
     let valorProdutos = 0;
@@ -201,7 +229,7 @@ export default function EventoDetalhesPage() {
     else if (taxaCliente === 15) percentualBonus = 5;
     else if (taxaCliente === 10) percentualBonus = 3;
     else if (taxaCliente === 8) percentualBonus = 0;
-    else if (taxaCliente === 0) percentualBonus = -8; // Absorção
+    else if (taxaCliente === 0) percentualBonus = -8;
     
     return valorIngressos * (percentualBonus / 100);
   };
@@ -234,6 +262,7 @@ export default function EventoDetalhesPage() {
 
   const totaisIngressos = calcularTotaisIngressos();
   const totaisProdutos = calcularTotaisProdutos();
+  const totaisCupons = calcularTotaisCupons();
   const valores = calcularValorTotalVendas();
   const bonusGolden = calcularBonusGolden();
   const totalReceber = valores.total + bonusGolden;
@@ -539,7 +568,7 @@ export default function EventoDetalhesPage() {
                           <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.6' }}>
                             <div>💰 Preço: <strong>R$ {tipo.preco.toFixed(2)}</strong></div>
                             <div>✅ Vendidos: <strong style={{ color: '#27ae60' }}>{tipo.vendidos}</strong></div>
-                            <div>📊 Disponíveis: <strong style={{ color: '#e67e22' }}>{tipo.quantidade - tipo.vendidos}</strong></div>
+                            <div>📊 Disponíveis: <strong style={{ color: '#e67e22' }}>{tipo.disponiveis}</strong></div>
                             <div>📈 Total: <strong style={{ color: '#3498db' }}>{tipo.quantidade}</strong></div>
                           </div>
                         </div>
@@ -582,7 +611,7 @@ export default function EventoDetalhesPage() {
                           <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.6' }}>
                             <div>💰 Preço: <strong>R$ {tipo.preco.toFixed(2)}</strong></div>
                             <div>✅ Vendidos: <strong style={{ color: '#27ae60' }}>{tipo.vendidos}</strong></div>
-                            <div>📊 Disponíveis: <strong style={{ color: '#e67e22' }}>{tipo.quantidade - tipo.vendidos}</strong></div>
+                            <div>📊 Disponíveis: <strong style={{ color: '#e67e22' }}>{tipo.disponiveis}</strong></div>
                             <div>📈 Total: <strong style={{ color: '#3498db' }}>{tipo.quantidade}</strong></div>
                           </div>
                         </div>
@@ -594,6 +623,63 @@ export default function EventoDetalhesPage() {
             ))
           )}
         </div>
+
+        {/* CUPONS */}
+        {cupons.length > 0 && (
+          <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '25px' }}>
+            <h2 style={{ color: '#5d34a4', marginTop: 0, marginBottom: '20px' }}>🎟️ Cupons de Desconto</h2>
+            
+            <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#e8f5e9', borderRadius: '8px', textAlign: 'center' }}>
+              <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#27ae60' }}>
+                {totaisCupons}
+              </div>
+              <div style={{ fontSize: '13px', color: '#555', marginTop: '5px' }}>
+                Total de Usos de Cupons
+              </div>
+            </div>
+
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', 
+              gap: '15px' 
+            }}>
+              {cupons.map((cupom, index) => (
+                <div key={index} style={{ 
+                  backgroundColor: '#f8f9fa',
+                  padding: '15px',
+                  borderRadius: '8px',
+                  border: '2px solid #e0e0e0'
+                }}>
+                  <div style={{ fontWeight: 'bold', marginBottom: '10px', color: '#5d34a4', fontSize: '16px' }}>
+                    🎫 {cupom.codigo}
+                  </div>
+                  <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.7' }}>
+                    {cupom.descricao && (
+                      <div style={{ marginBottom: '8px', fontStyle: 'italic' }}>
+                        "{cupom.descricao}"
+                      </div>
+                    )}
+                    <div>✅ Usado: <strong style={{ color: '#27ae60' }}>{cupom.quantidade_usada || 0} vezes</strong></div>
+                    {cupom.quantidade_total && (
+                      <div>📊 Limite: <strong>{cupom.quantidade_total} usos</strong></div>
+                    )}
+                    {cupom.data_validade_inicio && (
+                      <div>📅 Início: <strong>{new Date(cupom.data_validade_inicio).toLocaleDateString('pt-BR')}</strong></div>
+                    )}
+                    {cupom.data_validade_fim && (
+                      <div>📅 Fim: <strong>{new Date(cupom.data_validade_fim).toLocaleDateString('pt-BR')}</strong></div>
+                    )}
+                    <div style={{ marginTop: '8px' }}>
+                      Status: <strong style={{ color: cupom.ativo ? '#27ae60' : '#e74c3c' }}>
+                        {cupom.ativo ? '✅ Ativo' : '❌ Inativo'}
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* DETALHAMENTO DE PRODUTOS */}
         {produtos.length > 0 && (
