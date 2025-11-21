@@ -21,7 +21,6 @@ export default function EventoDetalhesPage() {
   useEffect(() => {
     carregarEvento();
   }, [eventoId]);
-
   const carregarEvento = async () => {
     try {
       const { data: eventoData, error: eventoError } = await supabase
@@ -32,14 +31,6 @@ export default function EventoDetalhesPage() {
 
       if (eventoError) throw eventoError;
       setEvento(eventoData);
-
-      // BUSCAR SETORES COM CAPACIDADE_DEFINIDA
-      const { data: setoresData, error: setoresError } = await supabase
-        .from('setores')
-        .select('*')
-        .eq('eventos_id', eventoId);
-
-      if (setoresError) console.error('Erro ao buscar setores:', setoresError);
 
       const { data: ingressosData, error: ingressosError } = await supabase
         .from('ingressos')
@@ -53,7 +44,12 @@ export default function EventoDetalhesPage() {
         .select('*')
         .eq('evento_id', eventoId);
 
-      // BUSCA CUPONS COM DETALHAMENTO COMPLETO
+      // ✅ BUSCA DADOS DOS SETORES COM CAPACIDADE_DEFINIDA
+      const { data: setoresData } = await supabase
+        .from('setores')
+        .select('*')
+        .eq('evento_id', eventoId);
+
       const { data: cuponsData } = await supabase
         .from('cupons')
         .select('*')
@@ -87,23 +83,18 @@ export default function EventoDetalhesPage() {
 
       setCupons(cuponsDetalhados);
 
-      // PROCESSAR SETORES COM CAPACIDADE
       const setoresMap = new Map();
-
-      // Criar mapa de capacidades dos setores
-      const capacidadesSetor = {};
-      (setoresData || []).forEach(setor => {
-        capacidadesSetor[setor.nome] = setor.capacidade_total || 0;
-      });
 
       ingressosData?.forEach(ingresso => {
         const setorNome = ingresso.setor;
         
         if (!setoresMap.has(setorNome)) {
+          // ✅ Busca informações do setor na tabela setores
+          const setorInfo = setoresData?.find(s => s.nome === setorNome);
+          
           setoresMap.set(setorNome, {
             nome: setorNome,
-            capacidadeDefinida: capacidadesSetor[setorNome] || 0,
-            controla_por_setor: capacidadesSetor[setorNome] > 0,
+            capacidade_definida: setorInfo?.capacidade_definida || null,
             lotes: new Map(),
             tiposSemLote: []
           });
@@ -142,8 +133,7 @@ export default function EventoDetalhesPage() {
 
       const setoresArray = Array.from(setoresMap.values()).map(setor => ({
         nome: setor.nome,
-        capacidadeDefinida: setor.capacidadeDefinida,
-        controla_por_setor: setor.controla_por_setor,
+        capacidade_definida: setor.capacidade_definida,
         lotes: Array.from(setor.lotes.values()),
         tiposSemLote: setor.tiposSemLote
       }));
@@ -165,33 +155,31 @@ export default function EventoDetalhesPage() {
       setLoading(false);
     }
   };
-
-  // Calcula totais de um setor
+  // ✅ CORRIGIDO - Calcula totais de um setor usando capacidade_definida
   const calcularTotaisSetor = (setor) => {
-    let vendidos = 0, totalTipos = 0, bilheteria = 0;
+    let vendidos = 0, total = 0, bilheteria = 0;
 
     setor.lotes.forEach(lote => {
       lote.tipos.forEach(tipo => {
         vendidos += tipo.vendidos;
-        totalTipos += tipo.quantidade;
+        total += tipo.quantidade;
         bilheteria += tipo.bilheteria;
       });
     });
 
     setor.tiposSemLote.forEach(tipo => {
       vendidos += tipo.vendidos;
-      totalTipos += tipo.quantidade;
+      total += tipo.quantidade;
       bilheteria += tipo.bilheteria;
     });
 
-    // Se controla por setor, usa capacidadeDefinida
-    const total = setor.controla_por_setor ? setor.capacidadeDefinida : totalTipos;
-    const disponiveis = total - vendidos;
-
-    return { vendidos, disponiveis, total, bilheteria };
+    // ✅ Se tem capacidade definida, usa ela; senão usa o total calculado
+    const capacidadeTotal = setor.capacidade_definida || total;
+    const disponiveis = capacidadeTotal - vendidos;
+    
+    return { vendidos, disponiveis, total: capacidadeTotal, bilheteria };
   };
 
-  // Calcula totais de um lote
   const calcularTotaisLote = (lote) => {
     let vendidos = 0, disponiveis = 0, total = 0, bilheteria = 0;
 
@@ -205,22 +193,28 @@ export default function EventoDetalhesPage() {
     return { vendidos, disponiveis, total, bilheteria };
   };
 
-  // Calcula ganho de taxas
   const calcularGanhoTaxas = (bilheteria) => {
     if (!evento) return 0;
-    const taxaCliente = parseFloat(evento.TaxaCliente) || 0;
-    const taxaProdutor = parseFloat(evento.TaxaProdutor) || 0;
+    const taxaCliente = evento.TaxaCliente || 0;
+    let percentualBonus = 0;
     
-    return bilheteria * (taxaProdutor / 100);
+    if (taxaCliente === 18.5) percentualBonus = 6.5;
+    else if (taxaCliente === 15) percentualBonus = 5;
+    else if (taxaCliente === 10) percentualBonus = 3;
+    else if (taxaCliente === 8) percentualBonus = 0;
+    else if (taxaCliente === 0) percentualBonus = -8;
+    
+    return bilheteria * (percentualBonus / 100);
   };
 
+  // ✅ CORRIGIDO - Usa os totais calculados corretamente
   const calcularTotaisIngressos = () => {
     let totalDisponibilizado = 0, totalVendido = 0;
 
     setoresDetalhados.forEach(setor => {
       const totaisSetor = calcularTotaisSetor(setor);
-      totalVendido += totaisSetor.vendidos;
       totalDisponibilizado += totaisSetor.total;
+      totalVendido += totaisSetor.vendidos;
     });
 
     return {
@@ -278,24 +272,33 @@ export default function EventoDetalhesPage() {
 
   const calcularBonusGolden = () => {
     if (!evento) return 0;
+    const taxaCliente = evento.TaxaCliente || 0;
     const { valorIngressos } = calcularValorTotalVendas();
-    const taxaProdutor = parseFloat(evento.TaxaProdutor) || 0;
     
-    return valorIngressos * (taxaProdutor / 100);
+    let percentualBonus = 0;
+    if (taxaCliente === 18.5) percentualBonus = 6.5;
+    else if (taxaCliente === 15) percentualBonus = 5;
+    else if (taxaCliente === 10) percentualBonus = 3;
+    else if (taxaCliente === 8) percentualBonus = 0;
+    else if (taxaCliente === 0) percentualBonus = -8;
+    
+    return valorIngressos * (percentualBonus / 100);
   };
 
-  const getNomePlano = (taxaCliente, taxaProdutor) => {
-    const tc = parseFloat(taxaCliente) || 0;
-    const tp = parseFloat(taxaProdutor) || 0;
-    
-    if (tc === 18.5) return '💎 Premium (18,5% taxa + 6,5% bônus)';
-    if (tc === 15) return '✅ Padrão (15% taxa + 5% bônus)';
-    if (tc === 10) return '💙 Econômico (10% taxa + 3% bônus)';
-    if (tc === 8) return '🚀 Competitivo (8% taxa, sem bônus)';
-    if (tc === 0 && tp === -8) return '💜 Absorção Total (0% cliente, você paga 8%)';
-    return `Taxa ${tc}%`;
+  const getNomePlano = (taxa) => {
+    if (taxa === 18.5) return 'Plano Premium (18.5% taxa, +6.5% bônus)';
+    if (taxa === 15) return 'Plano Padrão (15% taxa, +5% bônus)';
+    if (taxa === 10) return 'Plano Econômico (10% taxa, +3% bônus)';
+    if (taxa === 8) return 'Plano Competitivo (8% taxa, sem bônus)';
+    if (taxa === 0) return 'Absorção Total (0% cliente, -8% produtor)';
+    return `Taxa de ${taxa}%`;
   };
 
+  // ✅ Nova função para verificar se tem controle individual
+  const temControleIndividual = (setor) => {
+    return setor.tiposSemLote.some(tipo => tipo.quantidade > 0) || 
+           setor.lotes.some(lote => lote.tipos.some(tipo => tipo.quantidade > 0));
+  };
   if (loading) {
     return (
       <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px', textAlign: 'center', paddingTop: '100px' }}>
@@ -342,7 +345,7 @@ export default function EventoDetalhesPage() {
 
       <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
 
-        {/* INFORMAÇÕES DO EVENTO */}
+        {/* Cards de informações */}
         <div style={{ 
           display: 'grid', 
           gridTemplateColumns: 'repeat(2, 1fr)', 
@@ -408,19 +411,20 @@ export default function EventoDetalhesPage() {
                 borderLeft: '4px solid #5d34a4'
               }}>
                 <strong>📦 Plano Escolhido:</strong><br />
-                {getNomePlano(evento.TaxaCliente, evento.TaxaProdutor)}
+                {getNomePlano(evento.TaxaCliente)}
               </div>
               
               <div>
                 <strong>💰 Taxa do Cliente:</strong><br />
-                {evento.TaxaCliente}% sobre o valor
+                {evento.TaxaCliente}% sobre o valor do ingresso
               </div>
               
               <div>
                 <strong>✨ Seu Bônus/Desconto:</strong><br />
-                {evento.TaxaProdutor > 0 && `+${evento.TaxaProdutor}% de bônus`}
-                {evento.TaxaProdutor < 0 && `${evento.TaxaProdutor}% (você paga)`}
-                {evento.TaxaProdutor == 0 && 'Sem bônus/desconto'}
+                {evento.TaxaCliente === 18.5 ? '+6.5%' : 
+                 evento.TaxaCliente === 15 ? '+5%' : 
+                 evento.TaxaCliente === 10 ? '+3%' : 
+                 evento.TaxaCliente === 0 ? '-8%' : '0%'} sobre vendas
               </div>
               
               {evento.descricao && (
@@ -435,7 +439,7 @@ export default function EventoDetalhesPage() {
           </div>
         </div>
 
-        {/* CARDS DE TOTAIS */}
+        {/* ✅ Cards de totais gerais CORRIGIDOS */}
         <div style={{ 
           display: 'grid', 
           gridTemplateColumns: 'repeat(4, 1fr)', 
@@ -504,7 +508,7 @@ export default function EventoDetalhesPage() {
             </div>
             <div style={{ fontSize: '11px', opacity: 0.8, marginTop: '5px' }}>
               Vendas: R$ {valores.total.toFixed(2)}
-              {bonusGolden !== 0 && ` ${bonusGolden > 0 ? '+' : ''}R$ ${bonusGolden.toFixed(2)}`}
+              {bonusGolden !== 0 && ` ${bonusGolden > 0 ? '+' : ''}Bônus: R$ ${bonusGolden.toFixed(2)}`}
             </div>
           </div>
         </div>
@@ -526,7 +530,8 @@ export default function EventoDetalhesPage() {
                 borderRadius: '8px',
                 fontWeight: 'bold',
                 fontSize: '16px',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                transition: 'all 0.3s'
               }}
             >
               ➕ Adicionar Mais Ingressos
@@ -543,15 +548,15 @@ export default function EventoDetalhesPage() {
                 borderRadius: '8px',
                 fontWeight: 'bold',
                 fontSize: '16px',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                transition: 'all 0.3s'
               }}
             >
               🎬 Abrir Nova Sessão
             </button>
           </div>
         )}
-
-        {/* DETALHAMENTO DE INGRESSOS */}
+{/* ✅ DETALHAMENTO DE INGRESSOS COM LÓGICA CONDICIONAL */}
         <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '25px' }}>
           <h2 style={{ color: '#5d34a4', marginTop: 0, marginBottom: '20px' }}>🎫 Detalhamento de Ingressos</h2>
           
@@ -570,6 +575,8 @@ export default function EventoDetalhesPage() {
             setoresDetalhados.map((setor, setorIndex) => {
               const totaisSetor = calcularTotaisSetor(setor);
               const ganhoTaxasSetor = calcularGanhoTaxas(totaisSetor.bilheteria);
+              const temControle = temControleIndividual(setor);
+              const controlePorSetor = setor.capacidade_definida && !temControle;
               
               return (
                 <div key={setorIndex} style={{ 
@@ -589,10 +596,10 @@ export default function EventoDetalhesPage() {
                     🏟️ Setor: {setor.nome}
                   </h3>
 
-                  {/* TOTAIS DO SETOR */}
+                  {/* ✅ TOTAIS DO SETOR - mostra disponível e total apenas se controlePorSetor */}
                   <div style={{
                     display: 'grid',
-                    gridTemplateColumns: setor.controla_por_setor ? 'repeat(5, 1fr)' : 'repeat(3, 1fr)',
+                    gridTemplateColumns: controlePorSetor ? 'repeat(5, 1fr)' : 'repeat(3, 1fr)',
                     gap: '10px',
                     marginBottom: '20px',
                     padding: '15px',
@@ -603,8 +610,7 @@ export default function EventoDetalhesPage() {
                       <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#27ae60' }}>{totaisSetor.vendidos}</div>
                       <div style={{ fontSize: '11px', color: '#666' }}>Vendidos</div>
                     </div>
-                    
-                    {setor.controla_por_setor && (
+                    {controlePorSetor && (
                       <>
                         <div style={{ textAlign: 'center' }}>
                           <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#e67e22' }}>{totaisSetor.disponiveis}</div>
@@ -612,11 +618,10 @@ export default function EventoDetalhesPage() {
                         </div>
                         <div style={{ textAlign: 'center' }}>
                           <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#3498db' }}>{totaisSetor.total}</div>
-                          <div style={{ fontSize: '11px', color: '#666' }}>Capacidade</div>
+                          <div style={{ fontSize: '11px', color: '#666' }}>Total</div>
                         </div>
                       </>
                     )}
-                    
                     <div style={{ textAlign: 'center' }}>
                       <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#9b59b6' }}>R$ {totaisSetor.bilheteria.toFixed(2)}</div>
                       <div style={{ fontSize: '11px', color: '#666' }}>Bilheteria</div>
@@ -629,10 +634,11 @@ export default function EventoDetalhesPage() {
                     </div>
                   </div>
 
-                  {/* LOTES */}
+                  {/* Lotes dentro do setor */}
                   {setor.lotes.map((lote, loteIndex) => {
                     const totaisLote = calcularTotaisLote(lote);
                     const ganhoTaxasLote = calcularGanhoTaxas(totaisLote.bilheteria);
+                    const controlePorLote = lote.tipos.length > 0 && lote.tipos.every(t => t.quantidade === 0);
                     
                     return (
                       <div key={loteIndex} style={{ 
@@ -650,7 +656,8 @@ export default function EventoDetalhesPage() {
                           📦 {lote.nome}
                         </h4>
 
-                        {!setor.controla_por_setor && (
+                        {/* ✅ TOTAIS DO LOTE - mostra disponível e total apenas se NÃO controlePorLote */}
+                        {!controlePorLote && (
                           <div style={{
                             display: 'grid',
                             gridTemplateColumns: 'repeat(5, 1fr)',
@@ -706,7 +713,8 @@ export default function EventoDetalhesPage() {
                                 <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.6' }}>
                                   <div>💰 Preço: <strong>R$ {tipo.preco.toFixed(2)}</strong></div>
                                   <div>✅ Vendidos: <strong style={{ color: '#27ae60' }}>{tipo.vendidos}</strong></div>
-                                  {!setor.controla_por_setor && (
+                                  {/* ✅ Só mostra disponível e total se tipo.quantidade > 0 */}
+                                  {tipo.quantidade > 0 && (
                                     <>
                                       <div>📊 Disponíveis: <strong style={{ color: '#e67e22' }}>{tipo.disponiveis}</strong></div>
                                       <div>📈 Total: <strong style={{ color: '#3498db' }}>{tipo.quantidade}</strong></div>
@@ -723,7 +731,7 @@ export default function EventoDetalhesPage() {
                     );
                   })}
 
-                  {/* TIPOS SEM LOTE */}
+                  {/* Tipos sem lote */}
                   {setor.tiposSemLote.length > 0 && (
                     <div style={{ 
                       backgroundColor: 'white',
@@ -760,7 +768,8 @@ export default function EventoDetalhesPage() {
                               <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.6' }}>
                                 <div>💰 Preço: <strong>R$ {tipo.preco.toFixed(2)}</strong></div>
                                 <div>✅ Vendidos: <strong style={{ color: '#27ae60' }}>{tipo.vendidos}</strong></div>
-                                {!setor.controla_por_setor && (
+                                {/* ✅ Só mostra disponível e total se tipo.quantidade > 0 */}
+                                {tipo.quantidade > 0 && (
                                   <>
                                     <div>📊 Disponíveis: <strong style={{ color: '#e67e22' }}>{tipo.disponiveis}</strong></div>
                                     <div>📈 Total: <strong style={{ color: '#3498db' }}>{tipo.quantidade}</strong></div>
@@ -780,8 +789,7 @@ export default function EventoDetalhesPage() {
             })
           )}
         </div>
-
-        {/* CUPONS */}
+{/* CUPONS DETALHADOS */}
         {cupons.length > 0 && (
           <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '25px' }}>
             <h2 style={{ color: '#5d34a4', marginTop: 0, marginBottom: '20px' }}>🎟️ Cupons de Desconto</h2>
@@ -959,7 +967,7 @@ export default function EventoDetalhesPage() {
           </div>
         )}
 
-        {/* PRODUTOS */}
+        {/* DETALHAMENTO DE PRODUTOS */}
         {produtos.length > 0 && (
           <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '25px' }}>
             <h2 style={{ color: '#5d34a4', marginTop: 0, marginBottom: '20px' }}>🛍️ Produtos Adicionais</h2>
@@ -1062,7 +1070,6 @@ export default function EventoDetalhesPage() {
           </div>
         )}
 
-        {/* IMAGEM DO EVENTO */}
         {evento.imagem_url && (
           <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
             <h2 style={{ color: '#5d34a4', marginTop: 0 }}>🖼️ Imagem do Evento</h2>
@@ -1082,8 +1089,7 @@ export default function EventoDetalhesPage() {
         )}
 
       </div>
-
-      {/* MODAIS */}
+{/* Modal - Adicionar Ingressos */}
       {mostrarModalIngressos && (
         <div style={{
           position: 'fixed',
@@ -1137,6 +1143,7 @@ export default function EventoDetalhesPage() {
         </div>
       )}
 
+      {/* Modal - Nova Sessão */}
       {mostrarModalSessao && (
         <div style={{
           position: 'fixed',
