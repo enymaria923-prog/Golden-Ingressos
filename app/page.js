@@ -3,49 +3,24 @@ import Link from 'next/link';
 import UserDropdown from './components/UserDropdown';
 import SearchBar from './components/SearchBar';
 
-
-// Componente do Cartão
-function CardEvento({ evento, isFavorito, userId }) {
+// Componente SIMPLES do Cartão
+function CardEvento({ evento }) {
   return (
-    <div style={{ 
-      backgroundColor: 'white', 
-      borderRadius: '8px', 
-      boxShadow: '0 4px 8px rgba(0,0,0,0.1)', 
-      overflow: 'hidden', 
-      width: '300px', 
-      margin: '20px',
-      position: 'relative'
-    }}>
-      {/* Botão de Favorito */}
-      {userId && (
-        <div style={{ position: 'absolute', top: '10px', right: '10px', zIndex: 10 }}>
-          <FavoritoButton eventoId={evento.id} isFavoritoInicial={isFavorito} />
-        </div>
-      )}
-
-      <img 
-        src={evento.imagem_url || 'https://placehold.co/300x180/5d34a4/ffffff?text=EVENTO'} 
-        alt={evento.nome} 
-        style={{ width: '100%', height: '180px', objectFit: 'cover' }} 
-      />
+    <div style={{ backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.1)', overflow: 'hidden', width: '300px', margin: '20px' }}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={evento.imagem_url || 'https://placehold.co/300x180/5d34a4/ffffff?text=EVENTO'} alt={evento.nome} style={{ width: '100%', height: '180px', objectFit: 'cover' }} />
       <div style={{ padding: '15px' }}>
         <h3 style={{ margin: '0 0 10px 0', color: '#5d34a4' }}>{evento.nome}</h3>
         <p>{evento.categoria} | {new Date(evento.data).toLocaleDateString('pt-BR')}</p>
         
-        <p><strong>A partir de R$ {evento.preco_medio ? evento.preco_medio.toFixed(2) : '0.00'}</strong></p>
+        {/*             CORREÇÃO: Colocando a linha de preço de volta,
+            já que a coluna 'preco' existe na sua tabela.
+        */}
+        <p><strong>Preço: R$ {evento.preco}</strong></p>
 
         <Link href={`/evento/${evento.id}`}>
-          <button style={{ 
-            backgroundColor: '#f1c40f', 
-            color: 'black', 
-            padding: '10px 15px', 
-            border: 'none', 
-            borderRadius: '4px', 
-            fontWeight: 'bold', 
-            cursor: 'pointer', 
-            width: '100%' 
-          }}>
-            Ver Detalhes
+          <button style={{ backgroundColor: '#f1c40f', color: 'black', padding: '10px 15px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', width: '100%' }}>
+            Comprar Ingresso
           </button>
         </Link>
       </div>
@@ -57,12 +32,17 @@ function CardEvento({ evento, isFavorito, userId }) {
 export default async function Index() {
   const supabase = createClient();
   
+  // Verifica se o usuário está logado
   const { data: { user } } = await supabase.auth.getUser();
   
+  // ===================================================================
+  // CORREÇÃO (PROBLEMA A):
+  // Adicionado .eq('status', 'aprovado') para filtrar apenas eventos aprovados.
+  // ===================================================================
   const { data: eventos, error } = await supabase
     .from('eventos')
     .select('*')
-    .eq('status', 'aprovado')
+    .eq('status', 'aprovado') // <-- SÓ PEGA OS APROVADOS
     .order('data', { ascending: true });
 
   if (error) {
@@ -74,16 +54,6 @@ export default async function Index() {
     );
   }
 
-  let favoritos = [];
-  if (user) {
-    const { data: favoritosData } = await supabase
-      .from('favoritos')
-      .select('evento_id')
-      .eq('user_id', user.id);
-    
-    favoritos = favoritosData?.map(f => f.evento_id) || [];
-  }
-
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px' }}>
       <header style={{ backgroundColor: '#5d34a4', color: 'white', padding: '20px', textAlign: 'center', marginBottom: '20px', borderRadius: '8px' }}>
@@ -91,6 +61,7 @@ export default async function Index() {
         <p>Encontre seu próximo evento inesquecível.</p>
       </header>
       
+      {/* Barra de Pesquisa */}
       <SearchBar />
       
       <div style={{ textAlign: 'center', marginBottom: '40px' }}>
@@ -100,6 +71,7 @@ export default async function Index() {
           </button>
         </Link>
         
+        {/* Botão condicional - mostra "Entrar" ou menu do usuário */}
         {user ? (
           <UserDropdown user={user} />
         ) : (
@@ -115,14 +87,7 @@ export default async function Index() {
       
       {eventos && eventos.length > 0 ? (
         <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '30px', maxWidth: '1200px', margin: '40px auto' }}>
-          {eventos.map((evento) => (
-            <CardEvento 
-              key={evento.id} 
-              evento={evento} 
-              isFavorito={favoritos.includes(evento.id)}
-              userId={user?.id}
-            />
-          ))}
+          {eventos.map((evento) => <CardEvento key={evento.id} evento={evento} />)}
         </div>
       ) : (
         <p style={{ textAlign: 'center' }}>Nenhum evento aprovado encontrado.</p>
