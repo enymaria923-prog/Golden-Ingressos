@@ -406,7 +406,7 @@ export default function EventoDetalhesPage() {
           </div>
         </div>
 
-        {/* Cards de totais gerais - mantém igual */}
+        {/* Cards de totais gerais - USANDO DADOS DO EVENTO */}
         <div style={{ 
           display: 'grid', 
           gridTemplateColumns: 'repeat(4, 1fr)', 
@@ -421,7 +421,7 @@ export default function EventoDetalhesPage() {
             boxShadow: '0 2px 10px rgba(0,0,0,0.05)'
           }}>
             <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#27ae60' }}>
-              {totaisIngressos.vendidos}
+              {evento.ingressos_vendidos || 0}
             </div>
             <div style={{ fontSize: '14px', color: '#7f8c8d', marginTop: '5px' }}>
               Ingressos Vendidos
@@ -436,7 +436,7 @@ export default function EventoDetalhesPage() {
             boxShadow: '0 2px 10px rgba(0,0,0,0.05)'
           }}>
             <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#e67e22' }}>
-              {totaisIngressos.disponiveis}
+              {Math.max(0, (evento.total_ingressos || 0) - (evento.ingressos_vendidos || 0))}
             </div>
             <div style={{ fontSize: '14px', color: '#7f8c8d', marginTop: '5px' }}>
               Ingressos Disponíveis
@@ -451,7 +451,7 @@ export default function EventoDetalhesPage() {
             boxShadow: '0 2px 10px rgba(0,0,0,0.05)'
           }}>
             <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#3498db' }}>
-              {totaisIngressos.total}
+              {evento.total_ingressos || 0}
             </div>
             <div style={{ fontSize: '14px', color: '#7f8c8d', marginTop: '5px' }}>
               Total Disponibilizado
