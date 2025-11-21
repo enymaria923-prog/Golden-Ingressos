@@ -45,12 +45,43 @@ export default function EventoDetalhesPage() {
         .select('*')
         .eq('evento_id', eventoId);
 
+      // BUSCA CUPONS COM DETALHAMENTO COMPLETO
       const { data: cuponsData } = await supabase
         .from('cupons')
         .select('*')
         .eq('evento_id', eventoId);
 
-      setCupons(cuponsData || []);
+      // Para cada cupom, busca os usos detalhados
+      const cuponsDetalhados = await Promise.all(
+        (cuponsData || []).map(async (cupom) => {
+          // Busca usos do cupom (tabela cupons_usados)
+          const { data: usosData } = await supabase
+            .from('cupons_usados')
+            .select('*, comprador_email, comprador_nome')
+            .eq('cupom_id', cupom.id);
+
+          // Busca ingressos vinculados ao cupom
+          const { data: cuponsIngressosData } = await supabase
+            .from('cupons_ingressos')
+            .select('*, ingressos(*)')
+            .eq('cupom_id', cupom.id);
+
+          // Busca produtos vinculados ao cupom
+          const { data: cuponsProdutosData } = await supabase
+            .from('cupons_produtos')
+            .select('*, produtos(*)')
+            .eq('cupom_id', cupom.id);
+
+          return {
+            ...cupom,
+            usos: usosData || [],
+            ingressosVinculados: cuponsIngressosData || [],
+            produtosVinculados: cuponsProdutosData || []
+          };
+        })
+      );
+
+      setCupons(cuponsDetalhados);
 
       const setoresMap = new Map();
 
@@ -739,7 +770,7 @@ export default function EventoDetalhesPage() {
           )}
         </div>
 
-        {/* CUPONS */}
+        {/* CUPONS DETALHADOS */}
         {cupons.length > 0 && (
           <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '25px' }}>
             <h2 style={{ color: '#5d34a4', marginTop: 0, marginBottom: '20px' }}>🎟️ Cupons de Desconto</h2>
@@ -753,46 +784,171 @@ export default function EventoDetalhesPage() {
               </div>
             </div>
 
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', 
-              gap: '15px' 
-            }}>
-              {cupons.map((cupom, index) => (
+            {cupons.map((cupom, index) => {
+              const totalEconomizado = cupom.usos.reduce((sum, uso) => sum + (parseFloat(uso.valor_desconto) || 0), 0);
+              const totalArrecadado = cupom.usos.reduce((sum, uso) => sum + (parseFloat(uso.valor_final) || 0), 0);
+              
+              return (
                 <div key={index} style={{ 
                   backgroundColor: '#f8f9fa',
-                  padding: '15px',
-                  borderRadius: '8px',
-                  border: '2px solid #e0e0e0'
+                  padding: '20px',
+                  borderRadius: '12px',
+                  border: '2px solid #e0e0e0',
+                  marginBottom: '20px'
                 }}>
-                  <div style={{ fontWeight: 'bold', marginBottom: '10px', color: '#5d34a4', fontSize: '16px' }}>
-                    🎫 {cupom.codigo}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                    <div style={{ fontWeight: 'bold', color: '#5d34a4', fontSize: '20px' }}>
+                      🎫 {cupom.codigo}
+                    </div>
+                    <div style={{ 
+                      padding: '6px 15px', 
+                      borderRadius: '20px',
+                      fontSize: '13px',
+                      fontWeight: 'bold',
+                      backgroundColor: cupom.ativo ? '#d4edda' : '#f8d7da',
+                      color: cupom.ativo ? '#155724' : '#721c24'
+                    }}>
+                      {cupom.ativo ? '✅ Ativo' : '❌ Inativo'}
+                    </div>
                   </div>
-                  <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.7' }}>
-                    {cupom.descricao && (
-                      <div style={{ marginBottom: '8px', fontStyle: 'italic' }}>
-                        "{cupom.descricao}"
+
+                  {cupom.descricao && (
+                    <div style={{ marginBottom: '15px', fontStyle: 'italic', color: '#666', fontSize: '14px' }}>
+                      "{cupom.descricao}"
+                    </div>
+                  )}
+
+                  {/* ESTATÍSTICAS DO CUPOM */}
+                  <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(4, 1fr)', 
+                    gap: '12px',
+                    marginBottom: '20px',
+                    padding: '15px',
+                    backgroundColor: 'white',
+                    borderRadius: '8px'
+                  }}>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#27ae60' }}>
+                        {cupom.usos.length}
                       </div>
-                    )}
-                    <div>✅ Usado: <strong style={{ color: '#27ae60' }}>{cupom.quantidade_usada || 0} vezes</strong></div>
+                      <div style={{ fontSize: '11px', color: '#666', marginTop: '3px' }}>Usuários</div>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#3498db' }}>
+                        {cupom.quantidade_usada || 0}
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#666', marginTop: '3px' }}>Total Usos</div>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#e74c3c' }}>
+                        R$ {totalEconomizado.toFixed(2)}
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#666', marginTop: '3px' }}>Economizado</div>
+                    </div>
+                    <div style={{ textAlign: 'center' }}>
+                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#9b59b6' }}>
+                        R$ {totalArrecadado.toFixed(2)}
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#666', marginTop: '3px' }}>Arrecadado</div>
+                    </div>
+                  </div>
+
+                  {/* INGRESSOS VINCULADOS */}
+                  {cupom.ingressosVinculados.length > 0 && (
+                    <div style={{ marginBottom: '15px' }}>
+                      <h4 style={{ color: '#2980b9', margin: '0 0 10px 0', fontSize: '15px' }}>
+                        🎫 Ingressos com Desconto
+                      </h4>
+                      <div style={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', 
+                        gap: '10px' 
+                      }}>
+                        {cupom.ingressosVinculados.map((ci, idx) => (
+                          <div key={idx} style={{ 
+                            backgroundColor: 'white',
+                            padding: '10px',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                            border: '1px solid #d0d0d0'
+                          }}>
+                            <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
+                              {ci.ingressos?.tipo || 'Ingresso'}
+                            </div>
+                            <div style={{ color: '#666' }}>
+                              <span style={{ textDecoration: 'line-through' }}>
+                                R$ {parseFloat(ci.ingressos?.valor || 0).toFixed(2)}
+                              </span>
+                              {' → '}
+                              <strong style={{ color: '#27ae60' }}>
+                                R$ {parseFloat(ci.preco_com_cupom).toFixed(2)}
+                              </strong>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* PRODUTOS VINCULADOS */}
+                  {cupom.produtosVinculados.length > 0 && (
+                    <div style={{ marginBottom: '15px' }}>
+                      <h4 style={{ color: '#16a085', margin: '0 0 10px 0', fontSize: '15px' }}>
+                        🛍️ Produtos com Desconto
+                      </h4>
+                      <div style={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', 
+                        gap: '10px' 
+                      }}>
+                        {cupom.produtosVinculados.map((cp, idx) => (
+                          <div key={idx} style={{ 
+                            backgroundColor: 'white',
+                            padding: '10px',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                            border: '1px solid #d0d0d0'
+                          }}>
+                            <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
+                              {cp.produtos?.nome || 'Produto'}
+                            </div>
+                            <div style={{ color: '#666' }}>
+                              <span style={{ textDecoration: 'line-through' }}>
+                                R$ {parseFloat(cp.produtos?.preco || 0).toFixed(2)}
+                              </span>
+                              {' → '}
+                              <strong style={{ color: '#27ae60' }}>
+                                R$ {parseFloat(cp.preco_com_cupom).toFixed(2)}
+                              </strong>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* DETALHES DE VALIDADE */}
+                  <div style={{ 
+                    padding: '12px', 
+                    backgroundColor: '#fff3e0', 
+                    borderRadius: '6px',
+                    fontSize: '13px',
+                    color: '#666'
+                  }}>
                     {cupom.quantidade_total && (
                       <div>📊 Limite: <strong>{cupom.quantidade_total} usos</strong></div>
                     )}
                     {cupom.data_validade_inicio && (
-                      <div>📅 Início: <strong>{new Date(cupom.data_validade_inicio).toLocaleDateString('pt-BR')}</strong></div>
+                      <div>📅 Válido de: <strong>{new Date(cupom.data_validade_inicio).toLocaleDateString('pt-BR')}</strong></div>
                     )}
                     {cupom.data_validade_fim && (
-                      <div>📅 Fim: <strong>{new Date(cupom.data_validade_fim).toLocaleDateString('pt-BR')}</strong></div>
+                      <div>📅 Válido até: <strong>{new Date(cupom.data_validade_fim).toLocaleDateString('pt-BR')}</strong></div>
                     )}
-                    <div style={{ marginTop: '8px' }}>
-                      Status: <strong style={{ color: cupom.ativo ? '#27ae60' : '#e74c3c' }}>
-                        {cupom.ativo ? '✅ Ativo' : '❌ Inativo'}
-                      </strong>
-                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
+              );
+            })}
           </div>
         )}
 
