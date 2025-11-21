@@ -84,6 +84,11 @@ export default function EventoDetalhesPage() {
 
         const setor = setoresMap.get(setorNome);
 
+        // Garante que os valores são números
+        const quantidade = parseInt(ingresso.quantidade) || 0;
+        const vendidos = parseInt(ingresso.vendidos) || 0;
+        const disponiveis = quantidade - vendidos;
+
         if (ingresso.lote_id) {
           // Ingresso pertence a um lote
           if (!setor.lotes.has(ingresso.lote_id)) {
@@ -98,20 +103,20 @@ export default function EventoDetalhesPage() {
           setor.lotes.get(ingresso.lote_id).tipos.push({
             id: ingresso.id,
             nome: ingresso.tipo,
-            preco: parseFloat(ingresso.valor),
-            quantidade: ingresso.quantidade || 0,
-            vendidos: ingresso.vendidos || 0,
-            disponiveis: (ingresso.quantidade || 0) - (ingresso.vendidos || 0)
+            preco: parseFloat(ingresso.valor) || 0,
+            quantidade: quantidade,
+            vendidos: vendidos,
+            disponiveis: disponiveis
           });
         } else {
           // Ingresso sem lote
           setor.tiposSemLote.push({
             id: ingresso.id,
             nome: ingresso.tipo,
-            preco: parseFloat(ingresso.valor),
-            quantidade: ingresso.quantidade || 0,
-            vendidos: ingresso.vendidos || 0,
-            disponiveis: (ingresso.quantidade || 0) - (ingresso.vendidos || 0)
+            preco: parseFloat(ingresso.valor) || 0,
+            quantidade: quantidade,
+            vendidos: vendidos,
+            disponiveis: disponiveis
           });
         }
       });
