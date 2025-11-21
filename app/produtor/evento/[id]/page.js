@@ -153,12 +153,11 @@ export default function EventoDetalhesPage() {
 
   // Calcula totais de um setor
   const calcularTotaisSetor = (setor) => {
-    let vendidos = 0, disponiveis = 0, total = 0, bilheteria = 0;
+    let vendidos = 0, total = 0, bilheteria = 0;
 
     setor.lotes.forEach(lote => {
       lote.tipos.forEach(tipo => {
         vendidos += tipo.vendidos;
-        disponiveis += tipo.disponiveis;
         total += tipo.quantidade;
         bilheteria += tipo.bilheteria;
       });
@@ -166,11 +165,11 @@ export default function EventoDetalhesPage() {
 
     setor.tiposSemLote.forEach(tipo => {
       vendidos += tipo.vendidos;
-      disponiveis += tipo.disponiveis;
       total += tipo.quantidade;
       bilheteria += tipo.bilheteria;
     });
 
+    const disponiveis = total - vendidos;
     return { vendidos, disponiveis, total, bilheteria };
   };
 
