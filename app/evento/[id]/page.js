@@ -1,7 +1,7 @@
 import { createClient } from '../../../utils/supabase/server';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import FavoritoButton from '../../components/FavoritoButton';
+
 
 export default async function EventoPage({ params }) {
   const supabase = createClient();
