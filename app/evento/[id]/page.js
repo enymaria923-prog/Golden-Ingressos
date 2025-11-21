@@ -1,12 +1,16 @@
 import { createClient } from '../../../utils/supabase/server';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import FavoritoButton from '../../components/FavoritoButton';
 
 export default async function EventoPage({ params }) {
   const supabase = createClient();
   const { id } = await params;
 
-  // ====== BUSCAR DADOS DO EVENTO ======
+  // Verifica usuário logado
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // Buscar dados do evento
   const { data: evento, error } = await supabase
     .from('eventos')
     .select('*')
@@ -17,7 +21,20 @@ export default async function EventoPage({ params }) {
     notFound();
   }
 
-  // ====== BUSCAR LOTES DO EVENTO ======
+  // Verifica se está nos favoritos
+  let isFavorito = false;
+  if (user) {
+    const { data: favoritoData } = await supabase
+      .from('favoritos')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('evento_id', id)
+      .single();
+    
+    isFavorito = !!favoritoData;
+  }
+
+  // Buscar lotes, ingressos, produtos e cupons (mantém código original)
   const { data: lotes } = await supabase
     .from('lotes')
     .select('*')
@@ -25,7 +42,6 @@ export default async function EventoPage({ params }) {
     .eq('ativo', true)
     .order('id', { ascending: true });
 
-  // ====== BUSCAR INGRESSOS ======
   const { data: ingressos } = await supabase
     .from('ingressos')
     .select('*')
@@ -33,7 +49,6 @@ export default async function EventoPage({ params }) {
     .eq('status_ingresso', 'disponivel')
     .order('setor', { ascending: true });
 
-  // ====== BUSCAR PRODUTOS ======
   const { data: produtos } = await supabase
     .from('produtos')
     .select('*')
@@ -41,7 +56,6 @@ export default async function EventoPage({ params }) {
     .eq('ativo', true)
     .order('id', { ascending: true });
 
-  // ====== BUSCAR CUPONS ATIVOS ======
   const { data: cupons } = await supabase
     .from('cupons')
     .select('*')
@@ -50,7 +64,7 @@ export default async function EventoPage({ params }) {
 
   const temCupons = cupons && cupons.length > 0;
 
-  // ====== ORGANIZAR DADOS ======
+  // Organizar dados por setores (mantém lógica original)
   const setoresOrganizados = {};
   
   if (ingressos && ingressos.length > 0) {
@@ -108,7 +122,14 @@ export default async function EventoPage({ params }) {
 
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
         
-        <div style={{ marginTop: '30px', textAlign: 'center' }}>
+        <div style={{ marginTop: '30px', textAlign: 'center', position: 'relative' }}>
+          {/* Botão de favorito no topo da imagem */}
+          {user && (
+            <div style={{ position: 'absolute', top: '20px', right: '20px', zIndex: 10 }}>
+              <FavoritoButton eventoId={evento.id} isFavoritoInicial={isFavorito} />
+            </div>
+          )}
+          
           <img 
             src={evento.imagem_url || 'https://placehold.co/1200x500/5d34a4/ffffff?text=EVENTO'} 
             alt={evento.nome}
@@ -285,6 +306,7 @@ export default async function EventoPage({ params }) {
           </div>
         )}
 
+        {/* RESTO DO CÓDIGO DE INGRESSOS E PRODUTOS PERMANECE IGUAL */}
         <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', marginBottom: '40px' }}>
           <h2 style={{ color: '#5d34a4', marginTop: 0, fontSize: '32px', marginBottom: '10px', textAlign: 'center' }}>
             🎫 Ingressos
