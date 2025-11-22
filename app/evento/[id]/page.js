@@ -936,4 +936,4 @@ export default function EventoPage() {
       </div>
     </div>
   );
-}>
+}
