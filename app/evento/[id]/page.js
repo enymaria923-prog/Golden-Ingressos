@@ -101,6 +101,7 @@ export default function EventoPage() {
 
   const carregarIngressosDaSessao = async (sessaoId) => {
     try {
+      // CORREÇÃO: Buscar TODOS os ingressos, não apenas os 'disponivel'
       const { data: ingressosData } = await supabase
         .from('ingressos')
         .select('*')
@@ -207,7 +208,7 @@ export default function EventoPage() {
     );
   }
 
-  // Buscar setores e lotes - CORRIGIDO
+  // Buscar setores e lotes
   const setoresOrganizados = {};
   const lotesMap = new Map();
 
@@ -222,11 +223,8 @@ export default function EventoPage() {
       };
     }
 
-    const quantidade = parseInt(ingresso.quantidade) || 0;
-    const vendidos = parseInt(ingresso.vendidos) || 0;
-
-    setoresOrganizados[setorNome].totalDisponibilizado += quantidade;
-    setoresOrganizados[setorNome].totalVendido += vendidos;
+    setoresOrganizados[setorNome].totalDisponibilizado += ingresso.quantidade;
+    setoresOrganizados[setorNome].totalVendido += ingresso.vendidos;
 
     if (ingresso.lote_id) {
       const loteKey = `${ingresso.setor}-${ingresso.lote_id}`;
@@ -239,10 +237,7 @@ export default function EventoPage() {
         });
       }
       
-      lotesMap.get(loteKey).ingressos.push({
-        ...ingresso,
-        disponiveis: quantidade - vendidos
-      });
+      lotesMap.get(loteKey).ingressos.push(ingresso);
 
       const loteNome = lotesMap.get(loteKey).nome;
       if (!setoresOrganizados[setorNome].lotes[loteNome]) {
@@ -250,20 +245,14 @@ export default function EventoPage() {
           ingressos: []
         };
       }
-      setoresOrganizados[setorNome].lotes[loteNome].ingressos.push({
-        ...ingresso,
-        disponiveis: quantidade - vendidos
-      });
+      setoresOrganizados[setorNome].lotes[loteNome].ingressos.push(ingresso);
     } else {
       if (!setoresOrganizados[setorNome].lotes['direto']) {
         setoresOrganizados[setorNome].lotes['direto'] = {
           ingressos: []
         };
       }
-      setoresOrganizados[setorNome].lotes['direto'].ingressos.push({
-        ...ingresso,
-        disponiveis: quantidade - vendidos
-      });
+      setoresOrganizados[setorNome].lotes['direto'].ingressos.push(ingresso);
     }
   });
 
@@ -665,7 +654,14 @@ export default function EventoPage() {
                         )}
 
                         {loteData.ingressos.map((ingresso) => {
-                          const ingressosDisponiveis = ingresso.disponiveis;
+                          // CORREÇÃO: Calcular disponibilidade corretamente
+                          const ingressosDisponiveis = ingresso.quantidade - ingresso.vendidos;
+                          const esgotadoIngresso = ingressosDisponiveis <= 0;
+                          const percentualDisponivelIngresso = ingresso.quantidade > 0 
+                            ? (ingressosDisponiveis / ingresso.quantidade) * 100 
+                            : 0;
+                          const ultimosIngresso = percentualDisponivelIngresso <= 15 && percentualDisponivelIngresso > 0;
+                          
                           const valorBase = parseFloat(obterPrecoIngresso(ingresso.id, ingresso.valor));
                           const valorOriginal = parseFloat(ingresso.valor);
                           const temDesconto = valorBase < valorOriginal;
@@ -687,11 +683,15 @@ export default function EventoPage() {
                                 <h4 style={{ margin: 0, fontSize: '18px', color: '#2c3e50', marginBottom: '5px' }}>
                                   {ingresso.tipo}
                                   {temDesconto && <span style={{ color: '#28a745', marginLeft: '10px' }}>🎟️ COM DESCONTO</span>}
+                                  {esgotadoIngresso && <span style={{ color: '#dc3545', marginLeft: '10px' }}>❌ ESGOTADO</span>}
+                                  {ultimosIngresso && !esgotadoIngresso && <span style={{ color: '#ffc107', marginLeft: '10px' }}>🔥 ÚLTIMOS!</span>}
                                 </h4>
-                                <p style={{ margin: 0, fontSize: '13px', color: '#999' }}>
-                                  {ingressosDisponiveis > 0 
-                                    ? `${ingressosDisponiveis} disponíveis` 
-                                    : '❌ Esgotado'}
+                                <p style={{ margin: 0, fontSize: '13px', color: esgotadoIngresso ? '#dc3545' : '#999' }}>
+                                  {esgotadoIngresso 
+                                    ? '❌ Esgotado' 
+                                    : ultimosIngresso 
+                                      ? `🔥 Últimos ${ingressosDisponiveis} disponíveis!`
+                                      : `${ingressosDisponiveis} disponíveis`}
                                 </p>
                               </div>
                               
@@ -709,8 +709,7 @@ export default function EventoPage() {
                                 </div>
                               </div>
 
-                              {
-{ingressosDisponiveis > 0 ? (
+                              {!esgotadoIngresso ? (
                                 <Link href={`/checkout?evento_id=${evento.id}&ingresso_id=${ingresso.id}${cupomAplicado ? `&cupom_id=${cupomAplicado.id}` : ''}`}>
                                   <button style={{
                                     backgroundColor: '#f1c40f',
@@ -740,7 +739,6 @@ export default function EventoPage() {
                                   Esgotado
                                 </button>
                               )}
-                            </div>
                             </div>
                           );
                         })}
@@ -938,4 +936,4 @@ export default function EventoPage() {
       </div>
     </div>
   );
-}
+}>
