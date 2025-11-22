@@ -457,21 +457,24 @@ const PublicarEvento = () => {
       eventoIdCriado = insertedData[0].id;
       console.log('✅ Evento criado! ID:', eventoIdCriado);
 
-      const datasParaSalvar = datasValidas.map(dh => ({
-        evento_id: eventoIdCriado,
-        data: dh.data,
-        hora: dh.hora
-      }));
+      // ✅ CRIAR SESSÃO ORIGINAL (primeira data/hora)
+      const { data: sessaoOriginal, error: sessaoOriginalError } = await supabase
+        .from('sessoes')
+        .insert({
+          evento_id: eventoIdCriado,
+          data: datasValidas[0].data,
+          hora: datasValidas[0].hora,
+          numero: 1,
+          is_original: true
+        })
+        .select()
+        .single();
 
-      const { error: datasError } = await supabase
-        .from('eventos_datas')
-        .insert(datasParaSalvar);
-
-      if (datasError) {
-        throw new Error(`Erro ao salvar datas: ${datasError.message}`);
+      if (sessaoOriginalError) {
+        throw new Error(`Erro ao criar sessão original: ${sessaoOriginalError.message}`);
       }
 
-      console.log(`✅ ${datasValidas.length} datas/horários salvos`);
+      console.log('✅ Sessão original criada! ID:', sessaoOriginal.id);
 
       if (imagensDescricaoUploadadas.length > 0) {
         const imagensParaSalvar = imagensDescricaoUploadadas.map(img => ({
@@ -493,6 +496,7 @@ const PublicarEvento = () => {
         console.log(`✅ ${imagensDescricaoUploadadas.length} imagens da descrição salvas`);
       }
 
+      // Salvar setores da sessão 1
       for (const setor of setoresIngressos) {
         let capacidadeCalculada = 0;
         
@@ -522,6 +526,7 @@ const PublicarEvento = () => {
           .from('setores')
           .insert([{
             eventos_id: eventoIdCriado,
+            sessao_id: sessaoOriginal.id,
             nome: setor.nome,
             capacidade_calculada: capacidadeCalculada,
             capacidade_definida: capacidadeDefinida
@@ -549,6 +554,7 @@ const PublicarEvento = () => {
 
             const loteData = {
               evento_id: eventoIdCriado,
+              sessao_id: sessaoOriginal.id,
               setor: setor.nome,
               nome: lote.nome,
               quantidade_total: quantidadeTotalLote,
@@ -591,6 +597,7 @@ const PublicarEvento = () => {
                 
                 ingressosParaSalvar.push({
                   evento_id: eventoIdCriado,
+                  sessao_id: sessaoOriginal.id,
                   setor: setor.nome,
                   lote_id: loteIdReal,
                   tipo: tipo.nome,
@@ -618,6 +625,7 @@ const PublicarEvento = () => {
               
               ingressosParaSalvar.push({
                 evento_id: eventoIdCriado,
+                sessao_id: sessaoOriginal.id,
                 setor: setor.nome,
                 lote_id: null,
                 tipo: tipo.nome,
@@ -648,9 +656,166 @@ const PublicarEvento = () => {
         throw new Error(`Erro ao salvar ingressos: ${ingressosError.message}`);
       }
 
-      console.log(`✅✅✅ SUCESSO! ${ingressosInseridos.length} INGRESSOS SALVOS!`);
+      console.log(`✅ ${ingressosInseridos.length} INGRESSOS DA SESSÃO 1 SALVOS!`);
+
+      // ✅ CRIAR SESSÕES ADICIONAIS (se houver mais datas/horários)
+      if (datasValidas.length > 1) {
+        for (let i = 1; i < datasValidas.length; i++) {
+          const dataHora = datasValidas[i];
+          
+          // Criar sessão adicional
+          const { data: novaSessao, error: novaSessaoError } = await supabase
+            .from('sessoes')
+            .insert({
+              evento_id: eventoIdCriado,
+              data: dataHora.data,
+              hora: dataHora.hora,
+              numero: i + 1,
+              is_original: false
+            })
+            .select()
+            .single();
+
+          if (novaSessaoError) {
+            console.error(`Erro ao criar sessão ${i + 1}:`, novaSessaoError);
+            continue;
+          }
+
+          // Clonar setores
+          for (const setor of setoresIngressos) {
+            let capacidadeCalculada = 0;
+            
+            if (setor.usaLotes) {
+              setor.lotes.forEach(lote => {
+                lote.tiposIngresso.forEach(tipo => {
+                  const temNome = tipo.nome && tipo.nome.trim() !== '';
+                  const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
+                  if (temNome && temPreco) {
+                    capacidadeCalculada += tipo.quantidade ? parseInt(tipo.quantidade) : 0;
+                  }
+                });
+              });
+            } else {
+              setor.tiposIngresso.forEach(tipo => {
+                const temNome = tipo.nome && tipo.nome.trim() !== '';
+                const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
+                if (temNome && temPreco) {
+                  capacidadeCalculada += tipo.quantidade ? parseInt(tipo.quantidade) : 0;
+                }
+              });
+            }
+            
+            await supabase.from('setores').insert([{
+              eventos_id: eventoIdCriado,
+              sessao_id: novaSessao.id,
+              nome: setor.nome,
+              capacidade_calculada: capacidadeCalculada,
+              capacidade_definida: setor.capacidadeDefinida || null
+            }]);
+          }
+
+          // Clonar lotes
+          const novosLotesMap = new Map();
+          for (const setor of setoresIngressos) {
+            if (setor.usaLotes && setor.lotes && setor.lotes.length > 0) {
+              for (const lote of setor.lotes) {
+                let quantidadeTotalLote = 0;
+                
+                lote.tiposIngresso.forEach(tipo => {
+                  const temNome = tipo.nome && tipo.nome.trim() !== '';
+                  const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
+                  if (temNome && temPreco) {
+                    quantidadeTotalLote += tipo.quantidade ? parseInt(tipo.quantidade) : 0;
+                  }
+                });
+
+                const { data: novoLote } = await supabase
+                  .from('lotes')
+                  .insert([{
+                    evento_id: eventoIdCriado,
+                    sessao_id: novaSessao.id,
+                    setor: setor.nome,
+                    nome: lote.nome,
+                    quantidade_total: quantidadeTotalLote,
+                    quantidade_vendida: 0,
+                    data_inicio: lote.dataInicio || null,
+                    data_fim: lote.dataFim || null,
+                    ativo: true,
+                    user_id: user.id
+                  }])
+                  .select()
+                  .single();
+
+                if (novoLote) novosLotesMap.set(lote.id, novoLote.id);
+              }
+            }
+          }
+
+          // Clonar ingressos
+          const novosIngressos = [];
+          let contadorNovo = 0;
+
+          setoresIngressos.forEach((setor) => {
+            if (setor.usaLotes) {
+              setor.lotes.forEach((lote) => {
+                lote.tiposIngresso.forEach((tipo) => {
+                  const temNome = tipo.nome && tipo.nome.trim() !== '';
+                  const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
+                  
+                  if (temNome && temPreco) {
+                    novosIngressos.push({
+                      evento_id: eventoIdCriado,
+                      sessao_id: novaSessao.id,
+                      setor: setor.nome,
+                      lote_id: novosLotesMap.get(lote.id),
+                      tipo: tipo.nome,
+                      valor: parseFloat(tipo.preco).toString(),
+                      quantidade: tipo.quantidade ? parseInt(tipo.quantidade) : 0,
+                      vendidos: 0,
+                      status_ingresso: 'disponivel',
+                      user_id: user.id,
+                      codigo: Date.now() + contadorNovo + (i * 10000)
+                    });
+                    contadorNovo++;
+                  }
+                });
+              });
+            } else {
+              setor.tiposIngresso.forEach((tipo) => {
+                const temNome = tipo.nome && tipo.nome.trim() !== '';
+                const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
+                
+                if (temNome && temPreco) {
+                  novosIngressos.push({
+                    evento_id: eventoIdCriado,
+                    sessao_id: novaSessao.id,
+                    setor: setor.nome,
+                    lote_id: null,
+                    tipo: tipo.nome,
+                    valor: parseFloat(tipo.preco).toString(),
+                    quantidade: tipo.quantidade ? parseInt(tipo.quantidade) : 0,
+                    vendidos: 0,
+                    status_ingresso: 'disponivel',
+                    user_id: user.id,
+                    codigo: Date.now() + contadorNovo + (i * 10000)
+                  });
+                  contadorNovo++;
+                }
+              });
+            }
+          });
+
+          if (novosIngressos.length > 0) {
+            await supabase.from('ingressos').insert(novosIngressos);
+          }
+
+          console.log(`✅ Sessão ${i + 1} criada com ${novosIngressos.length} ingressos!`);
+        }
+      }
+
+      console.log(`✅✅✅ SUCESSO TOTAL! ${datasValidas.length} SESSÕES CRIADAS!`);
       
-      alert(`✅ Evento "${formData.titulo}" criado com sucesso!\n\n🎫 ${ingressosInseridos.length} tipos de ingresso\n📊 ${totalIngressosEvento} ingressos totais\n📅 ${datasValidas.length} datas/horários\n🖼️ ${imagensDescricaoUploadadas.length} imagens na descrição`);
+      alert(`✅ Evento "${formData.titulo}" criado com sucesso!\n\n🎬 ${datasValidas.length} sessões criadas\n🎫 ${ingressosInseridos.length} tipos de ingresso por sessão\n📊 ${totalIngressosEvento} ingressos por sessão\n🖼️ ${imagensDescricaoUploadadas.length} imagens na descrição`);
       
       router.push(`/publicar-evento/complemento?evento=${eventoIdCriado}`);
       
