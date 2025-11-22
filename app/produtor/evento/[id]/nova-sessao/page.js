@@ -150,18 +150,41 @@ export default function GerenciarSessoesPage() {
     setLoading(true);
 
     try {
-      // Carregar dados da sessão original
+      // Carregar SETORES da sessão original (NÃO ingressos individuais)
       const { data: setores } = await supabase.from('setores').select('*').eq('sessao_id', sessaoOriginal.id);
-      const { data: ingressos } = await supabase.from('ingressos').select('*').eq('sessao_id', sessaoOriginal.id);
+      
+      // Carregar apenas tipos de ingresso únicos (para mostrar variedade)
+      const { data: tiposIngressos } = await supabase
+        .from('ingressos')
+        .select('tipo, valor, setor, lote_id')
+        .eq('sessao_id', sessaoOriginal.id);
+      
       const { data: lotes } = await supabase.from('lotes').select('*').eq('sessao_id', sessaoOriginal.id);
       const { data: cupons } = await supabase.from('cupons').select('*').eq('sessao_id', sessaoOriginal.id);
 
-      // Preencher formulário com dados clonados
+      // Criar um resumo dos tipos de ingresso por setor
+      const tiposPorSetor = {};
+      if (tiposIngressos) {
+        tiposIngressos.forEach(ing => {
+          if (!tiposPorSetor[ing.setor]) {
+            tiposPorSetor[ing.setor] = [];
+          }
+          // Evitar duplicatas
+          if (!tiposPorSetor[ing.setor].find(t => t.tipo === ing.tipo && t.valor === ing.valor)) {
+            tiposPorSetor[ing.setor].push({
+              tipo: ing.tipo,
+              valor: ing.valor,
+              lote_id: ing.lote_id
+            });
+          }
+        });
+      }
+
       setFormData({
         data: '',
         hora: '',
         setores: setores || [],
-        ingressos: ingressos || [],
+        tiposPorSetor: tiposPorSetor,
         lotes: lotes || [],
         cupons: cupons || []
       });
@@ -182,15 +205,36 @@ export default function GerenciarSessoesPage() {
 
     try {
       const { data: setores } = await supabase.from('setores').select('*').eq('sessao_id', sessao.id);
-      const { data: ingressos } = await supabase.from('ingressos').select('*').eq('sessao_id', sessao.id);
+      
+      const { data: tiposIngressos } = await supabase
+        .from('ingressos')
+        .select('tipo, valor, setor, lote_id')
+        .eq('sessao_id', sessao.id);
+      
       const { data: lotes } = await supabase.from('lotes').select('*').eq('sessao_id', sessao.id);
       const { data: cupons } = await supabase.from('cupons').select('*').eq('sessao_id', sessao.id);
+
+      const tiposPorSetor = {};
+      if (tiposIngressos) {
+        tiposIngressos.forEach(ing => {
+          if (!tiposPorSetor[ing.setor]) {
+            tiposPorSetor[ing.setor] = [];
+          }
+          if (!tiposPorSetor[ing.setor].find(t => t.tipo === ing.tipo && t.valor === ing.valor)) {
+            tiposPorSetor[ing.setor].push({
+              tipo: ing.tipo,
+              valor: ing.valor,
+              lote_id: ing.lote_id
+            });
+          }
+        });
+      }
 
       setFormData({
         data: sessao.data,
         hora: sessao.hora,
         setores: setores || [],
-        ingressos: ingressos || [],
+        tiposPorSetor: tiposPorSetor,
         lotes: lotes || [],
         cupons: cupons || []
       });
@@ -217,7 +261,7 @@ export default function GerenciarSessoesPage() {
 
     try {
       if (modoEdicao) {
-        // EDITAR SESSÃO EXISTENTE
+        // EDITAR SESSÃO EXISTENTE (só data e hora)
         const { error } = await supabase
           .from('sessoes')
           .update({ data: formData.data, hora: formData.hora })
@@ -244,26 +288,32 @@ export default function GerenciarSessoesPage() {
 
         if (sessaoError) throw sessaoError;
 
-        // Salvar setores
+        console.log('✅ Sessão criada:', novaSessao.id);
+
+        // CLONAR SETORES (mantém capacidades)
         if (formData.setores.length > 0) {
           const setoresClonados = formData.setores.map(s => ({
-            eventos_id: s.eventos_id,
+            eventos_id: eventoId,
             sessao_id: novaSessao.id,
             nome: s.nome,
             capacidade_definida: s.capacidade_definida,
             capacidade_calculada: s.capacidade_calculada
           }));
-          await supabase.from('setores').insert(setoresClonados);
+          
+          const { error: setoresError } = await supabase.from('setores').insert(setoresClonados);
+          if (setoresError) throw setoresError;
+          
+          console.log(`✅ ${setoresClonados.length} setores clonados`);
         }
 
-        // Salvar lotes e mapear IDs
+        // CLONAR LOTES e mapear IDs
         const lotesMap = new Map();
         if (formData.lotes.length > 0) {
           for (const lote of formData.lotes) {
-            const { data: novoLote } = await supabase
+            const { data: novoLote, error: loteError } = await supabase
               .from('lotes')
               .insert({
-                evento_id: lote.evento_id,
+                evento_id: eventoId,
                 sessao_id: novaSessao.id,
                 setor: lote.setor,
                 nome: lote.nome,
@@ -277,34 +327,56 @@ export default function GerenciarSessoesPage() {
               .select()
               .single();
 
-            if (novoLote) {
-              lotesMap.set(lote.id, novoLote.id);
-            }
+            if (loteError) throw loteError;
+            if (novoLote) lotesMap.set(lote.id, novoLote.id);
+          }
+          console.log(`✅ ${formData.lotes.length} lotes clonados`);
+        }
+
+        // CLONAR TIPOS DE INGRESSO (criar ingressos com base nos setores)
+        let totalIngressosCriados = 0;
+        
+        for (const setor of formData.setores) {
+          const tiposDesteSetor = formData.tiposPorSetor[setor.nome] || [];
+          
+          // Para cada tipo de ingresso deste setor
+          for (const tipoInfo of tiposDesteSetor) {
+            // Buscar o lote_id novo se houver
+            const loteIdNovo = tipoInfo.lote_id ? lotesMap.get(tipoInfo.lote_id) : null;
+            
+            // Calcular quantidade baseado na capacidade do setor
+            // Se tem capacidade definida, usa ela dividida pelos tipos
+            // Se não, usa a capacidade calculada
+            const capacidade = setor.capacidade_definida || setor.capacidade_calculada;
+            const quantidadePorTipo = Math.floor(capacidade / (tiposDesteSetor.length || 1));
+            
+            const { error: ingressoError } = await supabase
+              .from('ingressos')
+              .insert({
+                evento_id: eventoId,
+                sessao_id: novaSessao.id,
+                setor: setor.nome,
+                tipo: tipoInfo.tipo,
+                valor: tipoInfo.valor,
+                quantidade: quantidadePorTipo,
+                vendidos: 0,
+                lote_id: loteIdNovo,
+                status_ingresso: 'disponivel',
+                user_id: sessaoOriginal.user_id || user?.id,
+                codigo: Date.now() + totalIngressosCriados
+              });
+            
+            if (ingressoError) throw ingressoError;
+            totalIngressosCriados++;
           }
         }
+        
+        console.log(`✅ ${totalIngressosCriados} tipos de ingresso criados`);
 
-        // Salvar ingressos
-        if (formData.ingressos.length > 0) {
-          const ingressosClonados = formData.ingressos.map(i => ({
-            evento_id: i.evento_id,
-            sessao_id: novaSessao.id,
-            setor: i.setor,
-            tipo: i.tipo,
-            valor: i.valor,
-            quantidade: i.quantidade,
-            vendidos: 0,
-            lote_id: i.lote_id ? lotesMap.get(i.lote_id) : null,
-            status_ingresso: 'disponivel',
-            user_id: i.user_id,
-            codigo: Date.now() + Math.random()
-          }));
-          await supabase.from('ingressos').insert(ingressosClonados);
-        }
-
-        // Salvar cupons
+        // CLONAR CUPONS
         if (formData.cupons.length > 0) {
           const cuponsClonados = formData.cupons.map(c => ({
-            evento_id: c.evento_id,
+            evento_id: eventoId,
             sessao_id: novaSessao.id,
             codigo: `${c.codigo}_S${proximoNumero}`,
             descricao: c.descricao,
@@ -316,10 +388,14 @@ export default function GerenciarSessoesPage() {
             data_validade_inicio: c.data_validade_inicio,
             data_validade_fim: c.data_validade_fim
           }));
-          await supabase.from('cupons').insert(cuponsClonados);
+          
+          const { error: cuponsError } = await supabase.from('cupons').insert(cuponsClonados);
+          if (cuponsError) throw cuponsError;
+          
+          console.log(`✅ ${cuponsClonados.length} cupons clonados`);
         }
 
-        alert(`✅ Sessão ${proximoNumero} criada com sucesso!`);
+        alert(`✅ Sessão ${proximoNumero} criada com sucesso!\n\n📊 ${formData.setores.length} setores\n🎫 ${totalIngressosCriados} tipos de ingresso\n🎟️ ${formData.cupons.length} cupons`);
       }
 
       setMostrarModalCriar(false);
@@ -638,34 +714,67 @@ export default function GerenciarSessoesPage() {
               </div>
             </div>
 
-            {/* PREVIEW DOS INGRESSOS */}
+            {/* PREVIEW DOS SETORES E INGRESSOS */}
             <div style={{ marginBottom: '25px' }}>
               <h3 style={{ color: '#5d34a4', marginBottom: '15px' }}>
-                🎫 Ingressos ({formData.ingressos.length})
+                🏟️ Setores e Capacidades ({formData.setores.length})
                 {!modoEdicao && <span style={{ fontSize: '13px', color: '#666', fontWeight: 'normal', marginLeft: '10px' }}>(clonados da Sessão 1)</span>}
               </h3>
               
-              {formData.ingressos.length === 0 ? (
+              {formData.setores.length === 0 ? (
                 <div style={{ padding: '20px', backgroundColor: '#f8f9fa', borderRadius: '8px', textAlign: 'center', color: '#666' }}>
-                  Nenhum ingresso
+                  Nenhum setor
                 </div>
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px', maxHeight: '300px', overflowY: 'auto', padding: '10px', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
-                  {formData.ingressos.map((ing, idx) => (
-                    <div key={idx} style={{ backgroundColor: 'white', padding: '12px', borderRadius: '6px', border: '1px solid #e0e0e0' }}>
-                      <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '5px' }}>{ing.tipo}</div>
-                      <div style={{ fontSize: '13px', color: '#666' }}>
-                        <div>🏟️ {ing.setor}</div>
-                        <div>💰 R$ {parseFloat(ing.valor).toFixed(2)}</div>
-                        <div>📊 Qtd: {ing.quantidade}</div>
+                <div style={{ display: 'grid', gap: '15px', maxHeight: '400px', overflowY: 'auto', padding: '15px', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
+                  {formData.setores.map((setor, idx) => {
+                    const tiposDesteSetor = formData.tiposPorSetor?.[setor.nome] || [];
+                    const capacidade = setor.capacidade_definida || setor.capacidade_calculada;
+                    
+                    return (
+                      <div key={idx} style={{ backgroundColor: 'white', padding: '15px', borderRadius: '8px', border: '2px solid #e0e0e0' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '10px' }}>
+                          <div>
+                            <div style={{ fontWeight: 'bold', fontSize: '16px', color: '#5d34a4', marginBottom: '5px' }}>
+                              🏟️ {setor.nome}
+                            </div>
+                            <div style={{ fontSize: '14px', color: '#666' }}>
+                              <div>📊 Capacidade: <strong>{capacidade} ingressos</strong></div>
+                              {setor.capacidade_definida && (
+                                <div style={{ fontSize: '12px', color: '#888' }}>
+                                  (Definida: {setor.capacidade_definida} | Calculada: {setor.capacidade_calculada})
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {tiposDesteSetor.length > 0 && (
+                          <div style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #e0e0e0' }}>
+                            <div style={{ fontSize: '13px', fontWeight: 'bold', color: '#666', marginBottom: '8px' }}>
+                              🎫 Tipos de Ingresso:
+                            </div>
+                            <div style={{ display: 'grid', gap: '8px' }}>
+                              {tiposDesteSetor.map((tipo, tipoIdx) => (
+                                <div key={tipoIdx} style={{ fontSize: '13px', padding: '8px', backgroundColor: '#f0f7ff', borderRadius: '4px', display: 'flex', justifyContent: 'space-between' }}>
+                                  <span><strong>{tipo.tipo}</strong></span>
+                                  <span style={{ color: '#27ae60', fontWeight: 'bold' }}>R$ {parseFloat(tipo.valor).toFixed(2)}</span>
+                                </div>
+                              ))}
+                            </div>
+                            <div style={{ fontSize: '12px', color: '#888', marginTop: '8px', fontStyle: 'italic' }}>
+                              * Cada tipo terá aproximadamente {Math.floor(capacidade / tiposDesteSetor.length)} ingressos
+                            </div>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
               
               <p style={{ fontSize: '13px', color: '#666', marginTop: '10px', fontStyle: 'italic' }}>
-                💡 Use o botão "Adicionar Ingressos" após salvar para adicionar/editar ingressos
+                💡 As capacidades dos setores serão mantidas. Use "Adicionar Ingressos" após salvar para gerenciar individualmente.
               </p>
             </div>
 
