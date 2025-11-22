@@ -554,8 +554,8 @@ export default function EventoDetalhesPage() {
   ➕ Adicionar Mais Ingressos
 </Link>
             
-            <button
-              onClick={() => setMostrarModalSessao(true)}
+            <Link 
+              href={`/produtor/evento/${eventoId}/nova-sessao`}
               style={{
                 flex: 1,
                 backgroundColor: '#9b59b6',
@@ -566,11 +566,13 @@ export default function EventoDetalhesPage() {
                 fontWeight: 'bold',
                 fontSize: '16px',
                 cursor: 'pointer',
-                transition: 'all 0.3s'
+                textDecoration: 'none',
+                display: 'block',
+                textAlign: 'center'
               }}
             >
-              🎬 Abrir Nova Sessão
-            </button>
+              🎬 Gerenciar Sessões
+            </Link>
           </div>
         )}
 
