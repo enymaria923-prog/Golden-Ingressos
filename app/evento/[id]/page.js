@@ -710,7 +710,7 @@ export default function EventoPage() {
                               </div>
 
                               {
-                                {ingressosDisponiveis > 0 ? (
+{ingressosDisponiveis > 0 ? (
                                 <Link href={`/checkout?evento_id=${evento.id}&ingresso_id=${ingresso.id}${cupomAplicado ? `&cupom_id=${cupomAplicado.id}` : ''}`}>
                                   <button style={{
                                     backgroundColor: '#f1c40f',
@@ -740,6 +740,7 @@ export default function EventoPage() {
                                   Esgotado
                                 </button>
                               )}
+                            </div>
                             </div>
                           );
                         })}
