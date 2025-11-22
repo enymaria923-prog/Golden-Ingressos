@@ -533,23 +533,26 @@ export default function EventoDetalhesPage() {
             gap: '15px', 
             marginBottom: '25px' 
           }}>
-            <button
-              onClick={() => setMostrarModalIngressos(true)}
-              style={{
-                flex: 1,
-                backgroundColor: '#f1c40f',
-                color: 'black',
-                padding: '15px',
-                border: 'none',
-                borderRadius: '8px',
-                fontWeight: 'bold',
-                fontSize: '16px',
-                cursor: 'pointer',
-                transition: 'all 0.3s'
-              }}
-            >
-              ➕ Adicionar Mais Ingressos
-            </button>
+           
+<Link 
+  href={`/produtor/evento/${eventoId}/adicionar-ingressos`}
+  style={{
+    flex: 1,
+    backgroundColor: '#f1c40f',
+    color: 'black',
+    padding: '15px',
+    border: 'none',
+    borderRadius: '8px',
+    fontWeight: 'bold',
+    fontSize: '16px',
+    cursor: 'pointer',
+    textDecoration: 'none',
+    display: 'block',
+    textAlign: 'center'
+  }}
+>
+  ➕ Adicionar Mais Ingressos
+</Link>
             
             <button
               onClick={() => setMostrarModalSessao(true)}
