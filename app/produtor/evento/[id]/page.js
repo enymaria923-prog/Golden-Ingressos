@@ -78,9 +78,31 @@ export default function EventoDetalhesPage() {
         setoresPorSessaoTemp[sessao.id] = [];
       });
 
-      // Agrupar ingressos por sessão através do setor
+      // Criar um mapa de setores por sessão primeiro
+      const setoresPorSessaoMap = {};
+      setoresData?.forEach(setor => {
+        if (!setor.sessao_id) return;
+        
+        if (!setoresPorSessaoMap[setor.sessao_id]) {
+          setoresPorSessaoMap[setor.sessao_id] = [];
+        }
+        setoresPorSessaoMap[setor.sessao_id].push(setor);
+      });
+
+      // Para cada sessão, inicializar seus setores
+      Object.keys(setoresPorSessaoMap).forEach(sessaoId => {
+        setoresPorSessaoTemp[sessaoId] = setoresPorSessaoMap[sessaoId].map(setor => ({
+          nome: setor.nome,
+          capacidadeDefinida: setor.capacidade_definida || null,
+          capacidadeCalculada: setor.capacidade_calculada || null,
+          lotes: [],
+          tiposSemLote: []
+        }));
+      });
+
+      // Agora processar os ingressos
       ingressosData?.forEach(ingresso => {
-        // Encontrar o setor deste ingresso
+        // Encontrar o setor deste ingresso pelo nome
         const setorDoIngresso = setoresData?.find(s => s.nome === ingresso.setor);
         
         if (!setorDoIngresso || !setorDoIngresso.sessao_id) {
@@ -90,27 +112,20 @@ export default function EventoDetalhesPage() {
 
         const sessaoId = setorDoIngresso.sessao_id;
 
-        // Inicializar array para a sessão se não existir
+        // Verificar se a sessão existe
         if (!setoresPorSessaoTemp[sessaoId]) {
-          setoresPorSessaoTemp[sessaoId] = [];
+          console.log('Sessão não encontrada:', sessaoId);
+          return;
         }
 
-        // Encontrar ou criar o setor no array da sessão
-        let setorIndex = setoresPorSessaoTemp[sessaoId].findIndex(s => s.nome === ingresso.setor);
+        // Encontrar o setor correto dentro da sessão
+        const setor = setoresPorSessaoTemp[sessaoId].find(s => s.nome === ingresso.setor);
         
-        if (setorIndex === -1) {
-          // Criar novo setor
-          setoresPorSessaoTemp[sessaoId].push({
-            nome: ingresso.setor,
-            capacidadeDefinida: setorDoIngresso?.capacidade_definida || null,
-            capacidadeCalculada: setorDoIngresso?.capacidade_calculada || null,
-            lotes: [],
-            tiposSemLote: []
-          });
-          setorIndex = setoresPorSessaoTemp[sessaoId].length - 1;
+        if (!setor) {
+          console.log('Setor não encontrado na sessão:', ingresso.setor, sessaoId);
+          return;
         }
 
-        const setor = setoresPorSessaoTemp[sessaoId][setorIndex];
         const quantidade = parseInt(ingresso.quantidade) || 0;
         const vendidos = parseInt(ingresso.vendidos) || 0;
         const disponiveis = quantidade > 0 ? (quantidade - vendidos) : 0;
