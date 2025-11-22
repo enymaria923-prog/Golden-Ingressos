@@ -16,18 +16,15 @@ export default function GerenciarSessoesPage() {
   const [loading, setLoading] = useState(true);
   const [salvando, setSalvando] = useState(false);
   
-  // Estados para modais
   const [mostrarModalCriar, setMostrarModalCriar] = useState(false);
   const [mostrarModalEditar, setMostrarModalEditar] = useState(false);
   const [sessaoEditando, setSessaoEditando] = useState(null);
   
-  // Estados para formulários
   const [novaData, setNovaData] = useState('');
   const [novaHora, setNovaHora] = useState('');
   const [editarData, setEditarData] = useState('');
   const [editarHora, setEditarHora] = useState('');
 
-  // Estados para gerenciar ingressos de uma sessão específica
   const [sessaoExpandida, setSessaoExpandida] = useState(null);
   const [dadosSessao, setDadosSessao] = useState({});
 
@@ -49,50 +46,115 @@ export default function GerenciarSessoesPage() {
       if (eventoError) throw eventoError;
       setEvento(eventoData);
 
-      // Buscar todas as sessões
+      // Buscar sessões
       const { data: sessoesData, error: sessoesError } = await supabase
         .from('sessoes')
         .select('*')
         .eq('evento_id', eventoId)
         .order('numero', { ascending: true });
 
-      if (sessoesError) throw sessoesError;
-      setSessoes(sessoesData || []);
+      if (sessoesError && sessoesError.code !== 'PGRST116') {
+        throw sessoesError;
+      }
 
-      // Encontrar sessão original
-      const original = sessoesData?.find(s => s.is_original) || sessoesData?.[0];
+      // Se não existem sessões, criar a sessão original automaticamente
+      if (!sessoesData || sessoesData.length === 0) {
+        console.log('⚠️ Nenhuma sessão encontrada. Criando sessão original...');
+        await criarSessaoOriginalAutomatica(eventoData);
+        return; // Recarrega após criar
+      }
+
+      setSessoes(sessoesData);
+      const original = sessoesData.find(s => s.is_original) || sessoesData[0];
       setSessaoOriginal(original);
 
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
-      alert('Erro ao carregar dados do evento');
-      router.push(`/produtor/evento/${eventoId}`);
+      alert('Erro ao carregar dados do evento: ' + error.message);
     } finally {
+      setLoading(false);
+    }
+  };
+
+  // NOVA FUNÇÃO: Cria sessão original automaticamente
+  const criarSessaoOriginalAutomatica = async (eventoData) => {
+    try {
+      console.log('🔧 Criando sessão original para evento:', eventoData.nome);
+
+      // Criar sessão original
+      const { data: novaSessao, error: sessaoError } = await supabase
+        .from('sessoes')
+        .insert({
+          evento_id: eventoData.id,
+          data: eventoData.data,
+          hora: eventoData.hora,
+          numero: 1,
+          is_original: true
+        })
+        .select()
+        .single();
+
+      if (sessaoError) throw sessaoError;
+
+      console.log('✅ Sessão original criada:', novaSessao.id);
+
+      // Vincular setores existentes à sessão
+      await supabase
+        .from('setores')
+        .update({ sessao_id: novaSessao.id })
+        .eq('eventos_id', eventoData.id)
+        .is('sessao_id', null);
+
+      // Vincular ingressos existentes à sessão
+      await supabase
+        .from('ingressos')
+        .update({ sessao_id: novaSessao.id })
+        .eq('evento_id', eventoData.id)
+        .is('sessao_id', null);
+
+      // Vincular lotes existentes à sessão
+      await supabase
+        .from('lotes')
+        .update({ sessao_id: novaSessao.id })
+        .eq('evento_id', eventoData.id)
+        .is('sessao_id', null);
+
+      // Vincular cupons existentes à sessão
+      await supabase
+        .from('cupons')
+        .update({ sessao_id: novaSessao.id })
+        .eq('evento_id', eventoData.id)
+        .is('sessao_id', null);
+
+      console.log('✅ Dados vinculados à sessão original');
+
+      // Recarregar dados
+      await carregarDados();
+
+    } catch (error) {
+      console.error('Erro ao criar sessão original:', error);
+      alert('Erro ao criar sessão original: ' + error.message);
       setLoading(false);
     }
   };
 
   const carregarDadosSessao = async (sessaoId) => {
     try {
-      // Buscar setores
       const { data: setores } = await supabase
         .from('setores')
         .select('*')
         .eq('sessao_id', sessaoId);
 
-      // Buscar ingressos
       const { data: ingressos } = await supabase
         .from('ingressos')
         .select('*')
         .eq('sessao_id', sessaoId);
 
-      // Buscar lotes
       const { data: lotes } = await supabase
         .from('lotes')
         .select('*')
         .eq('sessao_id', sessaoId);
 
-      // Buscar cupons
       const { data: cupons } = await supabase
         .from('cupons')
         .select('*')
@@ -150,16 +212,31 @@ export default function GerenciarSessoesPage() {
         .select('*')
         .eq('sessao_id', sessaoOrigemId);
 
-      if (lotes && lotes.length > 0) {
-        const lotesClonados = lotes.map(l => ({
-          evento_id: l.evento_id,
-          sessao_id: sessaoDestinoId,
-          nome: l.nome,
-          data_inicio: l.data_inicio,
-          data_fim: l.data_fim
-        }));
+      const lotesMap = new Map(); // Mapear IDs antigos -> novos
 
-        await supabase.from('lotes').insert(lotesClonados);
+      if (lotes && lotes.length > 0) {
+        for (const lote of lotes) {
+          const { data: novoLote } = await supabase
+            .from('lotes')
+            .insert({
+              evento_id: lote.evento_id,
+              sessao_id: sessaoDestinoId,
+              setor: lote.setor,
+              nome: lote.nome,
+              quantidade_total: lote.quantidade_total,
+              quantidade_vendida: 0,
+              data_inicio: lote.data_inicio,
+              data_fim: lote.data_fim,
+              ativo: lote.ativo,
+              user_id: lote.user_id
+            })
+            .select()
+            .single();
+
+          if (novoLote) {
+            lotesMap.set(lote.id, novoLote.id);
+          }
+        }
       }
 
       // Clonar ingressos
@@ -176,8 +253,11 @@ export default function GerenciarSessoesPage() {
           tipo: i.tipo,
           valor: i.valor,
           quantidade: i.quantidade,
-          vendidos: 0, // Começa zerado
-          lote_id: i.lote_id
+          vendidos: 0,
+          lote_id: i.lote_id ? lotesMap.get(i.lote_id) : null,
+          status_ingresso: 'disponivel',
+          user_id: i.user_id,
+          codigo: Date.now() + Math.random()
         }));
 
         await supabase.from('ingressos').insert(ingressosClonados);
@@ -193,12 +273,12 @@ export default function GerenciarSessoesPage() {
         const cuponsClonados = cupons.map(c => ({
           evento_id: c.evento_id,
           sessao_id: sessaoDestinoId,
-          codigo: `${c.codigo}_S${sessoes.length + 1}`, // Adiciona sufixo para evitar duplicação
+          codigo: `${c.codigo}_S${sessoes.length + 1}`,
           descricao: c.descricao,
           tipo_desconto: c.tipo_desconto,
           valor_desconto: c.valor_desconto,
           quantidade_total: c.quantidade_total,
-          quantidade_usada: 0, // Começa zerado
+          quantidade_usada: 0,
           ativo: c.ativo,
           data_validade_inicio: c.data_validade_inicio,
           data_validade_fim: c.data_validade_fim
@@ -220,7 +300,7 @@ export default function GerenciarSessoesPage() {
     }
 
     if (!sessaoOriginal) {
-      alert('❌ Sessão original não encontrada');
+      alert('❌ Erro: Sessão original não encontrada. Recarregue a página.');
       return;
     }
 
@@ -414,7 +494,8 @@ export default function GerenciarSessoesPage() {
   if (loading) {
     return (
       <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px', textAlign: 'center', paddingTop: '100px' }}>
-        <h2>Carregando...</h2>
+        <h2>🔄 Carregando...</h2>
+        <p style={{ color: '#666' }}>Preparando sistema de sessões...</p>
       </div>
     );
   }
@@ -440,7 +521,6 @@ export default function GerenciarSessoesPage() {
 
       <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
 
-        {/* Card informativo */}
         <div style={{ 
           backgroundColor: '#e8f5e9',
           border: '2px solid #27ae60',
@@ -460,7 +540,6 @@ export default function GerenciarSessoesPage() {
           </ul>
         </div>
 
-        {/* Botão criar nova sessão */}
         <button
           onClick={() => setMostrarModalCriar(true)}
           disabled={salvando}
@@ -482,7 +561,6 @@ export default function GerenciarSessoesPage() {
           ➕ Criar Nova Sessão
         </button>
 
-        {/* Lista de sessões */}
         {sessoes.length === 0 ? (
           <div style={{ 
             backgroundColor: 'white',
@@ -493,7 +571,7 @@ export default function GerenciarSessoesPage() {
             borderRadius: '12px'
           }}>
             <p style={{ fontSize: '48px', margin: '0 0 15px 0' }}>🎬</p>
-            <p style={{ margin: 0, fontSize: '16px' }}>Nenhuma sessão cadastrada ainda</p>
+            <p style={{ margin: 0, fontSize: '16px' }}>Criando sessão original...</p>
           </div>
         ) : (
           <div style={{ display: 'grid', gap: '20px' }}>
@@ -510,7 +588,6 @@ export default function GerenciarSessoesPage() {
                   boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
                   border: sessao.is_original ? '3px solid #f1c40f' : '2px solid #e0e0e0'
                 }}>
-                  {/* Cabeçalho da sessão */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                     <div style={{ flex: 1 }}>
                       <h2 style={{ color: '#5d34a4', margin: '0 0 5px 0' }}>
@@ -599,14 +676,12 @@ export default function GerenciarSessoesPage() {
                     </div>
                   </div>
 
-                  {/* Detalhes expandidos da sessão */}
                   {expandida && dados && (
                     <div style={{ 
                       marginTop: '20px',
                       paddingTop: '20px',
                       borderTop: '2px solid #e0e0e0'
                     }}>
-                      {/* Setores e Ingressos */}
                       <div style={{ marginBottom: '25px' }}>
                         <h3 style={{ color: '#5d34a4', marginBottom: '15px' }}>🎫 Ingressos</h3>
                         
@@ -675,7 +750,6 @@ export default function GerenciarSessoesPage() {
                         )}
                       </div>
 
-                      {/* Cupons */}
                       {dados.cupons.length > 0 && (
                         <div>
                           <h3 style={{ color: '#5d34a4', marginBottom: '15px' }}>🎟️ Cupons de Desconto</h3>
@@ -748,7 +822,6 @@ export default function GerenciarSessoesPage() {
                         </div>
                       )}
 
-                      {/* Botões de ação */}
                       <div style={{ 
                         marginTop: '20px',
                         paddingTop: '20px',
@@ -771,7 +844,7 @@ export default function GerenciarSessoesPage() {
                           }}
                         >
                           ➕ Adicionar Ingressos
-</Link>
+                        </Link>
                         
                         <button
                           onClick={() => alert('Funcionalidade em desenvolvimento')}
