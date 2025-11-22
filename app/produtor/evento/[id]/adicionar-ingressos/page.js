@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import { createClient } from '../../../../../utils/supabase/client';
 import Link from 'next/link';
 
@@ -8,22 +8,28 @@ export default function AdicionarIngressosPage() {
   const supabase = createClient();
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const eventoId = params.id;
+  
+  // NOVO: Estados para sessões
+  const [sessoes, setSessoes] = useState([]);
+  const [sessaoSelecionada, setSessaoSelecionada] = useState(null);
+  const [mostrarSeletorSessao, setMostrarSeletorSessao] = useState(true);
   
   const [evento, setEvento] = useState(null);
   const [setoresDetalhados, setSetoresDetalhados] = useState([]);
   const [loading, setLoading] = useState(true);
   const [salvando, setSalvando] = useState(false);
   
-  // Estados para armazenar as quantidades a adicionar
   const [quantidadesAdicionar, setQuantidadesAdicionar] = useState({});
   const [quantidadesSetorAdicionar, setQuantidadesSetorAdicionar] = useState({});
 
   useEffect(() => {
-    carregarEvento();
+    carregarSessoes();
   }, [eventoId]);
 
-  const carregarEvento = async () => {
+  // NOVO: Carregar sessões primeiro
+  const carregarSessoes = async () => {
     try {
       const { data: eventoData, error: eventoError } = await supabase
         .from('eventos')
@@ -34,23 +40,97 @@ export default function AdicionarIngressosPage() {
       if (eventoError) throw eventoError;
       setEvento(eventoData);
 
-      // Buscar setores
+      // Buscar sessões do evento
+      const { data: sessoesData, error: sessoesError } = await supabase
+        .from('sessoes')
+        .select('*')
+        .eq('evento_id', eventoId)
+        .order('numero', { ascending: true });
+
+      if (sessoesError && sessoesError.code !== 'PGRST116') {
+        throw sessoesError;
+      }
+
+      // Se não tem sessões, criar automaticamente a sessão original
+      if (!sessoesData || sessoesData.length === 0) {
+        console.log('Criando sessão original automaticamente...');
+        const { data: novaSessao, error: criarError } = await supabase
+          .from('sessoes')
+          .insert({
+            evento_id: eventoId,
+            data: eventoData.data,
+            hora: eventoData.hora,
+            numero: 1,
+            is_original: true
+          })
+          .select()
+          .single();
+
+        if (criarError) throw criarError;
+
+        // Vincular dados existentes à sessão
+        await supabase.from('setores').update({ sessao_id: novaSessao.id }).eq('eventos_id', eventoId).is('sessao_id', null);
+        await supabase.from('ingressos').update({ sessao_id: novaSessao.id }).eq('evento_id', eventoId).is('sessao_id', null);
+        await supabase.from('lotes').update({ sessao_id: novaSessao.id }).eq('evento_id', eventoId).is('sessao_id', null);
+
+        setSessoes([novaSessao]);
+        setSessaoSelecionada(novaSessao.id);
+        setMostrarSeletorSessao(false);
+        await carregarEvento(novaSessao.id);
+      } else {
+        setSessoes(sessoesData);
+
+        // Verificar se veio sessão por URL (?sessao=X)
+        const sessaoUrl = searchParams.get('sessao');
+        if (sessaoUrl && sessoesData.find(s => s.id === sessaoUrl)) {
+          setSessaoSelecionada(sessaoUrl);
+          setMostrarSeletorSessao(false);
+          await carregarEvento(sessaoUrl);
+        } else if (sessoesData.length === 1) {
+          // Se só tem 1 sessão, seleciona automaticamente
+          setSessaoSelecionada(sessoesData[0].id);
+          setMostrarSeletorSessao(false);
+          await carregarEvento(sessoesData[0].id);
+        } else {
+          // Múltiplas sessões: mostrar seletor
+          setMostrarSeletorSessao(true);
+          setLoading(false);
+        }
+      }
+
+    } catch (error) {
+      console.error('Erro ao carregar sessões:', error);
+      alert('Erro ao carregar dados do evento');
+      router.push(`/produtor/evento/${eventoId}`);
+    }
+  };
+
+  const selecionarSessao = async (sessaoId) => {
+    setSessaoSelecionada(sessaoId);
+    setMostrarSeletorSessao(false);
+    setLoading(true);
+    await carregarEvento(sessaoId);
+  };
+
+  const carregarEvento = async (sessaoId) => {
+    try {
+      // Buscar setores DA SESSÃO SELECIONADA
       const { data: setoresData } = await supabase
         .from('setores')
         .select('*')
-        .eq('eventos_id', eventoId);
+        .eq('sessao_id', sessaoId);
 
-      // Buscar ingressos
+      // Buscar ingressos DA SESSÃO SELECIONADA
       const { data: ingressosData } = await supabase
         .from('ingressos')
         .select('*')
-        .eq('evento_id', eventoId);
+        .eq('sessao_id', sessaoId);
 
-      // Buscar lotes
+      // Buscar lotes DA SESSÃO SELECIONADA
       const { data: lotesData } = await supabase
         .from('lotes')
         .select('*')
-        .eq('evento_id', eventoId);
+        .eq('sessao_id', sessaoId);
 
       const setoresMap = new Map();
 
@@ -130,7 +210,6 @@ export default function AdicionarIngressosPage() {
     }));
   };
 
-  // Calcular total de ingressos em um setor
   const calcularTotalSetor = (setor) => {
     let total = 0;
     setor.lotes.forEach(lote => {
@@ -155,7 +234,6 @@ export default function AdicionarIngressosPage() {
     setSalvando(true);
 
     try {
-      // Atualizar capacidade_definida do setor
       const { data: setorAtual, error: setorFetchError } = await supabase
         .from('setores')
         .select('capacidade_definida')
@@ -173,7 +251,6 @@ export default function AdicionarIngressosPage() {
 
       if (updateSetorError) throw updateSetorError;
 
-      // Atualizar total_ingressos do evento
       const { data: eventoAtual } = await supabase
         .from('eventos')
         .select('total_ingressos')
@@ -190,9 +267,8 @@ export default function AdicionarIngressosPage() {
 
       alert(`✅ ${quantidade} ingresso(s) adicionado(s) ao setor ${setor.nome}!`);
       
-      // Limpar input e recarregar
       setQuantidadesSetorAdicionar(prev => ({ ...prev, [setor.nome]: 0 }));
-      carregarEvento();
+      carregarEvento(sessaoSelecionada);
 
     } catch (error) {
       console.error('Erro ao adicionar ingressos no setor:', error);
@@ -210,7 +286,6 @@ export default function AdicionarIngressosPage() {
       return;
     }
 
-    // Se o setor é controlado por capacidade definida, validar
     if (setor.capacidadeDefinida && setor.capacidadeDefinida > 0) {
       const totalAtualSetor = calcularTotalSetor(setor);
       const novoTotal = totalAtualSetor + quantidade;
@@ -224,7 +299,6 @@ export default function AdicionarIngressosPage() {
     setSalvando(true);
 
     try {
-      // Buscar ingresso atual
       const { data: ingressoAtual, error: fetchError } = await supabase
         .from('ingressos')
         .select('quantidade')
@@ -235,7 +309,6 @@ export default function AdicionarIngressosPage() {
 
       const novaQuantidade = (parseInt(ingressoAtual.quantidade) || 0) + quantidade;
 
-      // Atualizar quantidade do ingresso
       const { error: updateError } = await supabase
         .from('ingressos')
         .update({ quantidade: novaQuantidade })
@@ -243,7 +316,6 @@ export default function AdicionarIngressosPage() {
 
       if (updateError) throw updateError;
 
-      // Atualizar total_ingressos do evento SOMENTE se NÃO for controlado por setor
       if (!setor.capacidadeDefinida || setor.capacidadeDefinida === 0) {
         const { data: eventoAtual } = await supabase
           .from('eventos')
@@ -262,9 +334,8 @@ export default function AdicionarIngressosPage() {
 
       alert(`✅ ${quantidade} ingresso(s) adicionado(s) com sucesso!`);
       
-      // Limpar input e recarregar
       setQuantidadesAdicionar(prev => ({ ...prev, [ingressoId]: 0 }));
-      carregarEvento();
+      carregarEvento(sessaoSelecionada);
 
     } catch (error) {
       console.error('Erro ao adicionar ingressos:', error);
@@ -274,10 +345,77 @@ export default function AdicionarIngressosPage() {
     }
   };
 
+  // TELA DE SELEÇÃO DE SESSÃO
+  if (mostrarSeletorSessao && sessoes.length > 1) {
+    return (
+      <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px' }}>
+        <header style={{ backgroundColor: '#9b59b6', color: 'white', padding: '20px', borderRadius: '8px', marginBottom: '20px' }}>
+          <Link href={`/produtor/evento/${eventoId}`} style={{ color: 'white', textDecoration: 'none', float: 'left' }}>
+            &larr; Voltar
+          </Link>
+          <div style={{ textAlign: 'center' }}>
+            <h1 style={{ margin: '0 0 10px 0' }}>🎬 Selecione a Sessão</h1>
+            <p style={{ margin: 0, opacity: 0.9 }}>{evento?.nome}</p>
+          </div>
+        </header>
+
+        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+          <div style={{ backgroundColor: '#fff3cd', padding: '20px', borderRadius: '8px', marginBottom: '25px', border: '2px solid #ffc107' }}>
+            <h3 style={{ color: '#856404', marginTop: 0, marginBottom: '10px' }}>💡 Escolha a Sessão</h3>
+            <p style={{ color: '#856404', margin: 0, fontSize: '14px' }}>
+              Este evento tem múltiplas sessões. Selecione qual sessão você deseja adicionar ingressos.
+            </p>
+          </div>
+
+          <div style={{ display: 'grid', gap: '15px' }}>
+            {sessoes.map((sessao) => (
+              <button
+                key={sessao.id}
+                onClick={() => selecionarSessao(sessao.id)}
+                style={{
+                  backgroundColor: 'white',
+                  padding: '25px',
+                  borderRadius: '12px',
+                  border: sessao.is_original ? '3px solid #f1c40f' : '2px solid #e0e0e0',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  transition: 'all 0.3s',
+                  boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <h2 style={{ color: '#5d34a4', margin: '0 0 10px 0', fontSize: '22px' }}>
+                      🎬 Sessão {sessao.numero}
+                      {sessao.is_original && (
+                        <span style={{ fontSize: '12px', marginLeft: '10px', padding: '4px 10px', backgroundColor: '#fff3cd', color: '#856404', borderRadius: '12px', fontWeight: 'normal' }}>
+                          ⭐ Original
+                        </span>
+                      )}
+                    </h2>
+                    <div style={{ fontSize: '16px', color: '#666' }}>
+                      📅 {new Date(sessao.data).toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                    </div>
+                    <div style={{ fontSize: '16px', color: '#666', marginTop: '5px' }}>
+                      🕐 {sessao.hora}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '40px' }}>➡️</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px', textAlign: 'center', paddingTop: '100px' }}>
-        <h2>Carregando...</h2>
+        <h2>🔄 Carregando...</h2>
       </div>
     );
   }
@@ -290,6 +428,8 @@ export default function AdicionarIngressosPage() {
       </div>
     );
   }
+
+  const sessaoAtual = sessoes.find(s => s.id === sessaoSelecionada);
 
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px' }}>
@@ -307,6 +447,27 @@ export default function AdicionarIngressosPage() {
         <div style={{ textAlign: 'center' }}>
           <h1 style={{ margin: '0 0 10px 0' }}>➕ Adicionar Mais Ingressos</h1>
           <p style={{ margin: 0, opacity: 0.9 }}>{evento.nome}</p>
+          {sessoes.length > 1 && sessaoAtual && (
+            <div style={{ marginTop: '10px', padding: '8px 15px', backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: '8px', display: 'inline-block' }}>
+              🎬 Sessão {sessaoAtual.numero} • 📅 {new Date(sessaoAtual.data).toLocaleDateString('pt-BR')} • 🕐 {sessaoAtual.hora}
+              <button
+                onClick={() => setMostrarSeletorSessao(true)}
+                style={{
+                  marginLeft: '15px',
+                  padding: '5px 12px',
+                  backgroundColor: '#9b59b6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  fontWeight: 'bold'
+                }}
+              >
+                🔄 Trocar Sessão
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
@@ -322,7 +483,7 @@ export default function AdicionarIngressosPage() {
             borderRadius: '12px'
           }}>
             <p style={{ fontSize: '48px', margin: '0 0 15px 0' }}>🎫</p>
-            <p style={{ margin: 0, fontSize: '16px' }}>Nenhum ingresso cadastrado ainda</p>
+            <p style={{ margin: 0, fontSize: '16px' }}>Nenhum ingresso cadastrado ainda nesta sessão</p>
           </div>
         ) : (
           setoresDetalhados.map((setor, setorIndex) => {
@@ -359,7 +520,6 @@ export default function AdicionarIngressosPage() {
                   )}
                 </h2>
 
-                {/* ADICIONAR POR SETOR - só aparece se for controlado por setor */}
                 {controladoPorSetor && (
                   <div style={{ 
                     backgroundColor: '#e3f2fd',
@@ -419,7 +579,6 @@ export default function AdicionarIngressosPage() {
                   </div>
                 )}
 
-                {/* Lotes */}
                 {setor.lotes.map((lote, loteIndex) => (
                   <div key={loteIndex} style={{ 
                     backgroundColor: '#f8f9fa',
@@ -492,9 +651,71 @@ export default function AdicionarIngressosPage() {
                       ))}
                     </div>
                   </div>
+                )}
+
+              </div>
+            );
+          })
+        )}
+
+      </div>
+    </div>
+  );
+}
+                          border: '1px solid #d0d0d0'
+                        }}>
+                          <div style={{ fontWeight: 'bold', marginBottom: '10px', fontSize: '16px' }}>
+                            {tipo.nome}
+                          </div>
+                          <div style={{ fontSize: '14px', color: '#666', marginBottom: '15px' }}>
+                            <div>📊 Atual: <strong>{tipo.quantidade}</strong></div>
+                            <div>✅ Vendidos: <strong style={{ color: '#27ae60' }}>{tipo.vendidos}</strong></div>
+                            <div>🟡 Disponíveis: <strong style={{ color: '#e67e22' }}>{tipo.disponiveis}</strong></div>
+                          </div>
+                          
+                          <div style={{ 
+                            display: 'flex', 
+                            gap: '10px',
+                            alignItems: 'center'
+                          }}>
+                            <input
+                              type="number"
+                              min="0"
+                              placeholder="Quantidade"
+                              value={quantidadesAdicionar[tipo.id] || ''}
+                              onChange={(e) => handleQuantidadeChange(tipo.id, e.target.value)}
+                              style={{
+                                flex: 1,
+                                padding: '10px',
+                                border: '2px solid #ddd',
+                                borderRadius: '6px',
+                                fontSize: '14px'
+                              }}
+                              disabled={salvando}
+                            />
+                            <button
+                              onClick={() => adicionarPorTipo(tipo.id, setor)}
+                              disabled={salvando || !quantidadesAdicionar[tipo.id]}
+                              style={{
+                                padding: '10px 20px',
+                                backgroundColor: salvando ? '#95a5a6' : '#27ae60',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                fontWeight: 'bold',
+                                cursor: salvando ? 'not-allowed' : 'pointer',
+                                fontSize: '14px'
+                              }}
+                            >
+                              {salvando ? '⏳' : '➕'}
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 ))}
 
-                {/* Tipos sem lote */}
                 {setor.tiposSemLote.length > 0 && (
                   <div style={{ 
                     backgroundColor: '#f8f9fa',
