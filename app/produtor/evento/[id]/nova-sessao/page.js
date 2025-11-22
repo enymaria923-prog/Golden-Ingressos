@@ -1107,7 +1107,7 @@ export default function GerenciarSessoesPage() {
 
     </div>
   );
-} }}
+} 
                   disabled={salvando}
                 />
               </div>
