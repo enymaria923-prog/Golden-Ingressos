@@ -106,7 +106,6 @@ export default function EventoPage() {
         .select('*')
         .eq('evento_id', id)
         .eq('sessao_id', sessaoId)
-        .eq('status_ingresso', 'disponivel')
         .order('setor', { ascending: true });
 
       setIngressos(ingressosData || []);
@@ -208,7 +207,7 @@ export default function EventoPage() {
     );
   }
 
-  // Buscar setores e lotes
+  // Buscar setores e lotes - CORRIGIDO
   const setoresOrganizados = {};
   const lotesMap = new Map();
 
@@ -223,8 +222,11 @@ export default function EventoPage() {
       };
     }
 
-    setoresOrganizados[setorNome].totalDisponibilizado += ingresso.quantidade;
-    setoresOrganizados[setorNome].totalVendido += ingresso.vendidos;
+    const quantidade = parseInt(ingresso.quantidade) || 0;
+    const vendidos = parseInt(ingresso.vendidos) || 0;
+
+    setoresOrganizados[setorNome].totalDisponibilizado += quantidade;
+    setoresOrganizados[setorNome].totalVendido += vendidos;
 
     if (ingresso.lote_id) {
       const loteKey = `${ingresso.setor}-${ingresso.lote_id}`;
@@ -237,7 +239,10 @@ export default function EventoPage() {
         });
       }
       
-      lotesMap.get(loteKey).ingressos.push(ingresso);
+      lotesMap.get(loteKey).ingressos.push({
+        ...ingresso,
+        disponiveis: quantidade - vendidos
+      });
 
       const loteNome = lotesMap.get(loteKey).nome;
       if (!setoresOrganizados[setorNome].lotes[loteNome]) {
@@ -245,14 +250,20 @@ export default function EventoPage() {
           ingressos: []
         };
       }
-      setoresOrganizados[setorNome].lotes[loteNome].ingressos.push(ingresso);
+      setoresOrganizados[setorNome].lotes[loteNome].ingressos.push({
+        ...ingresso,
+        disponiveis: quantidade - vendidos
+      });
     } else {
       if (!setoresOrganizados[setorNome].lotes['direto']) {
         setoresOrganizados[setorNome].lotes['direto'] = {
           ingressos: []
         };
       }
-      setoresOrganizados[setorNome].lotes['direto'].ingressos.push(ingresso);
+      setoresOrganizados[setorNome].lotes['direto'].ingressos.push({
+        ...ingresso,
+        disponiveis: quantidade - vendidos
+      });
     }
   });
 
@@ -654,7 +665,7 @@ export default function EventoPage() {
                         )}
 
                         {loteData.ingressos.map((ingresso) => {
-                          const ingressosDisponiveis = ingresso.quantidade - ingresso.vendidos;
+                          const ingressosDisponiveis = ingresso.disponiveis;
                           const valorBase = parseFloat(obterPrecoIngresso(ingresso.id, ingresso.valor));
                           const valorOriginal = parseFloat(ingresso.valor);
                           const temDesconto = valorBase < valorOriginal;
@@ -698,7 +709,8 @@ export default function EventoPage() {
                                 </div>
                               </div>
 
-                              {ingressosDisponiveis > 0 ? (
+                              {
+                                {ingressosDisponiveis > 0 ? (
                                 <Link href={`/checkout?evento_id=${evento.id}&ingresso_id=${ingresso.id}${cupomAplicado ? `&cupom_id=${cupomAplicado.id}` : ''}`}>
                                   <button style={{
                                     backgroundColor: '#f1c40f',
