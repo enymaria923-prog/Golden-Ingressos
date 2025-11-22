@@ -11,12 +11,11 @@ export default function EventoDetalhesPage() {
   const eventoId = params.id;
   
   const [evento, setEvento] = useState(null);
-  const [setoresDetalhados, setSetoresDetalhados] = useState([]);
+  const [sessoes, setSessoes] = useState([]);
+  const [setoresPorSessao, setSetoresPorSessao] = useState({});
   const [produtos, setProdutos] = useState([]);
   const [cupons, setCupons] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [mostrarModalSessao, setMostrarModalSessao] = useState(false);
-  const [mostrarModalIngressos, setMostrarModalIngressos] = useState(false);
 
   useEffect(() => {
     carregarEvento();
@@ -33,29 +32,106 @@ export default function EventoDetalhesPage() {
       if (eventoError) throw eventoError;
       setEvento(eventoData);
 
-      // BUSCAR SETORES COM CAPACIDADE_DEFINIDA
-      const { data: setoresData, error: setoresError } = await supabase
-        .from('setores')
+      // BUSCAR TODAS AS SESSÕES DO EVENTO
+      const { data: sessoesData, error: sessoesError } = await supabase
+        .from('sessoes')
         .select('*')
-        .eq('eventos_id', eventoId);
+        .eq('evento_id', eventoId)
+        .order('data', { ascending: true })
+        .order('hora', { ascending: true });
 
-      if (setoresError) {
-        console.error('Erro ao buscar setores:', setoresError);
+      if (sessoesError) throw sessoesError;
+      setSessoes(sessoesData || []);
+
+      // Para cada sessão, buscar setores e ingressos
+      const setoresPorSessaoTemp = {};
+
+      for (const sessao of sessoesData || []) {
+        const { data: setoresData, error: setoresError } = await supabase
+          .from('setores')
+          .select('*')
+          .eq('sessao_id', sessao.id);
+
+        if (setoresError) {
+          console.error('Erro ao buscar setores da sessão:', setoresError);
+          continue;
+        }
+
+        const { data: ingressosData, error: ingressosError } = await supabase
+          .from('ingressos')
+          .select('*')
+          .in('setor_id', setoresData?.map(s => s.id) || []);
+
+        if (ingressosError) {
+          console.error('Erro ao buscar ingressos:', ingressosError);
+        }
+
+        const { data: lotesData } = await supabase
+          .from('lotes')
+          .select('*')
+          .eq('evento_id', eventoId);
+
+        const setoresMap = new Map();
+
+        ingressosData?.forEach(ingresso => {
+          const setorInfo = setoresData?.find(s => s.id === ingresso.setor_id);
+          const setorNome = setorInfo?.nome || 'Sem setor';
+          
+          if (!setoresMap.has(setorNome)) {
+            setoresMap.set(setorNome, {
+              nome: setorNome,
+              capacidadeDefinida: setorInfo?.capacidade_definida || null,
+              capacidadeCalculada: setorInfo?.capacidade_calculada || null,
+              lotes: new Map(),
+              tiposSemLote: []
+            });
+          }
+
+          const setor = setoresMap.get(setorNome);
+          const quantidade = parseInt(ingresso.quantidade) || 0;
+          const vendidos = parseInt(ingresso.vendidos) || 0;
+          const disponiveis = quantidade > 0 ? (quantidade - vendidos) : 0;
+          const preco = parseFloat(ingresso.valor) || 0;
+
+          const tipoObj = {
+            id: ingresso.id,
+            nome: ingresso.tipo,
+            preco: preco,
+            quantidade: quantidade,
+            vendidos: vendidos,
+            disponiveis: disponiveis,
+            bilheteria: vendidos * preco
+          };
+
+          if (ingresso.lote_id) {
+            if (!setor.lotes.has(ingresso.lote_id)) {
+              const loteInfo = lotesData?.find(l => l.id === ingresso.lote_id);
+              setor.lotes.set(ingresso.lote_id, {
+                id: ingresso.lote_id,
+                nome: loteInfo?.nome || 'Lote sem nome',
+                tipos: []
+              });
+            }
+            setor.lotes.get(ingresso.lote_id).tipos.push(tipoObj);
+          } else {
+            setor.tiposSemLote.push(tipoObj);
+          }
+        });
+
+        const setoresArray = Array.from(setoresMap.values()).map(setor => ({
+          nome: setor.nome,
+          capacidadeDefinida: setor.capacidadeDefinida,
+          capacidadeCalculada: setor.capacidadeCalculada,
+          lotes: Array.from(setor.lotes.values()),
+          tiposSemLote: setor.tiposSemLote
+        }));
+
+        setoresPorSessaoTemp[sessao.id] = setoresArray;
       }
 
-      const { data: ingressosData, error: ingressosError } = await supabase
-        .from('ingressos')
-        .select('*')
-        .eq('evento_id', eventoId);
+      setSetoresPorSessao(setoresPorSessaoTemp);
 
-      if (ingressosError) throw ingressosError;
-
-      const { data: lotesData } = await supabase
-        .from('lotes')
-        .select('*')
-        .eq('evento_id', eventoId);
-
-      // BUSCA CUPONS COM DETALHAMENTO COMPLETO
+      // BUSCAR CUPONS
       const { data: cuponsData } = await supabase
         .from('cupons')
         .select('*')
@@ -89,65 +165,7 @@ export default function EventoDetalhesPage() {
 
       setCupons(cuponsDetalhados);
 
-      const setoresMap = new Map();
-
-      ingressosData?.forEach(ingresso => {
-        const setorNome = ingresso.setor;
-        
-        if (!setoresMap.has(setorNome)) {
-          // Busca info do setor no banco
-          const setorInfo = setoresData?.find(s => s.nome === setorNome);
-          
-          setoresMap.set(setorNome, {
-            nome: setorNome,
-            capacidadeDefinida: setorInfo?.capacidade_definida || null,
-            capacidadeCalculada: setorInfo?.capacidade_calculada || null,
-            lotes: new Map(),
-            tiposSemLote: []
-          });
-        }
-
-        const setor = setoresMap.get(setorNome);
-        const quantidade = parseInt(ingresso.quantidade) || 0;
-        const vendidos = parseInt(ingresso.vendidos) || 0;
-        const disponiveis = quantidade > 0 ? (quantidade - vendidos) : 0;
-        const preco = parseFloat(ingresso.valor) || 0;
-
-        const tipoObj = {
-          id: ingresso.id,
-          nome: ingresso.tipo,
-          preco: preco,
-          quantidade: quantidade,
-          vendidos: vendidos,
-          disponiveis: disponiveis,
-          bilheteria: vendidos * preco
-        };
-
-        if (ingresso.lote_id) {
-          if (!setor.lotes.has(ingresso.lote_id)) {
-            const loteInfo = lotesData?.find(l => l.id === ingresso.lote_id);
-            setor.lotes.set(ingresso.lote_id, {
-              id: ingresso.lote_id,
-              nome: loteInfo?.nome || 'Lote sem nome',
-              tipos: []
-            });
-          }
-          setor.lotes.get(ingresso.lote_id).tipos.push(tipoObj);
-        } else {
-          setor.tiposSemLote.push(tipoObj);
-        }
-      });
-
-      const setoresArray = Array.from(setoresMap.values()).map(setor => ({
-        nome: setor.nome,
-        capacidadeDefinida: setor.capacidadeDefinida,
-        capacidadeCalculada: setor.capacidadeCalculada,
-        lotes: Array.from(setor.lotes.values()),
-        tiposSemLote: setor.tiposSemLote
-      }));
-
-      setSetoresDetalhados(setoresArray);
-
+      // BUSCAR PRODUTOS
       const { data: produtosData } = await supabase
         .from('produtos')
         .select('*')
@@ -164,12 +182,10 @@ export default function EventoDetalhesPage() {
     }
   };
 
-  // Calcula totais de um setor CORRIGIDO
   const calcularTotaisSetor = (setor) => {
     let vendidos = 0, bilheteria = 0;
     let totalCalculado = 0;
 
-    // Soma vendidos e bilheteria
     setor.lotes.forEach(lote => {
       lote.tipos.forEach(tipo => {
         vendidos += tipo.vendidos;
@@ -184,21 +200,16 @@ export default function EventoDetalhesPage() {
       totalCalculado += tipo.quantidade;
     });
 
-    // Se o setor tem capacidade definida, usa ela como total
-    // Se não tem, usa a soma dos tipos
     const total = setor.capacidadeDefinida && setor.capacidadeDefinida > 0
       ? setor.capacidadeDefinida
       : totalCalculado;
 
     const disponiveis = total - vendidos;
-    
-    // Define se o controle é por setor ou por tipo
     const controladoPorSetor = setor.capacidadeDefinida && setor.capacidadeDefinida > 0;
 
     return { vendidos, disponiveis, total, bilheteria, controladoPorSetor };
   };
 
-  // Calcula totais de um lote
   const calcularTotaisLote = (lote) => {
     let vendidos = 0, disponiveis = 0, total = 0, bilheteria = 0;
 
@@ -212,7 +223,6 @@ export default function EventoDetalhesPage() {
     return { vendidos, disponiveis, total, bilheteria };
   };
 
-  // Calcula ganho de taxas
   const calcularGanhoTaxas = (bilheteria) => {
     if (!evento) return 0;
     const taxaCliente = evento.TaxaCliente || 0;
@@ -227,13 +237,16 @@ export default function EventoDetalhesPage() {
     return bilheteria * (percentualBonus / 100);
   };
 
+  // CALCULA TOTAIS SOMANDO TODAS AS SESSÕES
   const calcularTotaisIngressos = () => {
     let totalDisponibilizado = 0, totalVendido = 0;
 
-    setoresDetalhados.forEach(setor => {
-      const totaisSetor = calcularTotaisSetor(setor);
-      totalDisponibilizado += totaisSetor.total;
-      totalVendido += totaisSetor.vendidos;
+    Object.values(setoresPorSessao).forEach(setores => {
+      setores.forEach(setor => {
+        const totaisSetor = calcularTotaisSetor(setor);
+        totalDisponibilizado += totaisSetor.total;
+        totalVendido += totaisSetor.vendidos;
+      });
     });
 
     return {
@@ -270,15 +283,17 @@ export default function EventoDetalhesPage() {
   const calcularValorTotalVendas = () => {
     let valorIngressos = 0, valorProdutos = 0;
 
-    setoresDetalhados.forEach(setor => {
-      setor.lotes.forEach(lote => {
-        lote.tipos.forEach(tipo => {
+    Object.values(setoresPorSessao).forEach(setores => {
+      setores.forEach(setor => {
+        setor.lotes.forEach(lote => {
+          lote.tipos.forEach(tipo => {
+            valorIngressos += tipo.vendidos * tipo.preco;
+          });
+        });
+
+        setor.tiposSemLote.forEach(tipo => {
           valorIngressos += tipo.vendidos * tipo.preco;
         });
-      });
-
-      setor.tiposSemLote.forEach(tipo => {
-        valorIngressos += tipo.vendidos * tipo.preco;
       });
     });
 
@@ -353,13 +368,13 @@ export default function EventoDetalhesPage() {
           <h1 style={{ margin: '0 0 10px 0' }}>{evento.nome}</h1>
           <p style={{ margin: 0, opacity: 0.9 }}>
             {eventoPassado ? '📊 Relatório de Evento Finalizado' : '🎯 Gerenciar Evento Ativo'}
+            {sessoes.length > 1 && ` • ${sessoes.length} Sessões`}
           </p>
         </div>
       </header>
 
       <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
 
-        {/* Cards de informações - mantém igual */}
         <div style={{ 
           display: 'grid', 
           gridTemplateColumns: 'repeat(2, 1fr)', 
@@ -453,7 +468,7 @@ export default function EventoDetalhesPage() {
           </div>
         </div>
 
-        {/* Cards de totais gerais - USANDO DADOS CALCULADOS */}
+        {/* Cards de totais GERAIS (soma de todas sessões) */}
         <div style={{ 
           display: 'grid', 
           gridTemplateColumns: 'repeat(4, 1fr)', 
@@ -533,26 +548,25 @@ export default function EventoDetalhesPage() {
             gap: '15px', 
             marginBottom: '25px' 
           }}>
-           
-<Link 
-  href={`/produtor/evento/${eventoId}/adicionar-ingressos`}
-  style={{
-    flex: 1,
-    backgroundColor: '#f1c40f',
-    color: 'black',
-    padding: '15px',
-    border: 'none',
-    borderRadius: '8px',
-    fontWeight: 'bold',
-    fontSize: '16px',
-    cursor: 'pointer',
-    textDecoration: 'none',
-    display: 'block',
-    textAlign: 'center'
-  }}
->
-  ➕ Adicionar Mais Ingressos
-</Link>
+            <Link 
+              href={`/produtor/evento/${eventoId}/adicionar-ingressos`}
+              style={{
+                flex: 1,
+                backgroundColor: '#f1c40f',
+                color: 'black',
+                padding: '15px',
+                border: 'none',
+                borderRadius: '8px',
+                fontWeight: 'bold',
+                fontSize: '16px',
+                cursor: 'pointer',
+                textDecoration: 'none',
+                display: 'block',
+                textAlign: 'center'
+              }}
+            >
+              ➕ Adicionar Mais Ingressos
+            </Link>
             
             <Link 
               href={`/produtor/evento/${eventoId}/nova-sessao`}
@@ -576,11 +590,11 @@ export default function EventoDetalhesPage() {
           </div>
         )}
 
-        {/* DETALHAMENTO DE INGRESSOS COM TOTAIS CORRIGIDO */}
+        {/* DETALHAMENTO POR SESSÃO */}
         <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '25px' }}>
           <h2 style={{ color: '#5d34a4', marginTop: 0, marginBottom: '20px' }}>🎫 Detalhamento de Ingressos</h2>
           
-          {setoresDetalhados.length === 0 ? (
+          {sessoes.length === 0 ? (
             <div style={{ 
               padding: '30px', 
               textAlign: 'center', 
@@ -589,234 +603,287 @@ export default function EventoDetalhesPage() {
               borderRadius: '8px'
             }}>
               <p style={{ fontSize: '48px', margin: '0 0 15px 0' }}>🎫</p>
-              <p style={{ margin: 0, fontSize: '16px' }}>Nenhum ingresso cadastrado ainda</p>
+              <p style={{ margin: 0, fontSize: '16px' }}>Nenhuma sessão cadastrada ainda</p>
             </div>
           ) : (
-            setoresDetalhados.map((setor, setorIndex) => {
-              const totaisSetor = calcularTotaisSetor(setor);
-              const ganhoTaxasSetor = calcularGanhoTaxas(totaisSetor.bilheteria);
-              const controladoPorSetor = totaisSetor.controladoPorSetor;
+            sessoes.map((sessao, sessaoIndex) => {
+              const setoresDaSessao = setoresPorSessao[sessao.id] || [];
               
               return (
-                <div key={setorIndex} style={{ 
-                  marginBottom: '25px',
-                  border: '2px solid #e0e0e0',
-                  borderRadius: '10px',
+                <div key={sessaoIndex} style={{ 
+                  marginBottom: '30px',
+                  border: '3px solid #9b59b6',
+                  borderRadius: '12px',
                   padding: '20px',
-                  backgroundColor: '#fafafa'
+                  backgroundColor: '#f9f7fb'
                 }}>
                   <h3 style={{ 
-                    color: '#5d34a4', 
-                    margin: '0 0 15px 0',
-                    fontSize: '20px',
-                    borderBottom: '2px solid #5d34a4',
-                    paddingBottom: '10px'
+                    color: '#9b59b6', 
+                    margin: '0 0 20px 0',
+                    fontSize: '22px',
+                    borderBottom: '3px solid #9b59b6',
+                    paddingBottom: '12px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
                   }}>
-                    🏟️ Setor: {setor.nome}
-                    {controladoPorSetor && (
-                      <span style={{ 
-                        fontSize: '12px', 
-                        marginLeft: '10px',
-                        padding: '4px 10px',
-                        backgroundColor: '#e8f4f8',
-                        color: '#2196f3',
-                        borderRadius: '12px',
-                        fontWeight: 'normal'
-                      }}>
-                        📊 Controlado por Setor
-                      </span>
-                    )}
+                    <span>
+                      🎬 Sessão {sessao.numero}
+                      {sessao.is_original && (
+                        <span style={{ 
+                          fontSize: '12px', 
+                          marginLeft: '10px',
+                          padding: '4px 10px',
+                          backgroundColor: '#ffd700',
+                          color: '#333',
+                          borderRadius: '12px',
+                          fontWeight: 'bold'
+                        }}>
+                          ⭐ Original
+                        </span>
+                      )}
+                    </span>
+                    <span style={{ fontSize: '14px', fontWeight: 'normal' }}>
+                      📅 {new Date(sessao.data).toLocaleDateString('pt-BR')} às {sessao.hora}
+                    </span>
                   </h3>
 
-                  {/* TOTAIS DO SETOR */}
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: controladoPorSetor ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)',
-                    gap: '10px',
-                    marginBottom: '20px',
-                    padding: '15px',
-                    backgroundColor: '#e8f4f8',
-                    borderRadius: '8px'
-                  }}>
-                    <div style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#27ae60' }}>{totaisSetor.vendidos}</div>
-                      <div style={{ fontSize: '11px', color: '#666' }}>Vendidos</div>
+                  {setoresDaSessao.length === 0 ? (
+                    <div style={{ 
+                      padding: '20px', 
+                      textAlign: 'center', 
+                      color: '#95a5a6',
+                      border: '2px dashed #ddd',
+                      borderRadius: '8px',
+                      backgroundColor: 'white'
+                    }}>
+                      <p style={{ margin: 0, fontSize: '14px' }}>Nenhum ingresso cadastrado nesta sessão</p>
                     </div>
-                    
-                    {/* Só mostra disponíveis/total se o controle é por setor */}
-                    {controladoPorSetor && (
-                      <>
-                        <div style={{ textAlign: 'center' }}>
-                          <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#e67e22' }}>{totaisSetor.disponiveis}</div>
-                          <div style={{ fontSize: '11px', color: '#666' }}>Disponíveis</div>
-                        </div>
-                        <div style={{ textAlign: 'center' }}>
-                          <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#3498db' }}>{totaisSetor.total}</div>
-                          <div style={{ fontSize: '11px', color: '#666' }}>Total</div>
-                        </div>
-                      </>
-                    )}
-                    
-                    <div style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#9b59b6' }}>R$ {totaisSetor.bilheteria.toFixed(2)}</div>
-                      <div style={{ fontSize: '11px', color: '#666' }}>Bilheteria</div>
-                    </div>
-                    <div style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: ganhoTaxasSetor >= 0 ? '#27ae60' : '#e74c3c' }}>
-                        R$ {ganhoTaxasSetor.toFixed(2)}
-                      </div>
-                      <div style={{ fontSize: '11px', color: '#666' }}>Ganho Taxas</div>
-                    </div>
-                  </div>
-
-                  {/* Lotes dentro do setor */}
-                  {setor.lotes.map((lote, loteIndex) => {
-                    const totaisLote = calcularTotaisLote(lote);
-                    const ganhoTaxasLote = calcularGanhoTaxas(totaisLote.bilheteria);
-                    
-                    return (
-                      <div key={loteIndex} style={{ 
-                        marginBottom: '20px',
-                        backgroundColor: 'white',
-                        padding: '15px',
-                        borderRadius: '8px',
-                        border: '1px solid #d0d0d0'
-                      }}>
-                        <h4 style={{ 
-                          color: '#2980b9', 
-                          margin: '0 0 12px 0',
-                          fontSize: '16px'
+                  ) : (
+                    setoresDaSessao.map((setor, setorIndex) => {
+                      const totaisSetor = calcularTotaisSetor(setor);
+                      const ganhoTaxasSetor = calcularGanhoTaxas(totaisSetor.bilheteria);
+                      const controladoPorSetor = totaisSetor.controladoPorSetor;
+                      
+                      return (
+                        <div key={setorIndex} style={{ 
+                          marginBottom: '20px',
+                          border: '2px solid #e0e0e0',
+                          borderRadius: '10px',
+                          padding: '20px',
+                          backgroundColor: 'white'
                         }}>
-                          📦 {lote.nome}
-                        </h4>
+                          <h4 style={{ 
+                            color: '#5d34a4', 
+                            margin: '0 0 15px 0',
+                            fontSize: '18px',
+                            borderBottom: '2px solid #5d34a4',
+                            paddingBottom: '10px'
+                          }}>
+                            🏟️ Setor: {setor.nome}
+                            {controladoPorSetor && (
+                              <span style={{ 
+                                fontSize: '11px', 
+                                marginLeft: '10px',
+                                padding: '3px 8px',
+                                backgroundColor: '#e8f4f8',
+                                color: '#2196f3',
+                                borderRadius: '10px',
+                                fontWeight: 'normal'
+                              }}>
+                                📊 Controlado por Setor
+                              </span>
+                            )}
+                          </h4>
 
-                        {/* TOTAIS DO LOTE */}
-                        <div style={{
-                          display: 'grid',
-                          gridTemplateColumns: 'repeat(5, 1fr)',
-                          gap: '8px',
-                          marginBottom: '15px',
-                          padding: '12px',
-                          backgroundColor: '#f0f8ff',
-                          borderRadius: '6px'
-                        }}>
-                          <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#27ae60' }}>{totaisLote.vendidos}</div>
-                            <div style={{ fontSize: '10px', color: '#666' }}>Vendidos</div>
-                          </div>
-                          {!controladoPorSetor && (
-                            <>
-                              <div style={{ textAlign: 'center' }}>
-                                <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#e67e22' }}>{totaisLote.disponiveis}</div>
-                                <div style={{ fontSize: '10px', color: '#666' }}>Disponíveis</div>
-                              </div>
-                              <div style={{ textAlign: 'center' }}>
-                                <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#3498db' }}>{totaisLote.total}</div>
-                                <div style={{ fontSize: '10px', color: '#666' }}>Total</div>
-                              </div>
-                            </>
-                          )}
-                          <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#9b59b6' }}>R$ {totaisLote.bilheteria.toFixed(2)}</div>
-                            <div style={{ fontSize: '10px', color: '#666' }}>Bilheteria</div>
-                          </div>
-                          <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: '14px', fontWeight: 'bold', color: ganhoTaxasLote >= 0 ? '#27ae60' : '#e74c3c' }}>
-                              R$ {ganhoTaxasLote.toFixed(2)}
+                          <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: controladoPorSetor ? 'repeat(5, 1fr)' : 'repeat(3, 1fr)',
+                            gap: '10px',
+                            marginBottom: '15px',
+                            padding: '12px',
+                            backgroundColor: '#e8f4f8',
+                            borderRadius: '8px'
+                          }}>
+                            <div style={{ textAlign: 'center' }}>
+                              <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#27ae60' }}>{totaisSetor.vendidos}</div>
+                              <div style={{ fontSize: '11px', color: '#666' }}>Vendidos</div>
                             </div>
-                            <div style={{ fontSize: '10px', color: '#666' }}>Ganho Taxas</div>
+                            
+                            {controladoPorSetor && (
+                              <>
+                                <div style={{ textAlign: 'center' }}>
+                                  <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#e67e22' }}>{totaisSetor.disponiveis}</div>
+                                  <div style={{ fontSize: '11px', color: '#666' }}>Disponíveis</div>
+                                </div>
+                                <div style={{ textAlign: 'center' }}>
+                                  <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#3498db' }}>{totaisSetor.total}</div>
+                                  <div style={{ fontSize: '11px', color: '#666' }}>Total</div>
+                                </div>
+                              </>
+                            )}
+                            
+                            <div style={{ textAlign: 'center' }}>
+                              <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#9b59b6' }}>R$ {totaisSetor.bilheteria.toFixed(2)}</div>
+                              <div style={{ fontSize: '11px', color: '#666' }}>Bilheteria</div>
+                            </div>
+                            <div style={{ textAlign: 'center' }}>
+                              <div style={{ fontSize: '16px', fontWeight: 'bold', color: ganhoTaxasSetor >= 0 ? '#27ae60' : '#e74c3c' }}>
+                                R$ {ganhoTaxasSetor.toFixed(2)}
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#666' }}>Ganho Taxas</div>
+                            </div>
                           </div>
-                        </div>
 
-                        <div style={{ 
-                          display: 'grid', 
-                          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
-                          gap: '12px' 
-                        }}>
-                          {lote.tipos.map((tipo, tipoIndex) => {
-                            const ganhoTaxasTipo = calcularGanhoTaxas(tipo.bilheteria);
+                          {setor.lotes.map((lote, loteIndex) => {
+                            const totaisLote = calcularTotaisLote(lote);
+                            const ganhoTaxasLote = calcularGanhoTaxas(totaisLote.bilheteria);
                             
                             return (
-                              <div key={tipoIndex} style={{ 
-                                backgroundColor: '#f8f9fa',
-                                padding: '12px',
-                                borderRadius: '6px',
-                                border: '1px solid #e0e0e0'
+                              <div key={loteIndex} style={{ 
+                                marginBottom: '15px',
+                                backgroundColor: '#fafafa',
+                                padding: '15px',
+                                borderRadius: '8px',
+                                border: '1px solid #d0d0d0'
                               }}>
-                                <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>
-                                  {tipo.nome}
-                                </div>
-                                <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.6' }}>
-                                  <div>💰 Preço: <strong>R$ {tipo.preco.toFixed(2)}</strong></div>
-                                  <div>✅ Vendidos: <strong style={{ color: '#27ae60' }}>{tipo.vendidos}</strong></div>
+                                <h5 style={{ 
+                                  color: '#2980b9', 
+                                  margin: '0 0 12px 0',
+                                  fontSize: '15px'
+                                }}>
+                                  📦 {lote.nome}
+                                </h5>
+
+                                <div style={{
+                                  display: 'grid',
+                                  gridTemplateColumns: 'repeat(5, 1fr)',
+                                  gap: '8px',
+                                  marginBottom: '15px',
+                                  padding: '10px',
+                                  backgroundColor: '#f0f8ff',
+                                  borderRadius: '6px'
+                                }}>
+                                  <div style={{ textAlign: 'center' }}>
+                                    <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#27ae60' }}>{totaisLote.vendidos}</div>
+                                    <div style={{ fontSize: '10px', color: '#666' }}>Vendidos</div>
+                                  </div>
                                   {!controladoPorSetor && (
                                     <>
-                                      <div>📊 Disponíveis: <strong style={{ color: '#e67e22' }}>{tipo.disponiveis}</strong></div>
-                                      <div>📈 Total: <strong style={{ color: '#3498db' }}>{tipo.quantidade}</strong></div>
+                                      <div style={{ textAlign: 'center' }}>
+                                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#e67e22' }}>{totaisLote.disponiveis}</div>
+                                        <div style={{ fontSize: '10px', color: '#666' }}>Disponíveis</div>
+                                      </div>
+                                      <div style={{ textAlign: 'center' }}>
+                                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#3498db' }}>{totaisLote.total}</div>
+                                        <div style={{ fontSize: '10px', color: '#666' }}>Total</div>
+                                      </div>
                                     </>
                                   )}
-                                  <div>💵 Bilheteria: <strong style={{ color: '#9b59b6' }}>R$ {tipo.bilheteria.toFixed(2)}</strong></div>
-                                  <div>💎 Ganho Taxas: <strong style={{ color: ganhoTaxasTipo >= 0 ? '#27ae60' : '#e74c3c' }}>R$ {ganhoTaxasTipo.toFixed(2)}</strong></div>
+                                  <div style={{ textAlign: 'center' }}>
+                                    <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#9b59b6' }}>R$ {totaisLote.bilheteria.toFixed(2)}</div>
+                                    <div style={{ fontSize: '10px', color: '#666' }}>Bilheteria</div>
+                                  </div>
+                                  <div style={{ textAlign: 'center' }}>
+                                    <div style={{ fontSize: '14px', fontWeight: 'bold', color: ganhoTaxasLote >= 0 ? '#27ae60' : '#e74c3c' }}>
+                                      R$ {ganhoTaxasLote.toFixed(2)}
+                                    </div>
+                                    <div style={{ fontSize: '10px', color: '#666' }}>Ganho Taxas</div>
+                                  </div>
+                                </div>
+
+                                <div style={{ 
+                                  display: 'grid', 
+                                  gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', 
+                                  gap: '10px' 
+                                }}>
+                                  {lote.tipos.map((tipo, tipoIndex) => {
+                                    const ganhoTaxasTipo = calcularGanhoTaxas(tipo.bilheteria);
+                                    
+                                    return (
+                                      <div key={tipoIndex} style={{ 
+                                        backgroundColor: 'white',
+                                        padding: '10px',
+                                        borderRadius: '6px',
+                                        border: '1px solid #e0e0e0'
+                                      }}>
+                                        <div style={{ fontWeight: 'bold', marginBottom: '6px', color: '#333', fontSize: '13px' }}>
+                                          {tipo.nome}
+                                        </div>
+                                        <div style={{ fontSize: '12px', color: '#666', lineHeight: '1.5' }}>
+                                          <div>💰 Preço: <strong>R$ {tipo.preco.toFixed(2)}</strong></div>
+                                          <div>✅ Vendidos: <strong style={{ color: '#27ae60' }}>{tipo.vendidos}</strong></div>
+                                          {!controladoPorSetor && (
+                                            <>
+                                              <div>📊 Disponíveis: <strong style={{ color: '#e67e22' }}>{tipo.disponiveis}</strong></div>
+                                              <div>📈 Total: <strong style={{ color: '#3498db' }}>{tipo.quantidade}</strong></div>
+                                            </>
+                                          )}
+                                          <div>💵 Bilheteria: <strong style={{ color: '#9b59b6' }}>R$ {tipo.bilheteria.toFixed(2)}</strong></div>
+                                          <div>💎 Ganho: <strong style={{ color: ganhoTaxasTipo >= 0 ? '#27ae60' : '#e74c3c' }}>R$ {ganhoTaxasTipo.toFixed(2)}</strong></div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
                                 </div>
                               </div>
                             );
                           })}
-                        </div>
-                      </div>
-                    );
-                  })}
 
-                  {/* Tipos sem lote */}
-                  {setor.tiposSemLote.length > 0 && (
-                    <div style={{ 
-                      backgroundColor: 'white',
-                      padding: '15px',
-                      borderRadius: '8px',
-                      border: '1px solid #d0d0d0'
-                    }}>
-                      <h4 style={{ 
-                        color: '#16a085', 
-                        margin: '0 0 12px 0',
-                        fontSize: '16px'
-                      }}>
-                        🎟️ Ingressos do Setor
-                      </h4>
-
-                      <div style={{ 
-                        display: 'grid', 
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
-                        gap: '12px' 
-                      }}>
-                        {setor.tiposSemLote.map((tipo, tipoIndex) => {
-                          const ganhoTaxasTipo = calcularGanhoTaxas(tipo.bilheteria);
-                          
-                          return (
-                            <div key={tipoIndex} style={{ 
-                              backgroundColor: '#f8f9fa',
-                              padding: '12px',
-                              borderRadius: '6px',
-                              border: '1px solid #e0e0e0'
+                          {setor.tiposSemLote.length > 0 && (
+                            <div style={{ 
+                              backgroundColor: '#fafafa',
+                              padding: '15px',
+                              borderRadius: '8px',
+                              border: '1px solid #d0d0d0'
                             }}>
-                              <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>
-                                {tipo.nome}
-                              </div>
-                              <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.6' }}>
-                                <div>💰 Preço: <strong>R$ {tipo.preco.toFixed(2)}</strong></div>
-                                <div>✅ Vendidos: <strong style={{ color: '#27ae60' }}>{tipo.vendidos}</strong></div>
-                                {!controladoPorSetor && (
-                                  <>
-                                    <div>📊 Disponíveis: <strong style={{ color: '#e67e22' }}>{tipo.disponiveis}</strong></div>
-                                    <div>📈 Total: <strong style={{ color: '#3498db' }}>{tipo.quantidade}</strong></div>
-                                  </>
-                                )}
-                                <div>💵 Bilheteria: <strong style={{ color: '#9b59b6' }}>R$ {tipo.bilheteria.toFixed(2)}</strong></div>
-                                <div>💎 Ganho Taxas: <strong style={{ color: ganhoTaxasTipo >= 0 ? '#27ae60' : '#e74c3c' }}>R$ {ganhoTaxasTipo.toFixed(2)}</strong></div>
+                              <h5 style={{ 
+                                color: '#16a085', 
+                                margin: '0 0 12px 0',
+                                fontSize: '15px'
+                              }}>
+                                🎟️ Ingressos do Setor
+                              </h5>
+
+                              <div style={{ 
+                                display: 'grid', 
+                                gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', 
+                                gap: '10px' 
+                              }}>
+                                {setor.tiposSemLote.map((tipo, tipoIndex) => {
+                                  const ganhoTaxasTipo = calcularGanhoTaxas(tipo.bilheteria);
+                                  
+                                  return (
+                                    <div key={tipoIndex} style={{ 
+                                      backgroundColor: 'white',
+                                      padding: '10px',
+                                      borderRadius: '6px',
+                                      border: '1px solid #e0e0e0'
+                                    }}>
+                                      <div style={{ fontWeight: 'bold', marginBottom: '6px', color: '#333', fontSize: '13px' }}>
+                                        {tipo.nome}
+                                      </div>
+                                      <div style={{ fontSize: '12px', color: '#666', lineHeight: '1.5' }}>
+                                        <div>💰 Preço: <strong>R$ {tipo.preco.toFixed(2)}</strong></div>
+                                        <div>✅ Vendidos: <strong style={{ color: '#27ae60' }}>{tipo.vendidos}</strong></div>
+                                        {!controladoPorSetor && (
+                                          <>
+                                            <div>📊 Disponíveis: <strong style={{ color: '#e67e22' }}>{tipo.disponiveis}</strong></div>
+                                            <div>📈 Total: <strong style={{ color: '#3498db' }}>{tipo.quantidade}</strong></div>
+                                          </>
+                                        )}
+                                        <div>💵 Bilheteria: <strong style={{ color: '#9b59b6' }}>R$ {tipo.bilheteria.toFixed(2)}</strong></div>
+                                        <div>💎 Ganho: <strong style={{ color: ganhoTaxasTipo >= 0 ? '#27ae60' : '#e74c3c' }}>R$ {ganhoTaxasTipo.toFixed(2)}</strong></div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
                               </div>
                             </div>
-                          );
-                        })}
-                      </div>
-                    </div>
+                          )}
+                        </div>
+                      );
+                    })
                   )}
                 </div>
               );
@@ -824,7 +891,7 @@ export default function EventoDetalhesPage() {
           )}
         </div>
 
-        {/* CUPONS DETALHADOS */}
+        {/* CUPONS */}
         {cupons.length > 0 && (
           <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '25px' }}>
             <h2 style={{ color: '#5d34a4', marginTop: 0, marginBottom: '20px' }}>🎟️ Cupons de Desconto</h2>
@@ -1002,7 +1069,7 @@ export default function EventoDetalhesPage() {
           </div>
         )}
 
-        {/* DETALHAMENTO DE PRODUTOS */}
+        {/* PRODUTOS */}
         {produtos.length > 0 && (
           <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '25px' }}>
             <h2 style={{ color: '#5d34a4', marginTop: 0, marginBottom: '20px' }}>🛍️ Produtos Adicionais</h2>
@@ -1124,113 +1191,6 @@ export default function EventoDetalhesPage() {
         )}
 
       </div>
-
-      {mostrarModalIngressos && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.7)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            padding: '30px',
-            borderRadius: '12px',
-            maxWidth: '600px',
-            width: '90%'
-          }}>
-            <h2 style={{ color: '#5d34a4', marginTop: 0 }}>➕ Adicionar Mais Ingressos</h2>
-            
-            <div style={{ 
-              padding: '30px', 
-              textAlign: 'center', 
-              color: '#95a5a6',
-              border: '2px dashed #ddd',
-              borderRadius: '8px',
-              marginBottom: '20px'
-            }}>
-              <p style={{ fontSize: '48px', margin: '0 0 15px 0' }}>🚧</p>
-              <p>Funcionalidade em desenvolvimento</p>
-            </div>
-            
-            <button
-              onClick={() => setMostrarModalIngressos(false)}
-              style={{
-                width: '100%',
-                backgroundColor: '#95a5a6',
-                color: 'white',
-                padding: '12px',
-                border: 'none',
-                borderRadius: '8px',
-                fontWeight: 'bold',
-                cursor: 'pointer'
-              }}
-            >
-              Fechar
-            </button>
-          </div>
-        </div>
-      )}
-
-      {mostrarModalSessao && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.7)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            padding: '30px',
-            borderRadius: '12px',
-            maxWidth: '600px',
-            width: '90%'
-          }}>
-            <h2 style={{ color: '#9b59b6', marginTop: 0 }}>🎬 Abrir Nova Sessão</h2>
-            
-            <div style={{ 
-              padding: '30px', 
-              textAlign: 'center', 
-              color: '#95a5a6',
-              border: '2px dashed #ddd',
-              borderRadius: '8px',
-              marginBottom: '20px'
-            }}>
-              <p style={{ fontSize: '48px', margin: '0 0 15px 0' }}>🚧</p>
-              <p>Funcionalidade em desenvolvimento</p>
-            </div>
-            
-            <button
-              onClick={() => setMostrarModalSessao(false)}
-              style={{
-                width: '100%',
-                backgroundColor: '#95a5a6',
-                color: 'white',
-                padding: '12px',
-                border: 'none',
-                borderRadius: '8px',
-                fontWeight: 'bold',
-                cursor: 'pointer'
-              }}
-            >
-              Fechar
-            </button>
-          </div>
-        </div>
-      )}
-
     </div>
   );
 }
