@@ -667,9 +667,11 @@ export default function GerenciarSessoesPage() {
                         {expandida ? '🔼 Ocultar' : '📋 Ver Detalhes'}
                       </button>
 
-                      <button onClick={() => abrirModalEditarSessao(sessao)} disabled={salvando} style={{ backgroundColor: '#f39c12', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: salvando ? 'not-allowed' : 'pointer', fontSize: '14px' }}>
-                        ✏️ Editar
-                      </button>
+                    {!sessao.is_original && (
+  <button onClick={() => abrirModalEditarSessao(sessao)} disabled={salvando} style={{ backgroundColor: '#f39c12', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: salvando ? 'not-allowed' : 'pointer', fontSize: '14px' }}>
+    ✏️ Editar
+  </button>
+)}
                       
                       {!sessao.is_original && (
                         <button onClick={() => deletarSessao(sessao.id, sessao.numero)} disabled={salvando} style={{ backgroundColor: '#e74c3c', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: salvando ? 'not-allowed' : 'pointer', fontSize: '14px' }}>
