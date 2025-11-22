@@ -17,6 +17,7 @@ export default function AdicionarIngressosPage() {
   
   // Estados para armazenar as quantidades a adicionar
   const [quantidadesAdicionar, setQuantidadesAdicionar] = useState({});
+  const [quantidadesSetorAdicionar, setQuantidadesSetorAdicionar] = useState({});
 
   useEffect(() => {
     carregarEvento();
@@ -122,12 +123,102 @@ export default function AdicionarIngressosPage() {
     }));
   };
 
-  const adicionarIngressos = async (ingressoId, setorId, controladoPorSetor) => {
+  const handleQuantidadeSetorChange = (setorNome, valor) => {
+    setQuantidadesSetorAdicionar(prev => ({
+      ...prev,
+      [setorNome]: parseInt(valor) || 0
+    }));
+  };
+
+  // Calcular total de ingressos em um setor
+  const calcularTotalSetor = (setor) => {
+    let total = 0;
+    setor.lotes.forEach(lote => {
+      lote.tipos.forEach(tipo => {
+        total += tipo.quantidade;
+      });
+    });
+    setor.tiposSemLote.forEach(tipo => {
+      total += tipo.quantidade;
+    });
+    return total;
+  };
+
+  const adicionarPorSetor = async (setor) => {
+    const quantidade = quantidadesSetorAdicionar[setor.nome] || 0;
+    
+    if (quantidade <= 0) {
+      alert('Por favor, insira uma quantidade válida');
+      return;
+    }
+
+    setSalvando(true);
+
+    try {
+      // Atualizar capacidade_definida do setor
+      const { data: setorAtual, error: setorFetchError } = await supabase
+        .from('setores')
+        .select('capacidade_definida')
+        .eq('id', setor.setorId)
+        .single();
+
+      if (setorFetchError) throw setorFetchError;
+
+      const novaCapacidade = (parseInt(setorAtual.capacidade_definida) || 0) + quantidade;
+      
+      const { error: updateSetorError } = await supabase
+        .from('setores')
+        .update({ capacidade_definida: novaCapacidade })
+        .eq('id', setor.setorId);
+
+      if (updateSetorError) throw updateSetorError;
+
+      // Atualizar total_ingressos do evento
+      const { data: eventoAtual } = await supabase
+        .from('eventos')
+        .select('total_ingressos')
+        .eq('id', eventoId)
+        .single();
+
+      if (eventoAtual) {
+        const novoTotal = (parseInt(eventoAtual.total_ingressos) || 0) + quantidade;
+        await supabase
+          .from('eventos')
+          .update({ total_ingressos: novoTotal })
+          .eq('id', eventoId);
+      }
+
+      alert(`✅ ${quantidade} ingresso(s) adicionado(s) ao setor ${setor.nome}!`);
+      
+      // Limpar input e recarregar
+      setQuantidadesSetorAdicionar(prev => ({ ...prev, [setor.nome]: 0 }));
+      carregarEvento();
+
+    } catch (error) {
+      console.error('Erro ao adicionar ingressos no setor:', error);
+      alert('❌ Erro ao adicionar ingressos no setor');
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const adicionarPorTipo = async (ingressoId, setor) => {
     const quantidade = quantidadesAdicionar[ingressoId] || 0;
     
     if (quantidade <= 0) {
       alert('Por favor, insira uma quantidade válida');
       return;
+    }
+
+    // Se o setor é controlado por capacidade definida, validar
+    if (setor.capacidadeDefinida && setor.capacidadeDefinida > 0) {
+      const totalAtualSetor = calcularTotalSetor(setor);
+      const novoTotal = totalAtualSetor + quantidade;
+      
+      if (novoTotal > setor.capacidadeDefinida) {
+        alert(`❌ Erro: A soma dos ingressos (${novoTotal}) ultrapassaria a capacidade do setor (${setor.capacidadeDefinida}).\n\nCapacidade atual do setor: ${setor.capacidadeDefinida}\nTotal já alocado: ${totalAtualSetor}\nVocê está tentando adicionar: ${quantidade}\n\nAdicione no máximo ${setor.capacidadeDefinida - totalAtualSetor} ingresso(s) ou aumente primeiro a capacidade do setor.`);
+        return;
+      }
     }
 
     setSalvando(true);
@@ -152,37 +243,21 @@ export default function AdicionarIngressosPage() {
 
       if (updateError) throw updateError;
 
-      // Se o controle é por setor, atualizar também a capacidade_definida do setor
-      if (controladoPorSetor && setorId) {
-        const { data: setorAtual, error: setorFetchError } = await supabase
-          .from('setores')
-          .select('capacidade_definida')
-          .eq('id', setorId)
+      // Atualizar total_ingressos do evento SOMENTE se NÃO for controlado por setor
+      if (!setor.capacidadeDefinida || setor.capacidadeDefinida === 0) {
+        const { data: eventoAtual } = await supabase
+          .from('eventos')
+          .select('total_ingressos')
+          .eq('id', eventoId)
           .single();
 
-        if (!setorFetchError && setorAtual) {
-          const novaCapacidade = (parseInt(setorAtual.capacidade_definida) || 0) + quantidade;
-          
+        if (eventoAtual) {
+          const novoTotal = (parseInt(eventoAtual.total_ingressos) || 0) + quantidade;
           await supabase
-            .from('setores')
-            .update({ capacidade_definida: novaCapacidade })
-            .eq('id', setorId);
+            .from('eventos')
+            .update({ total_ingressos: novoTotal })
+            .eq('id', eventoId);
         }
-      }
-
-      // Atualizar total_ingressos do evento
-      const { data: eventoAtual } = await supabase
-        .from('eventos')
-        .select('total_ingressos')
-        .eq('id', eventoId)
-        .single();
-
-      if (eventoAtual) {
-        const novoTotal = (parseInt(eventoAtual.total_ingressos) || 0) + quantidade;
-        await supabase
-          .from('eventos')
-          .update({ total_ingressos: novoTotal })
-          .eq('id', eventoId);
       }
 
       alert(`✅ ${quantidade} ingresso(s) adicionado(s) com sucesso!`);
@@ -252,6 +327,7 @@ export default function AdicionarIngressosPage() {
         ) : (
           setoresDetalhados.map((setor, setorIndex) => {
             const controladoPorSetor = setor.capacidadeDefinida && setor.capacidadeDefinida > 0;
+            const totalAtualSetor = calcularTotalSetor(setor);
             
             return (
               <div key={setorIndex} style={{ 
@@ -282,6 +358,66 @@ export default function AdicionarIngressosPage() {
                     </span>
                   )}
                 </h2>
+
+                {/* ADICIONAR POR SETOR - só aparece se for controlado por setor */}
+                {controladoPorSetor && (
+                  <div style={{ 
+                    backgroundColor: '#e3f2fd',
+                    padding: '20px',
+                    borderRadius: '8px',
+                    marginBottom: '20px',
+                    border: '2px solid #2196f3'
+                  }}>
+                    <h3 style={{ color: '#2196f3', marginTop: 0, marginBottom: '10px' }}>
+                      📊 Adicionar Capacidade ao Setor
+                    </h3>
+                    <div style={{ fontSize: '14px', color: '#666', marginBottom: '15px' }}>
+                      <div>📈 Capacidade Total: <strong>{setor.capacidadeDefinida}</strong></div>
+                      <div>📊 Já Alocado: <strong>{totalAtualSetor}</strong></div>
+                      <div>🟡 Restante: <strong style={{ color: totalAtualSetor < setor.capacidadeDefinida ? '#27ae60' : '#e74c3c' }}>
+                        {setor.capacidadeDefinida - totalAtualSetor}
+                      </strong></div>
+                    </div>
+                    
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                      <input
+                        type="number"
+                        min="0"
+                        placeholder="Adicionar ao setor"
+                        value={quantidadesSetorAdicionar[setor.nome] || ''}
+                        onChange={(e) => handleQuantidadeSetorChange(setor.nome, e.target.value)}
+                        style={{
+                          flex: 1,
+                          padding: '12px',
+                          border: '2px solid #2196f3',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          fontWeight: 'bold'
+                        }}
+                        disabled={salvando}
+                      />
+                      <button
+                        onClick={() => adicionarPorSetor(setor)}
+                        disabled={salvando || !quantidadesSetorAdicionar[setor.nome]}
+                        style={{
+                          padding: '12px 25px',
+                          backgroundColor: salvando ? '#95a5a6' : '#2196f3',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontWeight: 'bold',
+                          cursor: salvando ? 'not-allowed' : 'pointer',
+                          fontSize: '14px'
+                        }}
+                      >
+                        {salvando ? '⏳' : '➕ Adicionar ao Setor'}
+                      </button>
+                    </div>
+                    <p style={{ fontSize: '12px', color: '#666', marginTop: '10px', marginBottom: 0 }}>
+                      💡 Isso aumenta a capacidade total do setor. Depois distribua entre os tipos de ingresso abaixo.
+                    </p>
+                  </div>
+                )}
 
                 {/* Lotes */}
                 {setor.lotes.map((lote, loteIndex) => (
@@ -336,7 +472,7 @@ export default function AdicionarIngressosPage() {
                               disabled={salvando}
                             />
                             <button
-                              onClick={() => adicionarIngressos(tipo.id, setor.setorId, controladoPorSetor)}
+                              onClick={() => adicionarPorTipo(tipo.id, setor)}
                               disabled={salvando || !quantidadesAdicionar[tipo.id]}
                               style={{
                                 padding: '10px 20px',
@@ -349,7 +485,7 @@ export default function AdicionarIngressosPage() {
                                 fontSize: '14px'
                               }}
                             >
-                              {salvando ? '⏳' : '➕ Adicionar'}
+                              {salvando ? '⏳' : '➕'}
                             </button>
                           </div>
                         </div>
@@ -410,7 +546,7 @@ export default function AdicionarIngressosPage() {
                               disabled={salvando}
                             />
                             <button
-                              onClick={() => adicionarIngressos(tipo.id, setor.setorId, controladoPorSetor)}
+                              onClick={() => adicionarPorTipo(tipo.id, setor)}
                               disabled={salvando || !quantidadesAdicionar[tipo.id]}
                               style={{
                                 padding: '10px 20px',
@@ -423,7 +559,7 @@ export default function AdicionarIngressosPage() {
                                 fontSize: '14px'
                               }}
                             >
-                              {salvando ? '⏳' : '➕ Adicionar'}
+                              {salvando ? '⏳' : '➕'}
                             </button>
                           </div>
                         </div>
