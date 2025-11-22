@@ -11,7 +11,6 @@ export default function AdicionarIngressosPage() {
   const searchParams = useSearchParams();
   const eventoId = params.id;
   
-  // NOVO: Estados para sessões
   const [sessoes, setSessoes] = useState([]);
   const [sessaoSelecionada, setSessaoSelecionada] = useState(null);
   const [mostrarSeletorSessao, setMostrarSeletorSessao] = useState(true);
@@ -28,7 +27,6 @@ export default function AdicionarIngressosPage() {
     carregarSessoes();
   }, [eventoId]);
 
-  // NOVO: Carregar sessões primeiro
   const carregarSessoes = async () => {
     try {
       const { data: eventoData, error: eventoError } = await supabase
@@ -40,7 +38,6 @@ export default function AdicionarIngressosPage() {
       if (eventoError) throw eventoError;
       setEvento(eventoData);
 
-      // Buscar sessões do evento
       const { data: sessoesData, error: sessoesError } = await supabase
         .from('sessoes')
         .select('*')
@@ -51,7 +48,6 @@ export default function AdicionarIngressosPage() {
         throw sessoesError;
       }
 
-      // Se não tem sessões, criar automaticamente a sessão original
       if (!sessoesData || sessoesData.length === 0) {
         console.log('Criando sessão original automaticamente...');
         const { data: novaSessao, error: criarError } = await supabase
@@ -68,7 +64,6 @@ export default function AdicionarIngressosPage() {
 
         if (criarError) throw criarError;
 
-        // Vincular dados existentes à sessão
         await supabase.from('setores').update({ sessao_id: novaSessao.id }).eq('eventos_id', eventoId).is('sessao_id', null);
         await supabase.from('ingressos').update({ sessao_id: novaSessao.id }).eq('evento_id', eventoId).is('sessao_id', null);
         await supabase.from('lotes').update({ sessao_id: novaSessao.id }).eq('evento_id', eventoId).is('sessao_id', null);
@@ -80,19 +75,16 @@ export default function AdicionarIngressosPage() {
       } else {
         setSessoes(sessoesData);
 
-        // Verificar se veio sessão por URL (?sessao=X)
         const sessaoUrl = searchParams.get('sessao');
         if (sessaoUrl && sessoesData.find(s => s.id === sessaoUrl)) {
           setSessaoSelecionada(sessaoUrl);
           setMostrarSeletorSessao(false);
           await carregarEvento(sessaoUrl);
         } else if (sessoesData.length === 1) {
-          // Se só tem 1 sessão, seleciona automaticamente
           setSessaoSelecionada(sessoesData[0].id);
           setMostrarSeletorSessao(false);
           await carregarEvento(sessoesData[0].id);
         } else {
-          // Múltiplas sessões: mostrar seletor
           setMostrarSeletorSessao(true);
           setLoading(false);
         }
@@ -114,23 +106,9 @@ export default function AdicionarIngressosPage() {
 
   const carregarEvento = async (sessaoId) => {
     try {
-      // Buscar setores DA SESSÃO SELECIONADA
-      const { data: setoresData } = await supabase
-        .from('setores')
-        .select('*')
-        .eq('sessao_id', sessaoId);
-
-      // Buscar ingressos DA SESSÃO SELECIONADA
-      const { data: ingressosData } = await supabase
-        .from('ingressos')
-        .select('*')
-        .eq('sessao_id', sessaoId);
-
-      // Buscar lotes DA SESSÃO SELECIONADA
-      const { data: lotesData } = await supabase
-        .from('lotes')
-        .select('*')
-        .eq('sessao_id', sessaoId);
+      const { data: setoresData } = await supabase.from('setores').select('*').eq('sessao_id', sessaoId);
+      const { data: ingressosData } = await supabase.from('ingressos').select('*').eq('sessao_id', sessaoId);
+      const { data: lotesData } = await supabase.from('lotes').select('*').eq('sessao_id', sessaoId);
 
       const setoresMap = new Map();
 
@@ -345,7 +323,6 @@ export default function AdicionarIngressosPage() {
     }
   };
 
-  // TELA DE SELEÇÃO DE SESSÃO
   if (mostrarSeletorSessao && sessoes.length > 1) {
     return (
       <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px' }}>
@@ -651,69 +628,6 @@ export default function AdicionarIngressosPage() {
                       ))}
                     </div>
                   </div>
-                )}
-
-              </div>
-            );
-          })
-        )}
-
-      </div>
-    </div>
-  );
-}
-                          border: '1px solid #d0d0d0'
-                        }}>
-                          <div style={{ fontWeight: 'bold', marginBottom: '10px', fontSize: '16px' }}>
-                            {tipo.nome}
-                          </div>
-                          <div style={{ fontSize: '14px', color: '#666', marginBottom: '15px' }}>
-                            <div>📊 Atual: <strong>{tipo.quantidade}</strong></div>
-                            <div>✅ Vendidos: <strong style={{ color: '#27ae60' }}>{tipo.vendidos}</strong></div>
-                            <div>🟡 Disponíveis: <strong style={{ color: '#e67e22' }}>{tipo.disponiveis}</strong></div>
-                          </div>
-                          
-                          <div style={{ 
-                            display: 'flex', 
-                            gap: '10px',
-                            alignItems: 'center'
-                          }}>
-                            <input
-                              type="number"
-                              min="0"
-                              placeholder="Quantidade"
-                              value={quantidadesAdicionar[tipo.id] || ''}
-                              onChange={(e) => handleQuantidadeChange(tipo.id, e.target.value)}
-                              style={{
-                                flex: 1,
-                                padding: '10px',
-                                border: '2px solid #ddd',
-                                borderRadius: '6px',
-                                fontSize: '14px'
-                              }}
-                              disabled={salvando}
-                            />
-                            <button
-                              onClick={() => adicionarPorTipo(tipo.id, setor)}
-                              disabled={salvando || !quantidadesAdicionar[tipo.id]}
-                              style={{
-                                padding: '10px 20px',
-                                backgroundColor: salvando ? '#95a5a6' : '#27ae60',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '6px',
-                                fontWeight: 'bold',
-                                cursor: salvando ? 'not-allowed' : 'pointer',
-                                fontSize: '14px'
-                              }}
-                            >
-                              {salvando ? '⏳' : '➕'}
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
                 ))}
 
                 {setor.tiposSemLote.length > 0 && (
@@ -760,7 +674,7 @@ export default function AdicionarIngressosPage() {
                               style={{
                                 flex: 1,
                                 padding: '10px',
-                                border: '2px solid #ddd',
+                               border: '2px solid #ddd',
                                 borderRadius: '6px',
                                 fontSize: '14px'
                               }}
