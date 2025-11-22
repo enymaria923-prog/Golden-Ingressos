@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect, Suspense, useCallback } from 'react';    // pqp
+import React, { useState, useEffect, Suspense, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '../../../utils/supabase/client';
 import CupomManager from '../components/CupomManager';
@@ -14,6 +14,7 @@ function ComplementoContent() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [evento, setEvento] = useState(null);
+  const [sessoes, setSessoes] = useState([]);
   const [setoresIngressos, setSetoresIngressos] = useState([]);
   const [cupons, setCupons] = useState([]);
   const [produtos, setProdutos] = useState([]);
@@ -62,6 +63,15 @@ function ComplementoContent() {
 
       setEvento(eventoData);
 
+      // ✅ BUSCAR SESSÕES
+      const { data: sessoesData } = await supabase
+        .from('sessoes')
+        .select('*')
+        .eq('evento_id', eventoId)
+        .order('numero', { ascending: true });
+
+      setSessoes(sessoesData || []);
+
       const { data: ingressosData } = await supabase
         .from('ingressos')
         .select('*')
@@ -106,7 +116,8 @@ function ComplementoContent() {
                   id: ing.id,
                   nome: ing.tipo,
                   preco: ing.valor,
-                  quantidade: ing.quantidade
+                  quantidade: ing.quantidade,
+                  sessao_id: ing.sessao_id
                 });
               }
             });
@@ -124,7 +135,8 @@ function ComplementoContent() {
               id: ing.id,
               nome: ing.tipo,
               preco: ing.valor,
-              quantidade: ing.quantidade
+              quantidade: ing.quantidade,
+              sessao_id: ing.sessao_id
             });
           }
         }
@@ -231,89 +243,117 @@ function ComplementoContent() {
         }
       }
 
+      // ✅ SALVAR CUPONS - UM PARA CADA SESSÃO
       if (cupons && cupons.length > 0) {
         for (const cupom of cupons) {
           if (!cupom.codigo || cupom.codigo.trim() === '') {
             throw new Error('Preencha o código de todos os cupons!');
           }
 
-          const cupomData = {
-            evento_id: eventoId,
-            codigo: cupom.codigo.toUpperCase(),
-            descricao: cupom.descricao || null,
-            ativo: true,
-            quantidade_total: cupom.quantidadeTotal ? parseInt(cupom.quantidadeTotal) : null,
-            quantidade_usada: 0,
-            data_validade_inicio: cupom.dataInicio || null,
-            data_validade_fim: cupom.dataFim || null,
-            user_id: user.id
-          };
+          // ✅ Criar um cupom para cada sessão
+          for (const sessao of sessoes) {
+            const codigoCupom = sessoes.length > 1 
+              ? `${cupom.codigo.toUpperCase()}_S${sessao.numero}` 
+              : cupom.codigo.toUpperCase();
 
-          const { data: cupomInserido, error: cupomError } = await supabase
-            .from('cupons')
-            .insert([cupomData])
-            .select();
+            const cupomData = {
+              evento_id: eventoId,
+              sessao_id: sessao.id,
+              codigo: codigoCupom,
+              descricao: cupom.descricao || null,
+              ativo: true,
+              quantidade_total: cupom.quantidadeTotal ? parseInt(cupom.quantidadeTotal) : null,
+              quantidade_usada: 0,
+              data_validade_inicio: cupom.dataInicio || null,
+              data_validade_fim: cupom.dataFim || null,
+              user_id: user.id
+            };
 
-          if (cupomError) {
-            throw new Error(`Erro ao salvar cupom "${cupom.codigo}": ${cupomError.message}`);
-          }
+            const { data: cupomInserido, error: cupomError } = await supabase
+              .from('cupons')
+              .insert([cupomData])
+              .select();
 
-          const cupomIdReal = cupomInserido[0].id;
-          const cuponsIngressosData = [];
+            if (cupomError) {
+              throw new Error(`Erro ao salvar cupom "${codigoCupom}": ${cupomError.message}`);
+            }
 
-          Object.keys(cupom.precosPorIngresso || {}).forEach(chave => {
-            const precoComCupom = parseFloat(cupom.precosPorIngresso[chave]);
-            
-            if (precoComCupom && precoComCupom > 0) {
-              const partes = chave.split('-');
-              const ingressoId = parseInt(partes[partes.length - 1]);
+            const cupomIdReal = cupomInserido[0].id;
+            const cuponsIngressosData = [];
+
+            // ✅ Vincular apenas ingressos da mesma sessão
+            Object.keys(cupom.precosPorIngresso || {}).forEach(chave => {
+              const precoComCupom = parseFloat(cupom.precosPorIngresso[chave]);
               
-              cuponsIngressosData.push({
-                cupom_id: cupomIdReal,
-                ingresso_id: ingressoId,
-                preco_com_cupom: precoComCupom
-              });
-            }
-          });
-
-          if (cuponsIngressosData.length > 0) {
-            const { error: cuponsIngressosError } = await supabase
-              .from('cupons_ingressos')
-              .insert(cuponsIngressosData);
-
-            if (cuponsIngressosError) {
-              throw new Error(`Erro ao salvar preços do cupom: ${cuponsIngressosError.message}`);
-            }
-          }
-
-          if (produtos && produtos.length > 0) {
-            const cuponsProdutosData = [];
-            
-            produtos.forEach(produto => {
-              if (produto.aceitaCupons && produto.precosPorCupom && produto.precosPorCupom[cupom.id]) {
-                const produtoIdReal = produtosSalvosIds[produto.id];
-                const precoProdutoComCupom = parseFloat(produto.precosPorCupom[cupom.id]);
+              if (precoComCupom && precoComCupom > 0) {
+                const partes = chave.split('-');
+                const ingressoId = parseInt(partes[partes.length - 1]);
                 
-                if (produtoIdReal && precoProdutoComCupom && precoProdutoComCupom > 0) {
-                  cuponsProdutosData.push({
+                // Verificar se o ingresso pertence a esta sessão
+                const ingressoDaSessao = setoresIngressos.some(setor => {
+                  return setor.tiposIngresso.some(tipo => 
+                    tipo.id === ingressoId && tipo.sessao_id === sessao.id
+                  ) || setor.lotes.some(lote => 
+                    lote.tiposIngresso.some(tipo => 
+                      tipo.id === ingressoId && tipo.sessao_id === sessao.id
+                    )
+                  );
+                });
+                
+                if (ingressoDaSessao) {
+                  cuponsIngressosData.push({
                     cupom_id: cupomIdReal,
-                    produto_id: produtoIdReal,
-                    preco_com_cupom: precoProdutoComCupom
+                    ingresso_id: ingressoId,
+                    preco_com_cupom: precoComCupom
                   });
                 }
               }
             });
 
-            if (cuponsProdutosData.length > 0) {
-              await supabase
-                .from('cupom_ingresso_preco')
-                .insert(cuponsProdutosData);
+            if (cuponsIngressosData.length > 0) {
+              const { error: cuponsIngressosError } = await supabase
+                .from('cupons_ingressos')
+                .insert(cuponsIngressosData);
+
+              if (cuponsIngressosError) {
+                throw new Error(`Erro ao salvar preços do cupom: ${cuponsIngressosError.message}`);
+              }
+            }
+
+            // Vincular produtos (produtos não têm sessão específica)
+            if (produtos && produtos.length > 0) {
+              const cuponsProdutosData = [];
+              
+              produtos.forEach(produto => {
+                if (produto.aceitaCupons && produto.precosPorCupom && produto.precosPorCupom[cupom.id]) {
+                  const produtoIdReal = produtosSalvosIds[produto.id];
+                  const precoProdutoComCupom = parseFloat(produto.precosPorCupom[cupom.id]);
+                  
+                  if (produtoIdReal && precoProdutoComCupom && precoProdutoComCupom > 0) {
+                    cuponsProdutosData.push({
+                      cupom_id: cupomIdReal,
+                      produto_id: produtoIdReal,
+                      preco_com_cupom: precoProdutoComCupom
+                    });
+                  }
+                }
+              });
+
+              if (cuponsProdutosData.length > 0) {
+                await supabase
+                  .from('cupons_produtos')
+                  .insert(cuponsProdutosData);
+              }
             }
           }
         }
       }
       
-      alert('🎉 Evento publicado com sucesso!');
+      const mensagemSucesso = sessoes.length > 1
+        ? `🎉 Evento publicado com sucesso!\n\n🎬 ${sessoes.length} sessões criadas\n🎟️ ${cupons.length} cupons por sessão`
+        : '🎉 Evento publicado com sucesso!';
+      
+      alert(mensagemSucesso);
       router.push('/produtor');
 
     } catch (error) {
@@ -352,8 +392,23 @@ function ComplementoContent() {
         </p>
         <p style={{ margin: '15px 0 0 0', fontSize: '15px', background: 'rgba(255,255,255,0.2)', padding: '10px 15px', borderRadius: '8px', display: 'inline-block' }}>
           <strong>📅 Evento:</strong> {evento.nome}
+          {sessoes.length > 1 && <strong style={{ marginLeft: '15px' }}>🎬 {sessoes.length} sessões</strong>}
         </p>
       </div>
+
+      {/* ✅ AVISO SOBRE MÚLTIPLAS SESSÕES */}
+      {sessoes.length > 1 && (
+        <div style={{ background: 'linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%)', padding: '20px', borderRadius: '12px', marginBottom: '25px', border: '2px solid #ff9800' }}>
+          <h3 style={{ margin: '0 0 10px 0', color: '#e65100', fontSize: '18px' }}>
+            🎬 Evento com Múltiplas Sessões
+          </h3>
+          <p style={{ margin: 0, color: '#bf360c', lineHeight: '1.6', fontSize: '15px' }}>
+            Seu evento tem <strong>{sessoes.length} sessões</strong>. Os cupons que você criar serão aplicados a <strong>todas as sessões</strong>, 
+            mas cada sessão terá seu próprio cupom identificado (exemplo: DESCONTO_S1, DESCONTO_S2, etc).
+            Isso permite controlar o uso de cupons separadamente para cada sessão.
+          </p>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit}>
         {setoresIngressos.length > 0 && (
@@ -522,7 +577,7 @@ function ComplementoContent() {
                 />
                 <h3 style={{ margin: 0, color: '#FF5722', fontSize: '22px', fontWeight: 'bold' }}>🚀 Competitivo</h3>
               </div>
-              <div style={{ fontSize: '15px', color: '#333', marginBottom: '20px', lineHeight: '1.8' }}>
+              <div style={{ fontSize: '15px', color: '#333', marginBottom: '20px', lineHeight: '18' }}>
                 <p style={{ margin: '8px 0' }}><strong>Taxa do Cliente:</strong> <span style={{ fontSize: '18px', color: '#FF5722' }}>8%</span></p>
                 <p style={{ margin: '8px 0' }}><strong>Você recebe:</strong> <span style={{ fontSize: '18px', color: '#666' }}>0% (sem bônus)</span></p>
                 <div style={{ background: 'rgba(255, 87, 34, 0.1)', padding: '12px', borderRadius: '8px', marginTop: '15px' }}>
