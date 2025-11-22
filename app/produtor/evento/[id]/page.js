@@ -23,7 +23,6 @@ export default function EventoDetalhesPage() {
 
   const carregarEvento = async () => {
     try {
-      // Carregar dados do evento
       const { data: eventoData, error: eventoError } = await supabase
         .from('eventos')
         .select('*')
@@ -33,7 +32,7 @@ export default function EventoDetalhesPage() {
       if (eventoError) throw eventoError;
       setEvento(eventoData);
 
-      // Carregar TODAS as sessões do evento
+      // BUSCAR TODAS AS SESSÕES
       const { data: sessoesData, error: sessoesError } = await supabase
         .from('sessoes')
         .select('*')
@@ -47,105 +46,105 @@ export default function EventoDetalhesPage() {
 
       setSessoes(sessoesData || []);
 
-      // Para cada sessão, carregar setores e ingressos
+      // BUSCAR TODOS OS SETORES DO EVENTO
+      const { data: setoresData, error: setoresError } = await supabase
+        .from('setores')
+        .select('*')
+        .eq('eventos_id', eventoId);
+
+      if (setoresError) {
+        console.error('Erro ao buscar setores:', setoresError);
+      }
+
+      // BUSCAR TODOS OS INGRESSOS DO EVENTO
+      const { data: ingressosData, error: ingressosError } = await supabase
+        .from('ingressos')
+        .select('*')
+        .eq('evento_id', eventoId);
+
+      if (ingressosError) throw ingressosError;
+
+      // BUSCAR TODOS OS LOTES
+      const { data: lotesData } = await supabase
+        .from('lotes')
+        .select('*')
+        .eq('evento_id', eventoId);
+
+      // PROCESSAR INGRESSOS POR SESSÃO
       const setoresPorSessaoTemp = {};
 
-      for (const sessao of (sessoesData || [])) {
-        // Buscar setores desta sessão
-        const { data: setoresData, error: setoresError } = await supabase
-          .from('setores')
-          .select('*')
-          .eq('eventos_id', eventoId)
-          .eq('sessao_id', sessao.id);
+      // Inicializar objeto para cada sessão
+      (sessoesData || []).forEach(sessao => {
+        setoresPorSessaoTemp[sessao.id] = [];
+      });
 
-        if (setoresError) {
-          console.error('Erro ao buscar setores da sessão:', setoresError);
-          continue;
-        }
-
-        // Buscar ingressos dos setores desta sessão
-        const setorIds = setoresData?.map(s => s.id) || [];
+      // Agrupar ingressos por sessão através do setor
+      ingressosData?.forEach(ingresso => {
+        // Encontrar o setor deste ingresso
+        const setorDoIngresso = setoresData?.find(s => s.nome === ingresso.setor);
         
-        let ingressosData = [];
-        if (setorIds.length > 0) {
-          const { data: ingData, error: ingressosError } = await supabase
-            .from('ingressos')
-            .select('*, setores!inner(id, sessao_id)')
-            .eq('evento_id', eventoId)
-            .in('setores.id', setorIds);
-
-          if (ingressosError) {
-            console.error('Erro ao buscar ingressos:', ingressosError);
-          } else {
-            ingressosData = ingData || [];
-          }
+        if (!setorDoIngresso || !setorDoIngresso.sessao_id) {
+          console.log('Ingresso sem setor ou sessão:', ingresso);
+          return;
         }
 
-        // Buscar lotes
-        const { data: lotesData } = await supabase
-          .from('lotes')
-          .select('*')
-          .eq('evento_id', eventoId);
+        const sessaoId = setorDoIngresso.sessao_id;
 
-        // Processar setores desta sessão
-        const setoresMap = new Map();
+        // Inicializar array para a sessão se não existir
+        if (!setoresPorSessaoTemp[sessaoId]) {
+          setoresPorSessaoTemp[sessaoId] = [];
+        }
 
-        ingressosData?.forEach(ingresso => {
-          const setorNome = ingresso.setor;
+        // Encontrar ou criar o setor no array da sessão
+        let setorIndex = setoresPorSessaoTemp[sessaoId].findIndex(s => s.nome === ingresso.setor);
+        
+        if (setorIndex === -1) {
+          // Criar novo setor
+          setoresPorSessaoTemp[sessaoId].push({
+            nome: ingresso.setor,
+            capacidadeDefinida: setorDoIngresso?.capacidade_definida || null,
+            capacidadeCalculada: setorDoIngresso?.capacidade_calculada || null,
+            lotes: [],
+            tiposSemLote: []
+          });
+          setorIndex = setoresPorSessaoTemp[sessaoId].length - 1;
+        }
+
+        const setor = setoresPorSessaoTemp[sessaoId][setorIndex];
+        const quantidade = parseInt(ingresso.quantidade) || 0;
+        const vendidos = parseInt(ingresso.vendidos) || 0;
+        const disponiveis = quantidade > 0 ? (quantidade - vendidos) : 0;
+        const preco = parseFloat(ingresso.valor) || 0;
+
+        const tipoObj = {
+          id: ingresso.id,
+          nome: ingresso.tipo,
+          preco: preco,
+          quantidade: quantidade,
+          vendidos: vendidos,
+          disponiveis: disponiveis,
+          bilheteria: vendidos * preco
+        };
+
+        if (ingresso.lote_id) {
+          // Encontrar ou criar o lote
+          let lote = setor.lotes.find(l => l.id === ingresso.lote_id);
           
-          if (!setoresMap.has(setorNome)) {
-            const setorInfo = setoresData?.find(s => s.nome === setorNome);
-            
-            setoresMap.set(setorNome, {
-              nome: setorNome,
-              capacidadeDefinida: setorInfo?.capacidade_definida || null,
-              capacidadeCalculada: setorInfo?.capacidade_calculada || null,
-              lotes: new Map(),
-              tiposSemLote: []
-            });
+          if (!lote) {
+            const loteInfo = lotesData?.find(l => l.id === ingresso.lote_id);
+            lote = {
+              id: ingresso.lote_id,
+              nome: loteInfo?.nome || 'Lote sem nome',
+              tipos: []
+            };
+            setor.lotes.push(lote);
           }
-
-          const setor = setoresMap.get(setorNome);
-          const quantidade = parseInt(ingresso.quantidade) || 0;
-          const vendidos = parseInt(ingresso.vendidos) || 0;
-          const disponiveis = quantidade > 0 ? (quantidade - vendidos) : 0;
-          const preco = parseFloat(ingresso.valor) || 0;
-
-          const tipoObj = {
-            id: ingresso.id,
-            nome: ingresso.tipo,
-            preco: preco,
-            quantidade: quantidade,
-            vendidos: vendidos,
-            disponiveis: disponiveis,
-            bilheteria: vendidos * preco
-          };
-
-          if (ingresso.lote_id) {
-            if (!setor.lotes.has(ingresso.lote_id)) {
-              const loteInfo = lotesData?.find(l => l.id === ingresso.lote_id);
-              setor.lotes.set(ingresso.lote_id, {
-                id: ingresso.lote_id,
-                nome: loteInfo?.nome || 'Lote sem nome',
-                tipos: []
-              });
-            }
-            setor.lotes.get(ingresso.lote_id).tipos.push(tipoObj);
-          } else {
-            setor.tiposSemLote.push(tipoObj);
-          }
-        });
-
-        const setoresArray = Array.from(setoresMap.values()).map(setor => ({
-          nome: setor.nome,
-          capacidadeDefinida: setor.capacidadeDefinida,
-          capacidadeCalculada: setor.capacidadeCalculada,
-          lotes: Array.from(setor.lotes.values()),
-          tiposSemLote: setor.tiposSemLote
-        }));
-
-        setoresPorSessaoTemp[sessao.id] = setoresArray;
-      }
+          
+          lote.tipos.push(tipoObj);
+        } else {
+          setor.tiposSemLote.push(tipoObj);
+        }
+      });
 
       setSetoresPorSessao(setoresPorSessaoTemp);
 
@@ -247,7 +246,6 @@ export default function EventoDetalhesPage() {
   const calcularTotaisIngressos = () => {
     let totalDisponibilizado = 0, totalVendido = 0;
 
-    // Soma os totais de TODAS as sessões
     Object.values(setoresPorSessao).forEach(setoresDetalhados => {
       setoresDetalhados.forEach(setor => {
         const totaisSetor = calcularTotaisSetor(setor);
@@ -311,7 +309,6 @@ export default function EventoDetalhesPage() {
   const calcularValorTotalVendas = () => {
     let valorIngressos = 0, valorProdutos = 0;
 
-    // Soma vendas de TODAS as sessões
     Object.values(setoresPorSessao).forEach(setoresDetalhados => {
       setoresDetalhados.forEach(setor => {
         setor.lotes.forEach(lote => {
@@ -1000,7 +997,7 @@ export default function EventoDetalhesPage() {
           )}
         </div>
 
-        {/* CUPONS DETALHADOS */}
+        {/* CUPONS E PRODUTOS - mantém igual ao código original */}
         {cupons.length > 0 && (
           <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '25px' }}>
             <h2 style={{ color: '#5d34a4', marginTop: 0, marginBottom: '20px' }}>🎟️ Cupons de Desconto</h2>
@@ -1178,7 +1175,6 @@ export default function EventoDetalhesPage() {
           </div>
         )}
 
-        {/* DETALHAMENTO DE PRODUTOS */}
         {produtos.length > 0 && (
           <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '25px' }}>
             <h2 style={{ color: '#5d34a4', marginTop: 0, marginBottom: '20px' }}>🛍️ Produtos Adicionais</h2>
