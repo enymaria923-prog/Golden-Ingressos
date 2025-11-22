@@ -936,7 +936,7 @@ export default function GerenciarSessoesPage() {
         </div>
       )}
 
-      {/* MODAL EDITAR INGRESSO */}
+     {/* MODAL EDITAR INGRESSO */}
       {editandoIngresso && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1001, padding: '20px' }}>
           <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', maxWidth: '600px', width: '100%' }}>
@@ -973,141 +973,6 @@ export default function GerenciarSessoesPage() {
                   value={editandoIngresso.valor} 
                   onChange={(e) => setEditandoIngresso({...editandoIngresso, valor: parseFloat(e.target.value)})}
                   style={{ width: '100%', padding: '12px', border: '2px solid #ddd', borderRadius: '8px', fontSize: '15px' }}
-                  disabled={salvando}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>Data Fim:</label>
-                <input 
-                  type="date" 
-                  value={editandoCupom.data_validade_fim || ''} 
-                  onChange={(e) => setEditandoCupom({...editandoCupom, data_validade_fim: e.target.value})}
-                  style={{ width: '100%', padding: '12px', border: '2px solid #ddd', borderRadius: '8px', fontSize: '15px' }}
-                  disabled={salvando}
-                />
-              </div>
-            </div>
-
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-                <input 
-                  type="checkbox" 
-                  checked={editandoCupom.ativo} 
-                  onChange={(e) => setEditandoCupom({...editandoCupom, ativo: e.target.checked})}
-                  style={{ marginRight: '10px', width: '20px', height: '20px' }}
-                  disabled={salvando}
-                />
-                <span style={{ fontWeight: 'bold', color: '#333' }}>Cupom Ativo</span>
-              </label>
-            </div>
-
-            <div style={{ display: 'flex', gap: '10px', marginTop: '30px', paddingTop: '20px', borderTop: '2px solid #e0e0e0' }}>
-              <button 
-                onClick={() => setEditandoCupom(null)} 
-                disabled={salvando}
-                style={{ flex: 1, backgroundColor: '#95a5a6', color: 'white', padding: '15px', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: salvando ? 'not-allowed' : 'pointer', fontSize: '16px' }}
-              >
-                Cancelar
-              </button>
-              <button 
-                onClick={salvarEdicaoCupom} 
-                disabled={salvando}
-                style={{ flex: 2, backgroundColor: '#f39c12', color: 'white', padding: '15px', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: salvando ? 'not-allowed' : 'pointer', fontSize: '16px' }}
-              >
-                {salvando ? '⏳ Salvando...' : '✅ Salvar'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL EDITAR LOTE */}
-      {editandoLote && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1001, padding: '20px' }}>
-          <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', maxWidth: '600px', width: '100%' }}>
-            <h2 style={{ color: '#f39c12', marginTop: 0 }}>✏️ Editar Lote</h2>
-            
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>Nome do Lote:</label>
-              <input 
-                type="text" 
-                value={editandoLote.nome} 
-                onChange={(e) => setEditandoLote({...editandoLote, nome: e.target.value})}
-                style={{ width: '100%', padding: '12px', border: '2px solid #ddd', borderRadius: '8px', fontSize: '15px' }}
-                disabled={salvando}
-              />
-            </div>
-
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>Quantidade Total:</label>
-              <input 
-                type="number" 
-                value={editandoLote.quantidade_total} 
-                onChange={(e) => setEditandoLote({...editandoLote, quantidade_total: parseInt(e.target.value)})}
-                style={{ width: '100%', padding: '12px', border: '2px solid #ddd', borderRadius: '8px', fontSize: '15px' }}
-                disabled={salvando}
-              />
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
-              <div>
-                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>Data Início:</label>
-                <input 
-                  type="date" 
-                  value={editandoLote.data_inicio || ''} 
-                  onChange={(e) => setEditandoLote({...editandoLote, data_inicio: e.target.value})}
-                  style={{ width: '100%', padding: '12px', border: '2px solid #ddd', borderRadius: '8px', fontSize: '15px' }}
-                  disabled={salvando}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>Data Fim:</label>
-                <input 
-                  type="date" 
-                  value={editandoLote.data_fim || ''} 
-                  onChange={(e) => setEditandoLote({...editandoLote, data_fim: e.target.value})}
-                  style={{ width: '100%', padding: '12px', border: '2px solid #ddd', borderRadius: '8px', fontSize: '15px' }}
-                  disabled={salvando}
-                />
-              </div>
-            </div>
-
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-                <input 
-                  type="checkbox" 
-                  checked={editandoLote.ativo} 
-                  onChange={(e) => setEditandoLote({...editandoLote, ativo: e.target.checked})}
-                  style={{ marginRight: '10px', width: '20px', height: '20px' }}
-                  disabled={salvando}
-                />
-                <span style={{ fontWeight: 'bold', color: '#333' }}>Lote Ativo</span>
-              </label>
-            </div>
-
-            <div style={{ display: 'flex', gap: '10px', marginTop: '30px', paddingTop: '20px', borderTop: '2px solid #e0e0e0' }}>
-              <button 
-                onClick={() => setEditandoLote(null)} 
-                disabled={salvando}
-                style={{ flex: 1, backgroundColor: '#95a5a6', color: 'white', padding: '15px', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: salvando ? 'not-allowed' : 'pointer', fontSize: '16px' }}
-              >
-                Cancelar
-              </button>
-              <button 
-                onClick={salvarEdicaoLote} 
-                disabled={salvando}
-                style={{ flex: 2, backgroundColor: '#f39c12', color: 'white', padding: '15px', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: salvando ? 'not-allowed' : 'pointer', fontSize: '16px' }}
-              >
-                {salvando ? '⏳ Salvando...' : '✅ Salvar'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-    </div>
-  );
-} 
                   disabled={salvando}
                 />
               </div>
@@ -1215,8 +1080,8 @@ export default function GerenciarSessoesPage() {
                   type="date" 
                   value={editandoCupom.data_validade_inicio || ''} 
                   onChange={(e) => setEditandoCupom({...editandoCupom, data_validade_inicio: e.target.value})}
-                  style={{ width: '100%', padding: '12px', border: '2px solid #ddd', borderRadius: '8px', fontSize: '15px'
-                         disabled={salvando}
+                  style={{ width: '100%', padding: '12px', border: '2px solid #ddd', borderRadius: '8px', fontSize: '15px' }}
+                  disabled={salvando}
                 />
               </div>
               <div>
