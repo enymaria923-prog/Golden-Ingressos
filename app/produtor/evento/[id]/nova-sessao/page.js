@@ -15,13 +15,12 @@ export default function GerenciarSessoesPage() {
   const [sessaoOriginal, setSessaoOriginal] = useState(null);
   const [loading, setLoading] = useState(true);
   const [salvando, setSalvando] = useState(false);
+  const [user, setUser] = useState(null);
   
-  // Modal criar/editar
   const [mostrarModalCriar, setMostrarModalCriar] = useState(false);
-  const [modoEdicao, setModoEdicao] = useState(false); // true = editando sessão existente
+  const [modoEdicao, setModoEdicao] = useState(false);
   const [sessaoEditando, setSessaoEditando] = useState(null);
   
-  // Dados do formulário de criação/edição
   const [formData, setFormData] = useState({
     data: '',
     hora: '',
@@ -33,10 +32,20 @@ export default function GerenciarSessoesPage() {
 
   const [sessaoExpandida, setSessaoExpandida] = useState(null);
   const [dadosSessao, setDadosSessao] = useState({});
+  
+  const [editandoIngresso, setEditandoIngresso] = useState(null);
+  const [editandoCupom, setEditandoCupom] = useState(null);
+  const [editandoLote, setEditandoLote] = useState(null);
 
   useEffect(() => {
     carregarDados();
+    carregarUsuario();
   }, [eventoId]);
+
+  const carregarUsuario = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    setUser(user);
+  };
 
   const carregarDados = async () => {
     try {
@@ -140,7 +149,6 @@ export default function GerenciarSessoesPage() {
     }
   };
 
-  // ABRIR MODAL PARA CRIAR NOVA SESSÃO (com dados clonados)
   const abrirModalCriarNova = async () => {
     if (!sessaoOriginal) {
       alert('❌ Sessão original não encontrada');
@@ -150,10 +158,8 @@ export default function GerenciarSessoesPage() {
     setLoading(true);
 
     try {
-      // Carregar SETORES da sessão original (NÃO ingressos individuais)
       const { data: setores } = await supabase.from('setores').select('*').eq('sessao_id', sessaoOriginal.id);
       
-      // Carregar apenas tipos de ingresso únicos (para mostrar variedade)
       const { data: tiposIngressos } = await supabase
         .from('ingressos')
         .select('tipo, valor, setor, lote_id')
@@ -162,14 +168,12 @@ export default function GerenciarSessoesPage() {
       const { data: lotes } = await supabase.from('lotes').select('*').eq('sessao_id', sessaoOriginal.id);
       const { data: cupons } = await supabase.from('cupons').select('*').eq('sessao_id', sessaoOriginal.id);
 
-      // Criar um resumo dos tipos de ingresso por setor
       const tiposPorSetor = {};
       if (tiposIngressos) {
         tiposIngressos.forEach(ing => {
           if (!tiposPorSetor[ing.setor]) {
             tiposPorSetor[ing.setor] = [];
           }
-          // Evitar duplicatas
           if (!tiposPorSetor[ing.setor].find(t => t.tipo === ing.tipo && t.valor === ing.valor)) {
             tiposPorSetor[ing.setor].push({
               tipo: ing.tipo,
@@ -199,7 +203,6 @@ export default function GerenciarSessoesPage() {
     }
   };
 
-  // ABRIR MODAL PARA EDITAR SESSÃO EXISTENTE
   const abrirModalEditarSessao = async (sessao) => {
     setLoading(true);
 
@@ -250,7 +253,6 @@ export default function GerenciarSessoesPage() {
     }
   };
 
-  // SALVAR NOVA SESSÃO OU EDITAR EXISTENTE
   const salvarSessao = async () => {
     if (!formData.data || !formData.hora) {
       alert('❌ Preencha data e hora');
@@ -261,7 +263,6 @@ export default function GerenciarSessoesPage() {
 
     try {
       if (modoEdicao) {
-        // EDITAR SESSÃO EXISTENTE (só data e hora)
         const { error } = await supabase
           .from('sessoes')
           .update({ data: formData.data, hora: formData.hora })
@@ -271,7 +272,6 @@ export default function GerenciarSessoesPage() {
 
         alert('✅ Sessão atualizada!');
       } else {
-        // CRIAR NOVA SESSÃO
         const proximoNumero = sessoes.length + 1;
 
         const { data: novaSessao, error: sessaoError } = await supabase
@@ -288,9 +288,6 @@ export default function GerenciarSessoesPage() {
 
         if (sessaoError) throw sessaoError;
 
-        console.log('✅ Sessão criada:', novaSessao.id);
-
-        // CLONAR SETORES (mantém capacidades)
         if (formData.setores.length > 0) {
           const setoresClonados = formData.setores.map(s => ({
             eventos_id: eventoId,
@@ -300,17 +297,13 @@ export default function GerenciarSessoesPage() {
             capacidade_calculada: s.capacidade_calculada
           }));
           
-          const { error: setoresError } = await supabase.from('setores').insert(setoresClonados);
-          if (setoresError) throw setoresError;
-          
-          console.log(`✅ ${setoresClonados.length} setores clonados`);
+          await supabase.from('setores').insert(setoresClonados);
         }
 
-        // CLONAR LOTES e mapear IDs
         const lotesMap = new Map();
         if (formData.lotes.length > 0) {
           for (const lote of formData.lotes) {
-            const { data: novoLote, error: loteError } = await supabase
+            const { data: novoLote } = await supabase
               .from('lotes')
               .insert({
                 evento_id: eventoId,
@@ -327,30 +320,22 @@ export default function GerenciarSessoesPage() {
               .select()
               .single();
 
-            if (loteError) throw loteError;
             if (novoLote) lotesMap.set(lote.id, novoLote.id);
           }
-          console.log(`✅ ${formData.lotes.length} lotes clonados`);
         }
 
-        // CLONAR TIPOS DE INGRESSO (criar ingressos com base nos setores)
         let totalIngressosCriados = 0;
         
         for (const setor of formData.setores) {
           const tiposDesteSetor = formData.tiposPorSetor[setor.nome] || [];
           
-          // Para cada tipo de ingresso deste setor
           for (const tipoInfo of tiposDesteSetor) {
-            // Buscar o lote_id novo se houver
             const loteIdNovo = tipoInfo.lote_id ? lotesMap.get(tipoInfo.lote_id) : null;
             
-            // Calcular quantidade baseado na capacidade do setor
-            // Se tem capacidade definida, usa ela dividida pelos tipos
-            // Se não, usa a capacidade calculada
             const capacidade = setor.capacidade_definida || setor.capacidade_calculada;
             const quantidadePorTipo = Math.floor(capacidade / (tiposDesteSetor.length || 1));
             
-            const { error: ingressoError } = await supabase
+            await supabase
               .from('ingressos')
               .insert({
                 evento_id: eventoId,
@@ -362,18 +347,14 @@ export default function GerenciarSessoesPage() {
                 vendidos: 0,
                 lote_id: loteIdNovo,
                 status_ingresso: 'disponivel',
-                user_id: sessaoOriginal.user_id || user?.id,
+                user_id: user?.id || null,
                 codigo: Date.now() + totalIngressosCriados
               });
             
-            if (ingressoError) throw ingressoError;
             totalIngressosCriados++;
           }
         }
-        
-        console.log(`✅ ${totalIngressosCriados} tipos de ingresso criados`);
 
-        // CLONAR CUPONS
         if (formData.cupons.length > 0) {
           const cuponsClonados = formData.cupons.map(c => ({
             evento_id: eventoId,
@@ -389,13 +370,10 @@ export default function GerenciarSessoesPage() {
             data_validade_fim: c.data_validade_fim
           }));
           
-          const { error: cuponsError } = await supabase.from('cupons').insert(cuponsClonados);
-          if (cuponsError) throw cuponsError;
-          
-          console.log(`✅ ${cuponsClonados.length} cupons clonados`);
+          await supabase.from('cupons').insert(cuponsClonados);
         }
 
-        alert(`✅ Sessão ${proximoNumero} criada com sucesso!\n\n📊 ${formData.setores.length} setores\n🎫 ${totalIngressosCriados} tipos de ingresso\n🎟️ ${formData.cupons.length} cupons`);
+        alert(`✅ Sessão ${proximoNumero} criada!\n\n📊 ${formData.setores.length} setores\n🎫 ${totalIngressosCriados} tipos de ingresso\n🎟️ ${formData.cupons.length} cupons`);
       }
 
       setMostrarModalCriar(false);
@@ -440,24 +418,114 @@ export default function GerenciarSessoesPage() {
     }
   };
 
+  const editarIngresso = async (ingresso) => {
+    setEditandoIngresso(ingresso);
+  };
+
+  const salvarEdicaoIngresso = async () => {
+    if (!editandoIngresso) return;
+
+    setSalvando(true);
+    try {
+      const { error } = await supabase
+        .from('ingressos')
+        .update({
+          tipo: editandoIngresso.tipo,
+          valor: editandoIngresso.valor,
+          quantidade: editandoIngresso.quantidade,
+          setor: editandoIngresso.setor
+        })
+        .eq('id', editandoIngresso.id);
+
+      if (error) throw error;
+
+      alert('✅ Ingresso atualizado!');
+      setEditandoIngresso(null);
+      await carregarDadosSessao(editandoIngresso.sessao_id);
+    } catch (error) {
+      console.error('Erro ao editar ingresso:', error);
+      alert('❌ Erro ao editar: ' + error.message);
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const editarCupom = async (cupom) => {
+    setEditandoCupom(cupom);
+  };
+
+  const salvarEdicaoCupom = async () => {
+    if (!editandoCupom) return;
+
+    setSalvando(true);
+    try {
+      const { error } = await supabase
+        .from('cupons')
+        .update({
+          codigo: editandoCupom.codigo,
+          descricao: editandoCupom.descricao,
+          tipo_desconto: editandoCupom.tipo_desconto,
+          valor_desconto: editandoCupom.valor_desconto,
+          quantidade_total: editandoCupom.quantidade_total,
+          ativo: editandoCupom.ativo,
+          data_validade_inicio: editandoCupom.data_validade_inicio,
+          data_validade_fim: editandoCupom.data_validade_fim
+        })
+        .eq('id', editandoCupom.id);
+
+      if (error) throw error;
+
+      alert('✅ Cupom atualizado!');
+      setEditandoCupom(null);
+      await carregarDadosSessao(editandoCupom.sessao_id);
+    } catch (error) {
+      console.error('Erro ao editar cupom:', error);
+      alert('❌ Erro ao editar: ' + error.message);
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const editarLote = async (lote) => {
+    setEditandoLote(lote);
+  };
+
+  const salvarEdicaoLote = async () => {
+    if (!editandoLote) return;
+
+    setSalvando(true);
+    try {
+      const { error } = await supabase
+        .from('lotes')
+        .update({
+          nome: editandoLote.nome,
+          quantidade_total: editandoLote.quantidade_total,
+          data_inicio: editandoLote.data_inicio,
+          data_fim: editandoLote.data_fim,
+          ativo: editandoLote.ativo
+        })
+        .eq('id', editandoLote.id);
+
+      if (error) throw error;
+
+      alert('✅ Lote atualizado!');
+      setEditandoLote(null);
+      await carregarDadosSessao(editandoLote.sessao_id);
+    } catch (error) {
+      console.error('Erro ao editar lote:', error);
+      alert('❌ Erro ao editar: ' + error.message);
+    } finally {
+      setSalvando(false);
+    }
+  };
+
   const deletarIngresso = async (ingressoId, sessaoId) => {
     if (!window.confirm('Deletar este ingresso?')) return;
 
     setSalvando(true);
     try {
-      const { error } = await supabase.from('ingressos').delete().eq('id', ingressoId);
-      if (error) throw error;
-
+      await supabase.from('ingressos').delete().eq('id', ingressoId);
       alert('✅ Ingresso deletado!');
-      
-      // Atualizar formData se estiver no modal
-      if (modoEdicao) {
-        setFormData(prev => ({
-          ...prev,
-          ingressos: prev.ingressos.filter(i => i.id !== ingressoId)
-        }));
-      }
-      
       await carregarDadosSessao(sessaoId);
     } catch (error) {
       alert('❌ Erro ao deletar');
@@ -471,19 +539,23 @@ export default function GerenciarSessoesPage() {
 
     setSalvando(true);
     try {
-      const { error } = await supabase.from('cupons').delete().eq('id', cupomId);
-      if (error) throw error;
-
+      await supabase.from('cupons').delete().eq('id', cupomId);
       alert('✅ Cupom deletado!');
-      
-      // Atualizar formData se estiver no modal
-      if (modoEdicao) {
-        setFormData(prev => ({
-          ...prev,
-          cupons: prev.cupons.filter(c => c.id !== cupomId)
-        }));
-      }
-      
+      await carregarDadosSessao(sessaoId);
+    } catch (error) {
+      alert('❌ Erro ao deletar');
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const deletarLote = async (loteId, sessaoId) => {
+    if (!window.confirm('Deletar este lote?')) return;
+
+    setSalvando(true);
+    try {
+      await supabase.from('lotes').delete().eq('id', loteId);
+      alert('✅ Lote deletado!');
       await carregarDadosSessao(sessaoId);
     } catch (error) {
       alert('❌ Erro ao deletar');
@@ -529,10 +601,10 @@ export default function GerenciarSessoesPage() {
         <div style={{ backgroundColor: '#e8f5e9', border: '2px solid #27ae60', borderRadius: '12px', padding: '20px', marginBottom: '25px' }}>
           <h3 style={{ color: '#155724', marginTop: 0, marginBottom: '10px' }}>💡 Como Funciona</h3>
           <ul style={{ color: '#155724', margin: 0, paddingLeft: '20px', lineHeight: '1.8' }}>
-            <li>Clique em <strong>"Criar Nova Sessão"</strong> para ver um preview dos dados clonados da Sessão 1</li>
-            <li>Você pode <strong>editar tudo</strong> antes de salvar: data, hora, ingressos, cupons...</li>
+            <li>Clique em <strong>"Criar Nova Sessão"</strong> para clonar dados da Sessão 1</li>
+            <li>Você pode <strong>editar data, hora e gerenciar ingressos/cupons/lotes</strong> de cada sessão</li>
             <li>Cada sessão é <strong>independente</strong> - vendas não interferem entre elas</li>
-            <li>A sessão original não pode ser deletada</li>
+            <li>Use os botões ✏️ para editar e 🗑️ para deletar itens</li>
           </ul>
         </div>
 
@@ -570,8 +642,8 @@ export default function GerenciarSessoesPage() {
 
               return (
                 <div key={sessao.id} style={{ backgroundColor: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', border: sessao.is_original ? '3px solid #f1c40f' : '2px solid #e0e0e0' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                    <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px', flexWrap: 'wrap', gap: '15px' }}>
+                    <div style={{ flex: 1, minWidth: '250px' }}>
                       <h2 style={{ color: '#5d34a4', margin: '0 0 5px 0' }}>
                         🎬 Sessão {sessao.numero}
                         {sessao.is_original && (
@@ -625,9 +697,14 @@ export default function GerenciarSessoesPage() {
                                     <div style={{ fontWeight: 'bold', fontSize: '16px', marginBottom: '5px' }}>{ingresso.tipo}</div>
                                     <div style={{ fontSize: '13px', color: '#666' }}>🏟️ Setor: {ingresso.setor}</div>
                                   </div>
-                                  <button onClick={() => deletarIngresso(ingresso.id, sessao.id)} disabled={salvando} style={{ backgroundColor: '#e74c3c', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '6px', fontSize: '12px', cursor: salvando ? 'not-allowed' : 'pointer' }}>
-                                    🗑️
-                                  </button>
+                                  <div style={{ display: 'flex', gap: '5px' }}>
+                                    <button onClick={() => editarIngresso(ingresso)} disabled={salvando} style={{ backgroundColor: '#f39c12', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '6px', fontSize: '12px', cursor: salvando ? 'not-allowed' : 'pointer' }}>
+                                      ✏️
+                                    </button>
+                                    <button onClick={() => deletarIngresso(ingresso.id, sessao.id)} disabled={salvando} style={{ backgroundColor: '#e74c3c', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '6px', fontSize: '12px', cursor: salvando ? 'not-allowed' : 'pointer' }}>
+                                      🗑️
+                                    </button>
+                                  </div>
                                 </div>
                                 <div style={{ fontSize: '14px', color: '#666', lineHeight: '1.6' }}>
                                   <div>💰 Preço: <strong>R$ {parseFloat(ingresso.valor).toFixed(2)}</strong></div>
@@ -642,7 +719,7 @@ export default function GerenciarSessoesPage() {
                       </div>
 
                       {dados.cupons.length > 0 && (
-                        <div>
+                        <div style={{ marginBottom: '25px' }}>
                           <h3 style={{ color: '#5d34a4', marginBottom: '15px' }}>🎟️ Cupons</h3>
                           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '15px' }}>
                             {dados.cupons.map((cupom) => (
@@ -654,14 +731,55 @@ export default function GerenciarSessoesPage() {
                                       {cupom.ativo ? 'Ativo' : 'Inativo'}
                                     </div>
                                   </div>
-                                  <button onClick={() => deletarCupom(cupom.id, sessao.id)} disabled={salvando} style={{ backgroundColor: '#e74c3c', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '6px', fontSize: '12px', cursor: salvando ? 'not-allowed' : 'pointer' }}>
-                                    🗑️
-                                  </button>
+                                  <div style={{ display: 'flex', gap: '5px' }}>
+                                    <button onClick={() => editarCupom(cupom)} disabled={salvando} style={{ backgroundColor: '#f39c12', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '6px', fontSize: '12px', cursor: salvando ? 'not-allowed' : 'pointer' }}>
+                                      ✏️
+                                    </button>
+                                    <button onClick={() => deletarCupom(cupom.id, sessao.id)} disabled={salvando} style={{ backgroundColor: '#e74c3c', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '6px', fontSize: '12px', cursor: salvando ? 'not-allowed' : 'pointer' }}>
+                                      🗑️
+                                    </button>
+                                  </div>
                                 </div>
                                 <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.6' }}>
                                   {cupom.descricao && <div style={{ fontStyle: 'italic', marginBottom: '8px' }}>"{cupom.descricao}"</div>}
                                   <div>💵 Desconto: <strong>{cupom.tipo_desconto === 'percentual' ? `${cupom.valor_desconto}%` : `R$ ${parseFloat(cupom.valor_desconto).toFixed(2)}`}</strong></div>
                                   <div>📊 Usos: <strong>{cupom.quantidade_usada || 0} / {cupom.quantidade_total || '∞'}</strong></div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {dados.lotes && dados.lotes.length > 0 && (
+                        <div style={{ marginBottom: '25px' }}>
+                          <h3 style={{ color: '#5d34a4', marginBottom: '15px' }}>📦 Lotes</h3>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '15px' }}>
+                            {dados.lotes.map((lote) => (
+                              <div key={lote.id} style={{ backgroundColor: '#f8f9fa', padding: '15px', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '10px' }}>
+                                  <div>
+                                    <div style={{ fontWeight: 'bold', fontSize: '16px', marginBottom: '5px' }}>{lote.nome}</div>
+                                    <div style={{ fontSize: '13px', color: '#666' }}>🏟️ Setor: {lote.setor}</div>
+                                    <div style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '12px', backgroundColor: lote.ativo ? '#d4edda' : '#f8d7da', color: lote.ativo ? '#155724' : '#721c24', display: 'inline-block', marginTop: '5px' }}>
+                                      {lote.ativo ? 'Ativo' : 'Inativo'}
+                                    </div>
+                                  </div>
+                                  <div style={{ display: 'flex', gap: '5px' }}>
+                                    <button onClick={() => editarLote(lote)} disabled={salvando} style={{ backgroundColor: '#f39c12', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '6px', fontSize: '12px', cursor: salvando ? 'not-allowed' : 'pointer' }}>
+                                      ✏️
+                                    </button>
+                                    <button onClick={() => deletarLote(lote.id, sessao.id)} disabled={salvando} style={{ backgroundColor: '#e74c3c', color: 'white', border: 'none', padding: '5px 10px', borderRadius: '6px', fontSize: '12px', cursor: salvando ? 'not-allowed' : 'pointer' }}>
+                                      🗑️
+                                    </button>
+                                  </div>
+                                </div>
+                                <div style={{ fontSize: '13px', color: '#666', lineHeight: '1.6' }}>
+                                  <div>📊 Total: <strong>{lote.quantidade_total}</strong></div>
+                                  <div>✅ Vendidos: <strong style={{ color: '#27ae60' }}>{lote.quantidade_vendida || 0}</strong></div>
+                                  <div>🟡 Disponíveis: <strong style={{ color: '#e67e22' }}>{lote.quantidade_total - (lote.quantidade_vendida || 0)}</strong></div>
+                                  {lote.data_inicio && <div style={{ fontSize: '12px', marginTop: '5px' }}>📅 Início: {new Date(lote.data_inicio).toLocaleDateString('pt-BR')}</div>}
+                                  {lote.data_fim && <div style={{ fontSize: '12px' }}>📅 Fim: {new Date(lote.data_fim).toLocaleDateString('pt-BR')}</div>}
                                 </div>
                               </div>
                             ))}
@@ -702,7 +820,6 @@ export default function GerenciarSessoesPage() {
               </div>
             )}
 
-            {/* DATA E HORA */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '25px' }}>
               <div>
                 <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>📅 Data:</label>
@@ -714,7 +831,6 @@ export default function GerenciarSessoesPage() {
               </div>
             </div>
 
-            {/* PREVIEW DOS SETORES E INGRESSOS */}
             <div style={{ marginBottom: '25px' }}>
               <h3 style={{ color: '#5d34a4', marginBottom: '15px' }}>
                 🏟️ Setores e Capacidades ({formData.setores.length})
@@ -778,7 +894,6 @@ export default function GerenciarSessoesPage() {
               </p>
             </div>
 
-            {/* PREVIEW DOS CUPONS */}
             {formData.cupons.length > 0 && (
               <div style={{ marginBottom: '25px' }}>
                 <h3 style={{ color: '#5d34a4', marginBottom: '15px' }}>
@@ -802,24 +917,6 @@ export default function GerenciarSessoesPage() {
               </div>
             )}
 
-            {/* PREVIEW DOS SETORES */}
-            {formData.setores.length > 0 && (
-              <div style={{ marginBottom: '25px' }}>
-                <h3 style={{ color: '#5d34a4', marginBottom: '15px' }}>
-                  🏟️ Setores ({formData.setores.length})
-                </h3>
-                
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                  {formData.setores.map((setor, idx) => (
-                    <div key={idx} style={{ padding: '8px 15px', backgroundColor: '#e3f2fd', borderRadius: '6px', fontSize: '14px', fontWeight: 'bold', color: '#1976d2' }}>
-                      {setor.nome}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* BOTÕES */}
             <div style={{ display: 'flex', gap: '10px', marginTop: '30px', paddingTop: '20px', borderTop: '2px solid #e0e0e0' }}>
               <button onClick={() => { setMostrarModalCriar(false); setSessaoEditando(null); }} disabled={salvando} style={{ flex: 1, backgroundColor: '#95a5a6', color: 'white', padding: '15px', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: salvando ? 'not-allowed' : 'pointer', fontSize: '16px' }}>
                 Cancelar
@@ -835,6 +932,418 @@ export default function GerenciarSessoesPage() {
                 💡 Após criar a sessão, você poderá adicionar/editar ingressos e cupons individualmente
               </p>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL EDITAR INGRESSO */}
+      {editandoIngresso && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1001, padding: '20px' }}>
+          <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', maxWidth: '600px', width: '100%' }}>
+            <h2 style={{ color: '#f39c12', marginTop: 0 }}>✏️ Editar Ingresso</h2>
+            
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>Tipo de Ingresso:</label>
+              <input 
+                type="text" 
+                value={editandoIngresso.tipo} 
+                onChange={(e) => setEditandoIngresso({...editandoIngresso, tipo: e.target.value})}
+                style={{ width: '100%', padding: '12px', border: '2px solid #ddd', borderRadius: '8px', fontSize: '15px' }}
+                disabled={salvando}
+              />
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>Setor:</label>
+              <input 
+                type="text" 
+                value={editandoIngresso.setor} 
+                onChange={(e) => setEditandoIngresso({...editandoIngresso, setor: e.target.value})}
+                style={{ width: '100%', padding: '12px', border: '2px solid #ddd', borderRadius: '8px', fontSize: '15px' }}
+                disabled={salvando}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+              <div>
+                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>Valor (R$):</label>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  value={editandoIngresso.valor} 
+                  onChange={(e) => setEditandoIngresso({...editandoIngresso, valor: parseFloat(e.target.value)})}
+                  style={{ width: '100%', padding: '12px', border: '2px solid #ddd', borderRadius: '8px', fontSize: '15px' }}
+                  disabled={salvando}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>Data Fim:</label>
+                <input 
+                  type="date" 
+                  value={editandoCupom.data_validade_fim || ''} 
+                  onChange={(e) => setEditandoCupom({...editandoCupom, data_validade_fim: e.target.value})}
+                  style={{ width: '100%', padding: '12px', border: '2px solid #ddd', borderRadius: '8px', fontSize: '15px' }}
+                  disabled={salvando}
+                />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                <input 
+                  type="checkbox" 
+                  checked={editandoCupom.ativo} 
+                  onChange={(e) => setEditandoCupom({...editandoCupom, ativo: e.target.checked})}
+                  style={{ marginRight: '10px', width: '20px', height: '20px' }}
+                  disabled={salvando}
+                />
+                <span style={{ fontWeight: 'bold', color: '#333' }}>Cupom Ativo</span>
+              </label>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '30px', paddingTop: '20px', borderTop: '2px solid #e0e0e0' }}>
+              <button 
+                onClick={() => setEditandoCupom(null)} 
+                disabled={salvando}
+                style={{ flex: 1, backgroundColor: '#95a5a6', color: 'white', padding: '15px', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: salvando ? 'not-allowed' : 'pointer', fontSize: '16px' }}
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={salvarEdicaoCupom} 
+                disabled={salvando}
+                style={{ flex: 2, backgroundColor: '#f39c12', color: 'white', padding: '15px', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: salvando ? 'not-allowed' : 'pointer', fontSize: '16px' }}
+              >
+                {salvando ? '⏳ Salvando...' : '✅ Salvar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL EDITAR LOTE */}
+      {editandoLote && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1001, padding: '20px' }}>
+          <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', maxWidth: '600px', width: '100%' }}>
+            <h2 style={{ color: '#f39c12', marginTop: 0 }}>✏️ Editar Lote</h2>
+            
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>Nome do Lote:</label>
+              <input 
+                type="text" 
+                value={editandoLote.nome} 
+                onChange={(e) => setEditandoLote({...editandoLote, nome: e.target.value})}
+                style={{ width: '100%', padding: '12px', border: '2px solid #ddd', borderRadius: '8px', fontSize: '15px' }}
+                disabled={salvando}
+              />
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>Quantidade Total:</label>
+              <input 
+                type="number" 
+                value={editandoLote.quantidade_total} 
+                onChange={(e) => setEditandoLote({...editandoLote, quantidade_total: parseInt(e.target.value)})}
+                style={{ width: '100%', padding: '12px', border: '2px solid #ddd', borderRadius: '8px', fontSize: '15px' }}
+                disabled={salvando}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+              <div>
+                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>Data Início:</label>
+                <input 
+                  type="date" 
+                  value={editandoLote.data_inicio || ''} 
+                  onChange={(e) => setEditandoLote({...editandoLote, data_inicio: e.target.value})}
+                  style={{ width: '100%', padding: '12px', border: '2px solid #ddd', borderRadius: '8px', fontSize: '15px' }}
+                  disabled={salvando}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>Data Fim:</label>
+                <input 
+                  type="date" 
+                  value={editandoLote.data_fim || ''} 
+                  onChange={(e) => setEditandoLote({...editandoLote, data_fim: e.target.value})}
+                  style={{ width: '100%', padding: '12px', border: '2px solid #ddd', borderRadius: '8px', fontSize: '15px' }}
+                  disabled={salvando}
+                />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                <input 
+                  type="checkbox" 
+                  checked={editandoLote.ativo} 
+                  onChange={(e) => setEditandoLote({...editandoLote, ativo: e.target.checked})}
+                  style={{ marginRight: '10px', width: '20px', height: '20px' }}
+                  disabled={salvando}
+                />
+                <span style={{ fontWeight: 'bold', color: '#333' }}>Lote Ativo</span>
+              </label>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '30px', paddingTop: '20px', borderTop: '2px solid #e0e0e0' }}>
+              <button 
+                onClick={() => setEditandoLote(null)} 
+                disabled={salvando}
+                style={{ flex: 1, backgroundColor: '#95a5a6', color: 'white', padding: '15px', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: salvando ? 'not-allowed' : 'pointer', fontSize: '16px' }}
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={salvarEdicaoLote} 
+                disabled={salvando}
+                style={{ flex: 2, backgroundColor: '#f39c12', color: 'white', padding: '15px', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: salvando ? 'not-allowed' : 'pointer', fontSize: '16px' }}
+              >
+                {salvando ? '⏳ Salvando...' : '✅ Salvar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+} }}
+                  disabled={salvando}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>Quantidade:</label>
+                <input 
+                  type="number" 
+                  value={editandoIngresso.quantidade} 
+                  onChange={(e) => setEditandoIngresso({...editandoIngresso, quantidade: parseInt(e.target.value)})}
+                  style={{ width: '100%', padding: '12px', border: '2px solid #ddd', borderRadius: '8px', fontSize: '15px' }}
+                  disabled={salvando}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '30px', paddingTop: '20px', borderTop: '2px solid #e0e0e0' }}>
+              <button 
+                onClick={() => setEditandoIngresso(null)} 
+                disabled={salvando}
+                style={{ flex: 1, backgroundColor: '#95a5a6', color: 'white', padding: '15px', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: salvando ? 'not-allowed' : 'pointer', fontSize: '16px' }}
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={salvarEdicaoIngresso} 
+                disabled={salvando}
+                style={{ flex: 2, backgroundColor: '#f39c12', color: 'white', padding: '15px', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: salvando ? 'not-allowed' : 'pointer', fontSize: '16px' }}
+              >
+                {salvando ? '⏳ Salvando...' : '✅ Salvar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL EDITAR CUPOM */}
+      {editandoCupom && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1001, padding: '20px', overflowY: 'auto' }}>
+          <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', maxWidth: '600px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+            <h2 style={{ color: '#f39c12', marginTop: 0 }}>✏️ Editar Cupom</h2>
+            
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>Código do Cupom:</label>
+              <input 
+                type="text" 
+                value={editandoCupom.codigo} 
+                onChange={(e) => setEditandoCupom({...editandoCupom, codigo: e.target.value})}
+                style={{ width: '100%', padding: '12px', border: '2px solid #ddd', borderRadius: '8px', fontSize: '15px' }}
+                disabled={salvando}
+              />
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>Descrição:</label>
+              <textarea 
+                value={editandoCupom.descricao || ''} 
+                onChange={(e) => setEditandoCupom({...editandoCupom, descricao: e.target.value})}
+                style={{ width: '100%', padding: '12px', border: '2px solid #ddd', borderRadius: '8px', fontSize: '15px', minHeight: '80px' }}
+                disabled={salvando}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+              <div>
+                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>Tipo de Desconto:</label>
+                <select 
+                  value={editandoCupom.tipo_desconto} 
+                  onChange={(e) => setEditandoCupom({...editandoCupom, tipo_desconto: e.target.value})}
+                  style={{ width: '100%', padding: '12px', border: '2px solid #ddd', borderRadius: '8px', fontSize: '15px' }}
+                  disabled={salvando}
+                >
+                  <option value="percentual">Percentual (%)</option>
+                  <option value="fixo">Valor Fixo (R$)</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>Valor do Desconto:</label>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  value={editandoCupom.valor_desconto} 
+                  onChange={(e) => setEditandoCupom({...editandoCupom, valor_desconto: parseFloat(e.target.value)})}
+                  style={{ width: '100%', padding: '12px', border: '2px solid #ddd', borderRadius: '8px', fontSize: '15px' }}
+                  disabled={salvando}
+                />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>Quantidade de Usos:</label>
+              <input 
+                type="number" 
+                value={editandoCupom.quantidade_total || ''} 
+                onChange={(e) => setEditandoCupom({...editandoCupom, quantidade_total: e.target.value ? parseInt(e.target.value) : null})}
+                placeholder="Deixe vazio para ilimitado"
+                style={{ width: '100%', padding: '12px', border: '2px solid #ddd', borderRadius: '8px', fontSize: '15px' }}
+                disabled={salvando}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+              <div>
+                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>Data Início:</label>
+                <input 
+                  type="date" 
+                  value={editandoCupom.data_validade_inicio || ''} 
+                  onChange={(e) => setEditandoCupom({...editandoCupom, data_validade_inicio: e.target.value})}
+                  style={{ width: '100%', padding: '12px', border: '2px solid #ddd', borderRadius: '8px', fontSize: '15px'
+                         disabled={salvando}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>Data Fim:</label>
+                <input 
+                  type="date" 
+                  value={editandoCupom.data_validade_fim || ''} 
+                  onChange={(e) => setEditandoCupom({...editandoCupom, data_validade_fim: e.target.value})}
+                  style={{ width: '100%', padding: '12px', border: '2px solid #ddd', borderRadius: '8px', fontSize: '15px' }}
+                  disabled={salvando}
+                />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                <input 
+                  type="checkbox" 
+                  checked={editandoCupom.ativo} 
+                  onChange={(e) => setEditandoCupom({...editandoCupom, ativo: e.target.checked})}
+                  style={{ marginRight: '10px', width: '20px', height: '20px' }}
+                  disabled={salvando}
+                />
+                <span style={{ fontWeight: 'bold', color: '#333' }}>Cupom Ativo</span>
+              </label>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '30px', paddingTop: '20px', borderTop: '2px solid #e0e0e0' }}>
+              <button 
+                onClick={() => setEditandoCupom(null)} 
+                disabled={salvando}
+                style={{ flex: 1, backgroundColor: '#95a5a6', color: 'white', padding: '15px', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: salvando ? 'not-allowed' : 'pointer', fontSize: '16px' }}
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={salvarEdicaoCupom} 
+                disabled={salvando}
+                style={{ flex: 2, backgroundColor: '#f39c12', color: 'white', padding: '15px', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: salvando ? 'not-allowed' : 'pointer', fontSize: '16px' }}
+              >
+                {salvando ? '⏳ Salvando...' : '✅ Salvar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL EDITAR LOTE */}
+      {editandoLote && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1001, padding: '20px' }}>
+          <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', maxWidth: '600px', width: '100%' }}>
+            <h2 style={{ color: '#f39c12', marginTop: 0 }}>✏️ Editar Lote</h2>
+            
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>Nome do Lote:</label>
+              <input 
+                type="text" 
+                value={editandoLote.nome} 
+                onChange={(e) => setEditandoLote({...editandoLote, nome: e.target.value})}
+                style={{ width: '100%', padding: '12px', border: '2px solid #ddd', borderRadius: '8px', fontSize: '15px' }}
+                disabled={salvando}
+              />
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>Quantidade Total:</label>
+              <input 
+                type="number" 
+                value={editandoLote.quantidade_total} 
+                onChange={(e) => setEditandoLote({...editandoLote, quantidade_total: parseInt(e.target.value)})}
+                style={{ width: '100%', padding: '12px', border: '2px solid #ddd', borderRadius: '8px', fontSize: '15px' }}
+                disabled={salvando}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+              <div>
+                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>Data Início:</label>
+                <input 
+                  type="date" 
+                  value={editandoLote.data_inicio || ''} 
+                  onChange={(e) => setEditandoLote({...editandoLote, data_inicio: e.target.value})}
+                  style={{ width: '100%', padding: '12px', border: '2px solid #ddd', borderRadius: '8px', fontSize: '15px' }}
+                  disabled={salvando}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>Data Fim:</label>
+                <input 
+                  type="date" 
+                  value={editandoLote.data_fim || ''} 
+                  onChange={(e) => setEditandoLote({...editandoLote, data_fim: e.target.value})}
+                  style={{ width: '100%', padding: '12px', border: '2px solid #ddd', borderRadius: '8px', fontSize: '15px' }}
+                  disabled={salvando}
+                />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                <input 
+                  type="checkbox" 
+                  checked={editandoLote.ativo} 
+                  onChange={(e) => setEditandoLote({...editandoLote, ativo: e.target.checked})}
+                  style={{ marginRight: '10px', width: '20px', height: '20px' }}
+                  disabled={salvando}
+                />
+                <span style={{ fontWeight: 'bold', color: '#333' }}>Lote Ativo</span>
+              </label>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '30px', paddingTop: '20px', borderTop: '2px solid #e0e0e0' }}>
+              <button 
+                onClick={() => setEditandoLote(null)} 
+                disabled={salvando}
+                style={{ flex: 1, backgroundColor: '#95a5a6', color: 'white', padding: '15px', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: salvando ? 'not-allowed' : 'pointer', fontSize: '16px' }}
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={salvarEdicaoLote} 
+                disabled={salvando}
+                style={{ flex: 2, backgroundColor: '#f39c12', color: 'white', padding: '15px', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: salvando ? 'not-allowed' : 'pointer', fontSize: '16px' }}
+              >
+                {salvando ? '⏳ Salvando...' : '✅ Salvar'}
+              </button>
+            </div>
           </div>
         </div>
       )}
