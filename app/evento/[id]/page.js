@@ -181,9 +181,25 @@ export default function EventoPage() {
 
       console.log('=== DEBUG INGRESSOS ===');
       console.log('Sessões:', sessoesData);
-      console.log('Setores:', setoresData);
-      console.log('Ingressos:', ingressosData);
-      console.log('SetoresPorSessao:', setoresPorSessaoTemp);
+      console.log('Setores (ATENÇÃO - deve ter sessao_id):', setoresData);
+      console.log('Ingressos (ATENÇÃO - deve ter setor_id):', ingressosData);
+      console.log('Lotes:', lotesData);
+      console.log('SetoresPorSessao FINAL:', setoresPorSessaoTemp);
+      
+      // DEBUG DETALHADO POR SESSÃO
+      Object.keys(setoresPorSessaoTemp).forEach(sessaoId => {
+        console.log(`\n--- Sessão ${sessaoId} ---`);
+        const setoresDaSessao = setoresPorSessaoTemp[sessaoId];
+        console.log(`Total de setores: ${setoresDaSessao.length}`);
+        setoresDaSessao.forEach((setor, idx) => {
+          console.log(`  Setor ${idx}: ${setor.nome}`);
+          console.log(`    - Lotes: ${setor.lotes.length}`);
+          console.log(`    - Tipos sem lote: ${setor.tiposSemLote.length}`);
+          setor.lotes.forEach(lote => {
+            console.log(`      Lote "${lote.nome}": ${lote.tipos.length} tipos`);
+          });
+        });
+      });
       console.log('======================');
 
       setSetoresPorSessao(setoresPorSessaoTemp);
@@ -317,6 +333,23 @@ export default function EventoPage() {
   console.log('=== RENDERIZANDO ===');
   console.log('Sessão selecionada:', sessaoSelecionada);
   console.log('Setores detalhados:', setoresDetalhados);
+  console.log('Quantidade de setores:', setoresDetalhados.length);
+  
+  // DEBUG DETALHADO
+  setoresDetalhados.forEach((setor, idx) => {
+    console.log(`Setor ${idx}:`, setor.nome);
+    console.log(`  - Lotes:`, setor.lotes.length);
+    setor.lotes.forEach((lote, lIdx) => {
+      console.log(`    Lote ${lIdx}:`, lote.nome, '- Tipos:', lote.tipos.length);
+      lote.tipos.forEach(tipo => {
+        console.log(`      Tipo:`, tipo.nome, '- Disponíveis:', tipo.disponiveis, '- ID:', tipo.id);
+      });
+    });
+    console.log(`  - Tipos sem lote:`, setor.tiposSemLote.length);
+    setor.tiposSemLote.forEach(tipo => {
+      console.log(`    Tipo:`, tipo.nome, '- Disponíveis:', tipo.disponiveis, '- ID:', tipo.id);
+    });
+  });
   console.log('===================');
   
   let precoMaisBaixo = Infinity;
