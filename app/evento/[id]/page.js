@@ -112,14 +112,20 @@ export default function EventoPage() {
       });
 
       Object.keys(setoresPorSessaoMap).forEach(sessaoId => {
-        setoresPorSessaoTemp[sessaoId] = setoresPorSessaoMap[sessaoId].map(setor => ({
-          nome: setor.nome,
-          capacidadeDefinida: setor.capacidade_definida || null,
-          capacidadeCalculada: setor.capacidade_calculada || null,
-          lotes: [],
-          tiposSemLote: []
-        }));
-      });
+      const carregarIngressosDaSessao = async (sessaoId) => {
+  try {
+    const { data: ingressosData } = await supabase
+      .from('ingressos')
+      .select('*')
+      .eq('evento_id', id)
+      .eq('sessao_id', sessaoId)
+      .order('setor', { ascending: true });
+
+    setIngressos(ingressosData || []);
+  } catch (error) {
+    console.error('Erro ao carregar ingressos:', error);
+  }
+};
 
       ingressosData?.forEach(ingresso => {
         // BUSCAR O SETOR PELO setor_id (não pelo nome)
