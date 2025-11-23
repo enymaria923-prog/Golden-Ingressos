@@ -83,12 +83,12 @@ export default function EventoPage() {
       const { data: setoresData } = await supabase
         .from('setores')
         .select('*')
-        .eq('eventos_id', id);
+        .in('sessao_id', (sessoesData || []).map(s => s.id));
 
       const { data: ingressosData } = await supabase
         .from('ingressos')
         .select('*')
-        .eq('evento_id', id);
+        .in('setor_id', (setoresData || []).map(s => s.id));
 
       const { data: lotesData } = await supabase
         .from('lotes')
@@ -122,21 +122,26 @@ export default function EventoPage() {
       });
 
       ingressosData?.forEach(ingresso => {
-        const setorDoIngresso = setoresData?.find(s => s.nome === ingresso.setor);
+        // BUSCAR O SETOR PELO setor_id (não pelo nome)
+        const setorDoIngresso = setoresData?.find(s => s.id === ingresso.setor_id);
         
         if (!setorDoIngresso || !setorDoIngresso.sessao_id) {
+          console.warn('Ingresso sem setor ou sessão:', ingresso);
           return;
         }
 
         const sessaoId = setorDoIngresso.sessao_id;
 
         if (!setoresPorSessaoTemp[sessaoId]) {
+          console.warn('Sessão não existe no temp:', sessaoId);
           return;
         }
 
-        const setor = setoresPorSessaoTemp[sessaoId].find(s => s.nome === ingresso.setor);
+        // BUSCAR O SETOR NO ARRAY DA SESSÃO PELO NOME
+        const setor = setoresPorSessaoTemp[sessaoId].find(s => s.nome === setorDoIngresso.nome);
         
         if (!setor) {
+          console.warn('Setor não encontrado no array da sessão:', setorDoIngresso.nome);
           return;
         }
 
