@@ -63,11 +63,10 @@ export default function EventoPage() {
       }
 
       // Buscar TODOS os ingressos de TODAS as sessões
-    // ✅ SUBSTITUIR POR:
-const { data: todosIngressos } = await supabase
-  .from('ingressos')
-  .select('*')
-  .eq('evento_id', id);
+      const { data: todosIngressos } = await supabase
+        .from('ingressos')
+        .select('*')
+        .eq('evento_id', id);
 
       // Organizar ingressos por sessão
       const ingressosPorSessaoTemp = {};
@@ -624,8 +623,8 @@ const { data: todosIngressos } = await supabase
               let totalVendido = 0;
 
               [...setorData.semLote, ...Object.values(setorData.lotes).flatMap(l => l.ingressos)].forEach(ing => {
-                totalDisponibilizado += ing.quantidade;
-                totalVendido += ing.vendidos;
+                totalDisponibilizado += (ing.quantidade || 0);
+                totalVendido += (ing.vendidos || 0);
               });
 
               const disponiveis = totalDisponibilizado - totalVendido;
@@ -684,7 +683,7 @@ const { data: todosIngressos } = await supabase
                         </div>
 
                         {loteData.ingressos.map(ingresso => {
-                          const ingressosDisponiveis = ingresso.quantidade - ingresso.vendidos;
+                          const ingressosDisponiveis = (ingresso.quantidade || 0) - (ingresso.vendidos || 0);
                           const precoBase = parseFloat(ingresso.valor);
                           const precoComCupom = calcularPrecoComCupom(precoBase);
                           const temDesconto = precoComCupom < precoBase;
@@ -777,7 +776,7 @@ const { data: todosIngressos } = await supabase
                     {setorData.semLote.length > 0 && (
                       <div>
                         {setorData.semLote.map(ingresso => {
-                          const ingressosDisponiveis = ingresso.quantidade - ingresso.vendidos;
+                          const ingressosDisponiveis = (ingresso.quantidade || 0) - (ingresso.vendidos || 0);
                           const precoBase = parseFloat(ingresso.valor);
                           const precoComCupom = calcularPrecoComCupom(precoBase);
                           const temDesconto = precoComCupom < precoBase;
