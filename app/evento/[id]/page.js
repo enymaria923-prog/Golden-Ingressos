@@ -63,11 +63,11 @@ export default function EventoPage() {
       }
 
       // Buscar TODOS os ingressos de TODAS as sessões
-      const { data: todosIngressos } = await supabase
-        .from('ingressos')
-        .select('*')
-        .eq('evento_id', id)
-        .eq('status_ingresso', 'disponivel');
+    // ✅ SUBSTITUIR POR:
+const { data: todosIngressos } = await supabase
+  .from('ingressos')
+  .select('*')
+  .eq('evento_id', id);
 
       // Organizar ingressos por sessão
       const ingressosPorSessaoTemp = {};
