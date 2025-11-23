@@ -21,6 +21,7 @@ export default function EventoPage() {
   const [codigoCupom, setCodigoCupom] = useState('');
   const [cupomAplicado, setCupomAplicado] = useState(null);
   const [mensagemCupom, setMensagemCupom] = useState('');
+  const [carrinho, setCarrinho] = useState({});
 
   useEffect(() => {
     carregarDados();
@@ -101,12 +102,12 @@ export default function EventoPage() {
 
   const carregarIngressosDaSessao = async (sessaoId) => {
     try {
+      // Buscar ingressos da sessão (removemos o filtro status_ingresso)
       const { data: ingressosData } = await supabase
         .from('ingressos')
         .select('*')
         .eq('evento_id', id)
         .eq('sessao_id', sessaoId)
-        .eq('status_ingresso', 'disponivel')
         .order('setor', { ascending: true });
 
       setIngressos(ingressosData || []);
@@ -185,6 +186,50 @@ export default function EventoPage() {
 
     const precoComCupom = cupomAplicado.precos.find(p => p.ingresso_id === ingressoId);
     return precoComCupom ? precoComCupom.preco_com_cupom : valorOriginal;
+  };
+
+  const adicionarAoCarrinho = (ingressoId, acao) => {
+    setCarrinho(prev => {
+      const quantidadeAtual = prev[ingressoId] || 0;
+      let novaQuantidade = quantidadeAtual;
+
+      if (acao === 'aumentar') {
+        const ingresso = ingressos.find(i => i.id === ingressoId);
+        const disponiveis = ingresso.quantidade - ingresso.vendidos;
+        if (quantidadeAtual < disponiveis && quantidadeAtual < 10) {
+          novaQuantidade = quantidadeAtual + 1;
+        }
+      } else if (acao === 'diminuir') {
+        novaQuantidade = Math.max(0, quantidadeAtual - 1);
+      }
+
+      if (novaQuantidade === 0) {
+        const { [ingressoId]: _, ...resto } = prev;
+        return resto;
+      }
+
+      return { ...prev, [ingressoId]: novaQuantidade };
+    });
+  };
+
+  const calcularTotalCarrinho = () => {
+    let total = 0;
+    Object.entries(carrinho).forEach(([ingressoId, quantidade]) => {
+      const ingresso = ingressos.find(i => i.id === parseInt(ingressoId));
+      if (ingresso) {
+        const valorBase = parseFloat(obterPrecoIngresso(ingresso.id, ingresso.valor));
+        const valorComTaxa = parseFloat(calcularValorComTaxa(valorBase));
+        total += valorComTaxa * quantidade;
+      }
+    });
+    return total;
+  };
+
+  const finalizarCompra = () => {
+    const ingressosIds = Object.keys(carrinho).join(',');
+    const quantidades = Object.values(carrinho).join(',');
+    const cupomParam = cupomAplicado ? `&cupom_id=${cupomAplicado.id}` : '';
+    window.location.href = `/checkout?evento_id=${evento.id}&ingressos_ids=${ingressosIds}&quantidades=${quantidades}${cupomParam}`;
   };
 
   if (loading) {
@@ -272,7 +317,7 @@ export default function EventoPage() {
   };
 
   return (
-    <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', paddingBottom: '40px' }}>
+    <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', paddingBottom: Object.keys(carrinho).length > 0 ? '120px' : '40px' }}>
       <header style={{ backgroundColor: '#5d34a4', color: 'white', padding: '15px 30px', marginBottom: '0' }}>
         <Link href="/" style={{ color: 'white', textDecoration: 'none', fontSize: '16px' }}>
           &larr; Voltar para Home
@@ -343,7 +388,6 @@ export default function EventoPage() {
               {evento.descricao || 'Descrição não disponível.'}
             </p>
 
-            {/* IMAGENS DA DESCRIÇÃO */}
             {imagensDescricao.length > 0 && (
               <div style={{ marginTop: '30px' }}>
                 {imagensDescricao.map((img, index) => (
@@ -431,7 +475,6 @@ export default function EventoPage() {
           </div>
         </div>
 
-        {/* SELETOR DE SESSÕES */}
         {sessoes.length > 1 && (
           <div style={{ 
             backgroundColor: 'white', 
@@ -473,7 +516,6 @@ export default function EventoPage() {
           </div>
         )}
 
-        {/* CUPOM */}
         {cupons.length > 0 && (
           <div style={{ 
             backgroundColor: cupomAplicado ? '#d4edda' : '#fff3cd', 
@@ -578,7 +620,6 @@ export default function EventoPage() {
           </div>
         )}
 
-        {/* INGRESSOS */}
         <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', marginBottom: '40px' }}>
           <h2 style={{ color: '#5d34a4', marginTop: 0, fontSize: '32px', marginBottom: '10px', textAlign: 'center' }}>
             🎫 Ingressos
@@ -660,6 +701,7 @@ export default function EventoPage() {
                           const temDesconto = valorBase < valorOriginal;
                           const valorTaxa = valorBase * (taxaCliente / 100);
                           const valorTotal = valorBase + valorTaxa;
+                          const quantidadeNoCarrinho = carrinho[ingresso.id] || 0;
 
                           return (
                             <div key={ingresso.id} style={{ 
@@ -699,21 +741,65 @@ export default function EventoPage() {
                               </div>
 
                               {ingressosDisponiveis > 0 ? (
-                                <Link href={`/checkout?evento_id=${evento.id}&ingresso_id=${ingresso.id}${cupomAplicado ? `&cupom_id=${cupomAplicado.id}` : ''}`}>
-                                  <button style={{
-                                    backgroundColor: '#f1c40f',
-                                    color: '#000',
-                                    border: 'none',
-                                    padding: '12px 30px',
-                                    borderRadius: '8px',
-                                    fontSize: '16px',
-                                    fontWeight: 'bold',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.3s'
-                                  }}>
-                                    Comprar
+                                <div style={{ 
+                                  display: 'flex', 
+                                  alignItems: 'center', 
+                                  gap: '10px',
+                                  backgroundColor: 'white',
+                                  padding: '8px',
+                                  borderRadius: '8px',
+                                  border: '2px solid #e0e0e0'
+                                }}>
+                                  <button
+                                    onClick={() => adicionarAoCarrinho(ingresso.id, 'diminuir')}
+                                    disabled={quantidadeNoCarrinho === 0}
+                                    style={{
+                                      width: '35px',
+                                      height: '35px',
+                                      borderRadius: '50%',
+                                      border: 'none',
+                                      backgroundColor: quantidadeNoCarrinho === 0 ? '#e0e0e0' : '#5d34a4',
+                                      color: quantidadeNoCarrinho === 0 ? '#999' : 'white',
+                                      fontSize: '20px',
+                                      fontWeight: 'bold',
+                                      cursor: quantidadeNoCarrinho === 0 ? 'not-allowed' : 'pointer',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center'
+                                    }}
+                                  >
+                                    −
                                   </button>
-                                </Link>
+                                  <span style={{ 
+                                    fontSize: '18px', 
+                                    fontWeight: 'bold', 
+                                    minWidth: '30px', 
+                                    textAlign: 'center',
+                                    color: '#2c3e50'
+                                  }}>
+                                    {quantidadeNoCarrinho}
+                                  </span>
+                                  <button
+                                    onClick={() => adicionarAoCarrinho(ingresso.id, 'aumentar')}
+                                    disabled={quantidadeNoCarrinho >= ingressosDisponiveis || quantidadeNoCarrinho >= 10}
+                                    style={{
+                                      width: '35px',
+                                      height: '35px',
+                                      borderRadius: '50%',
+                                      border: 'none',
+                                      backgroundColor: (quantidadeNoCarrinho >= ingressosDisponiveis || quantidadeNoCarrinho >= 10) ? '#e0e0e0' : '#5d34a4',
+                                      color: (quantidadeNoCarrinho >= ingressosDisponiveis || quantidadeNoCarrinho >= 10) ? '#999' : 'white',
+                                      fontSize: '20px',
+                                      fontWeight: 'bold',
+                                      cursor: (quantidadeNoCarrinho >= ingressosDisponiveis || quantidadeNoCarrinho >= 10) ? 'not-allowed' : 'pointer',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center'
+                                    }}
+                                  >
+                                    +
+                                  </button>
+                                </div>
                               ) : (
                                 <button disabled style={{
                                   backgroundColor: '#ccc',
@@ -731,199 +817,3 @@ export default function EventoPage() {
                             </div>
                           );
                         })}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })
-          )}
-
-          <div style={{ 
-            marginTop: '30px', 
-            padding: '20px', 
-            backgroundColor: '#e8f8f5', 
-            borderRadius: '8px',
-            border: '1px solid #27ae60'
-          }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', textAlign: 'center' }}>
-              <div>
-                <div style={{ fontSize: '28px', marginBottom: '8px' }}>✅</div>
-                <div style={{ fontSize: '14px', color: '#27ae60', fontWeight: '600' }}>Entrada garantida</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '28px', marginBottom: '8px' }}>🔒</div>
-                <div style={{ fontSize: '14px', color: '#27ae60', fontWeight: '600' }}>Pagamento seguro</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '28px', marginBottom: '8px' }}>💬</div>
-                <div style={{ fontSize: '14px', color: '#27ae60', fontWeight: '600' }}>Suporte 24h</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* PRODUTOS */}
-        {produtos && produtos.length > 0 && (
-          <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
-            <h2 style={{ color: '#5d34a4', marginTop: 0, fontSize: '32px', marginBottom: '30px', textAlign: 'center' }}>
-              🛍️ Produtos do Evento
-            </h2>
-
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', 
-              gap: '25px' 
-            }}>
-              {produtos.map(produto => {
-                const quantidadeTotal = (produto.quantidade_disponivel || 0) + (produto.quantidade_vendida || 0);
-                const quantidadeDisponivel = produto.quantidade_disponivel || 0;
-                const percentualDisponivel = quantidadeTotal > 0 ? (quantidadeDisponivel / quantidadeTotal) * 100 : 0;
-                const ultimos = percentualDisponivel <= 15 && percentualDisponivel > 0;
-                const esgotado = quantidadeDisponivel === 0;
-
-                return (
-                  <div key={produto.id} style={{ 
-                    border: '1px solid #e0e0e0', 
-                    borderRadius: '10px', 
-                    overflow: 'hidden',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                    transition: 'transform 0.3s',
-                    backgroundColor: 'white',
-                    position: 'relative'
-                  }}>
-                    {ultimos && !esgotado && (
-                      <div style={{
-                        position: 'absolute',
-                        top: '10px',
-                        right: '10px',
-                        backgroundColor: '#ffc107',
-                        color: '#000',
-                        padding: '5px 10px',
-                        borderRadius: '15px',
-                        fontSize: '12px',
-                        fontWeight: 'bold',
-                        zIndex: 1
-                      }}>
-                        🔥 Últimos!
-                      </div>
-                    )}
-
-                    {esgotado && (
-                      <div style={{
-                        position: 'absolute',
-                        top: '10px',
-                        right: '10px',
-                        backgroundColor: '#dc3545',
-                        color: 'white',
-                        padding: '5px 10px',
-                        borderRadius: '15px',
-                        fontSize: '12px',
-                        fontWeight: 'bold',
-                        zIndex: 1
-                      }}>
-                        ❌ Esgotado
-                      </div>
-                    )}
-
-                    <div style={{ 
-                      width: '100%', 
-                      height: '200px', 
-                      backgroundColor: '#f0f0f0',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      overflow: 'hidden'
-                    }}>
-                      {produto.imagem_url ? (
-                        <img 
-                          src={produto.imagem_url} 
-                          alt={produto.nome}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        />
-                      ) : (
-                        <span style={{ fontSize: '48px' }}>📦</span>
-                      )}
-                    </div>
-
-                    <div style={{ padding: '20px' }}>
-                      <h3 style={{ margin: '0 0 10px 0', fontSize: '18px', color: '#2c3e50' }}>
-                        {produto.nome}
-                      </h3>
-                      
-                      {produto.descricao && (
-                        <p style={{ fontSize: '14px', color: '#666', marginBottom: '12px', lineHeight: '1.5' }}>
-                          {produto.descricao}
-                        </p>
-                      )}
-
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                        <span style={{ fontSize: '22px', fontWeight: 'bold', color: '#27ae60' }}>
-                          R$ {parseFloat(produto.preco).toFixed(2)}
-                        </span>
-                        {produto.tamanho && (
-                          <span style={{ 
-                            backgroundColor: '#e8f4f8', 
-                            color: '#2980b9', 
-                            padding: '4px 12px', 
-                            borderRadius: '15px',
-                            fontSize: '13px',
-                            fontWeight: '600'
-                          }}>
-                            Tamanho: {produto.tamanho}
-                          </span>
-                        )}
-                      </div>
-
-                      <p style={{ fontSize: '13px', color: '#999', marginBottom: '15px' }}>
-                        {esgotado 
-                          ? '❌ Esgotado' 
-                          : ultimos 
-                            ? `🔥 Últimos ${quantidadeDisponivel} disponíveis!`
-                            : `${quantidadeDisponivel} disponíveis`}
-                      </p>
-
-                      {quantidadeDisponivel > 0 ? (
-                        <Link href={`/checkout?evento_id=${evento.id}&produto_id=${produto.id}`}>
-                          <button style={{
-                            backgroundColor: '#3498db',
-                            color: 'white',
-                            border: 'none',
-                            padding: '12px',
-                            borderRadius: '8px',
-                            width: '100%',
-                            fontSize: '15px',
-                            fontWeight: 'bold',
-                            cursor: 'pointer',
-                            transition: 'all 0.3s'
-                          }}>
-                            Adicionar ao Carrinho
-                          </button>
-                        </Link>
-                      ) : (
-                        <button disabled style={{
-                          backgroundColor: '#ccc',
-                          color: '#666',
-                          border: 'none',
-                          padding: '12px',
-                          borderRadius: '8px',
-                          width: '100%',
-                          fontSize: '15px',
-                          fontWeight: 'bold',
-                          cursor: 'not-allowed'
-                        }}>
-                          Esgotado
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
