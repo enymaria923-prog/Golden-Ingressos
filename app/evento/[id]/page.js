@@ -15,6 +15,8 @@ export default function EventoPage() {
   const [sessoes, setSessoes] = useState([]);
   const [sessaoSelecionada, setSessaoSelecionada] = useState(null);
   const [ingressos, setIngressos] = useState([]);
+  const [setores, setSetores] = useState([]);
+  const [lotes, setLotes] = useState([]);
   const [produtos, setProdutos] = useState([]);
   const [cupons, setCupons] = useState([]);
   const [imagensDescricao, setImagensDescricao] = useState([]);
@@ -54,10 +56,25 @@ export default function EventoPage() {
 
       setSessoes(sessoesData || []);
       
-      // Selecionar primeira sessão por padrão
       if (sessoesData && sessoesData.length > 0) {
         setSessaoSelecionada(sessoesData[0].id);
       }
+
+      // Buscar TODOS os setores do evento
+      const { data: setoresData } = await supabase
+        .from('setores')
+        .select('*')
+        .eq('eventos_id', id);
+
+      setSetores(setoresData || []);
+
+      // Buscar TODOS os lotes
+      const { data: lotesData } = await supabase
+        .from('lotes')
+        .select('*')
+        .eq('evento_id', id);
+
+      setLotes(lotesData || []);
 
       // Buscar cupons ativos
       const { data: cuponsData } = await supabase
@@ -102,7 +119,7 @@ export default function EventoPage() {
 
   const carregarIngressosDaSessao = async (sessaoId) => {
     try {
-      // Buscar ingressos da sessão (removemos o filtro status_ingresso)
+      // Buscar TODOS os ingressos da sessão (sem filtro de status)
       const { data: ingressosData } = await supabase
         .from('ingressos')
         .select('*')
@@ -122,7 +139,6 @@ export default function EventoPage() {
       return;
     }
 
-    // Buscar cupom
     const cupomEncontrado = cupons.find(c => 
       c.codigo.toUpperCase() === codigoCupom.toUpperCase().trim() && 
       c.sessao_id === sessaoSelecionada
@@ -134,7 +150,6 @@ export default function EventoPage() {
       return;
     }
 
-    // Verificar validade
     const hoje = new Date();
     if (cupomEncontrado.data_validade_inicio) {
       const inicio = new Date(cupomEncontrado.data_validade_inicio);
@@ -154,14 +169,12 @@ export default function EventoPage() {
       }
     }
 
-    // Verificar quantidade
     if (cupomEncontrado.quantidade_total && cupomEncontrado.quantidade_usada >= cupomEncontrado.quantidade_total) {
       setMensagemCupom('❌ Este cupom atingiu o limite de usos');
       setCupomAplicado(null);
       return;
     }
 
-    // Buscar preços com cupom
     const { data: cuponsIngressosData } = await supabase
       .from('cupons_ingressos')
       .select('*')
@@ -183,7 +196,6 @@ export default function EventoPage() {
 
   const obterPrecoIngresso = (ingressoId, valorOriginal) => {
     if (!cupomAplicado) return valorOriginal;
-
     const precoComCupom = cupomAplicado.precos.find(p => p.ingresso_id === ingressoId);
     return precoComCupom ? precoComCupom.preco_com_cupom : valorOriginal;
   };
@@ -253,9 +265,8 @@ export default function EventoPage() {
     );
   }
 
-  // Buscar setores e lotes
+  // ORGANIZAR INGRESSOS COMO NO CÓDIGO DE EXEMPLO
   const setoresOrganizados = {};
-  const lotesMap = new Map();
 
   ingressos.forEach(ingresso => {
     const setorNome = ingresso.setor || 'Sem Setor';
@@ -272,19 +283,9 @@ export default function EventoPage() {
     setoresOrganizados[setorNome].totalVendido += ingresso.vendidos;
 
     if (ingresso.lote_id) {
-      const loteKey = `${ingresso.setor}-${ingresso.lote_id}`;
+      const loteInfo = lotes.find(l => l.id === ingresso.lote_id);
+      const loteNome = loteInfo ? loteInfo.nome : `Lote ${ingresso.lote_id}`;
       
-      if (!lotesMap.has(loteKey)) {
-        lotesMap.set(loteKey, {
-          id: ingresso.lote_id,
-          nome: `Lote ${ingresso.lote_id}`,
-          ingressos: []
-        });
-      }
-      
-      lotesMap.get(loteKey).ingressos.push(ingresso);
-
-      const loteNome = lotesMap.get(loteKey).nome;
       if (!setoresOrganizados[setorNome].lotes[loteNome]) {
         setoresOrganizados[setorNome].lotes[loteNome] = {
           ingressos: []
@@ -638,7 +639,7 @@ export default function EventoPage() {
           ) : (
             Object.entries(setoresOrganizados).map(([setorNome, setorData]) => {
               const disponiveis = setorData.totalDisponibilizado - setorData.totalVendido;
-              const percentualDisponivel = (disponiveis / setorData.totalDisponibilizado) * 100;
+              const percentualDisponivel = setorData.totalDisponibilizado > 0 ? (disponiveis / setorData.totalDisponibilizado) * 100 : 0;
               const ultimos = percentualDisponivel <= 15 && percentualDisponivel > 0;
               const esgotado = disponiveis === 0;
 
@@ -712,9 +713,11 @@ export default function EventoPage() {
                               backgroundColor: temDesconto ? '#d4edda' : '#fafafa',
                               borderRadius: '8px',
                               marginBottom: '12px',
-                              border: temDesconto ? '2px solid #28a745' : '1px solid #e0e0e0'
+                              border: temDesconto ? '2px solid #28a745' : '1px solid #e0e0e0',
+                              flexWrap: 'wrap',
+                              gap: '15px'
                             }}>
-                              <div style={{ flex: 1 }}>
+                              <div style={{ flex: 1, minWidth: '200px' }}>
                                 <h4 style={{ margin: 0, fontSize: '18px', color: '#2c3e50', marginBottom: '5px' }}>
                                   {ingresso.tipo}
                                   {temDesconto && <span style={{ color: '#28a745', marginLeft: '10px' }}>🎟️ COM DESCONTO</span>}
@@ -726,7 +729,7 @@ export default function EventoPage() {
                                 </p>
                               </div>
                               
-                              <div style={{ textAlign: 'right', marginRight: '20px' }}>
+                              <div style={{ textAlign: 'right' }}>
                                 {temDesconto && (
                                   <div style={{ fontSize: '13px', color: '#999', textDecoration: 'line-through', marginBottom: '3px' }}>
                                     R$ {valorOriginal.toFixed(2)}
@@ -817,3 +820,252 @@ export default function EventoPage() {
                             </div>
                           );
                         })}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })
+          )}
+
+          <div style={{ 
+            marginTop: '30px', 
+            padding: '20px', 
+            backgroundColor: '#e8f8f5', 
+            borderRadius: '8px',
+            border: '1px solid #27ae60'
+          }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', textAlign: 'center' }}>
+              <div>
+                <div style={{ fontSize: '28px', marginBottom: '8px' }}>✅</div>
+                <div style={{ fontSize: '14px', color: '#27ae60', fontWeight: '600' }}>Entrada garantida</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '28px', marginBottom: '8px' }}>🔒</div>
+                <div style={{ fontSize: '14px', color: '#27ae60', fontWeight: '600' }}>Pagamento seguro</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '28px', marginBottom: '8px' }}>💬</div>
+                <div style={{ fontSize: '14px', color: '#27ae60', fontWeight: '600' }}>Suporte 24h</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {produtos && produtos.length > 0 && (
+          <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', marginBottom: '40px' }}>
+            <h2 style={{ color: '#5d34a4', marginTop: 0, fontSize: '32px', marginBottom: '30px', textAlign: 'center' }}>
+              🛍️ Produtos do Evento
+            </h2>
+
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', 
+              gap: '25px' 
+            }}>
+              {produtos.map(produto => {
+                const quantidadeTotal = (produto.quantidade_disponivel || 0) + (produto.quantidade_vendida || 0);
+                const quantidadeDisponivel = produto.quantidade_disponivel || 0;
+                const percentualDisponivel = quantidadeTotal > 0 ? (quantidadeDisponivel / quantidadeTotal) * 100 : 0;
+                const ultimos = percentualDisponivel <= 15 && percentualDisponivel > 0;
+                const esgotado = quantidadeDisponivel === 0;
+
+                return (
+                  <div key={produto.id} style={{ 
+                    border: '1px solid #e0e0e0', 
+                    borderRadius: '10px', 
+                    overflow: 'hidden',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                    transition: 'transform 0.3s',
+                    backgroundColor: 'white',
+                    position: 'relative'
+                  }}>
+                    {ultimos && !esgotado && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '10px',
+                        right: '10px',
+                        backgroundColor: '#ffc107',
+                        color: '#000',
+                        padding: '5px 10px',
+                        borderRadius: '15px',
+                        fontSize: '12px',
+                        fontWeight: 'bold',
+                        zIndex: 1
+                      }}>
+                        🔥 Últimos!
+                      </div>
+                    )}
+
+                    {esgotado && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '10px',
+                        right: '10px',
+                        backgroundColor: '#dc3545',
+                        color: 'white',
+                        padding: '5px 10px',
+                        borderRadius: '15px',
+                        fontSize: '12px',
+                        fontWeight: 'bold',
+                        zIndex: 1
+                      }}>
+                        ❌ Esgotado
+                      </div>
+                    )}
+
+                    <div style={{ 
+                      width: '100%', 
+                      height: '200px', 
+                      backgroundColor: '#f0f0f0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      overflow: 'hidden'
+                    }}>
+                      {produto.imagem_url ? (
+                        <img 
+                          src={produto.imagem_url} 
+                          alt={produto.nome}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                      ) : (
+                        <span style={{ fontSize: '48px' }}>📦</span>
+                      )}
+                    </div>
+
+                    <div style={{ padding: '20px' }}>
+                      <h3 style={{ margin: '0 0 10px 0', fontSize: '18px', color: '#2c3e50' }}>
+                        {produto.nome}
+                      </h3>
+                      
+                      {produto.descricao && (
+                        <p style={{ fontSize: '14px', color: '#666', marginBottom: '12px', lineHeight: '1.5' }}>
+                          {produto.descricao}
+                        </p>
+                      )}
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <span style={{ fontSize: '22px', fontWeight: 'bold', color: '#27ae60' }}>
+                          R$ {parseFloat(produto.preco).toFixed(2)}
+                        </span>
+                        {produto.tamanho && (
+                          <span style={{ 
+                            backgroundColor: '#e8f4f8', 
+                            color: '#2980b9', 
+                            padding: '4px 12px', 
+                            borderRadius: '15px',
+                            fontSize: '13px',
+                            fontWeight: '600'
+                          }}>
+                            Tamanho: {produto.tamanho}
+                          </span>
+                        )}
+                      </div>
+
+                      <p style={{ fontSize: '13px', color: '#999', marginBottom: '15px' }}>
+                        {esgotado 
+                          ? '❌ Esgotado' 
+                          : ultimos 
+                            ? `🔥 Últimos ${quantidadeDisponivel} disponíveis!`
+                            : `${quantidadeDisponivel} disponíveis`}
+                      </p>
+
+                      {quantidadeDisponivel > 0 ? (
+                        <Link href={`/checkout?evento_id=${evento.id}&produto_id=${produto.id}`}>
+                          <button style={{
+                            backgroundColor: '#3498db',
+                            color: 'white',
+                            border: 'none',
+                            padding: '12px',
+                            borderRadius: '8px',
+                            width: '100%',
+                            fontSize: '15px',
+                            fontWeight: 'bold',
+                            cursor: 'pointer',
+                            transition: 'all 0.3s'
+                          }}>
+                            Adicionar ao Carrinho
+                          </button>
+                        </Link>
+                      ) : (
+                        <button disabled style={{
+                          backgroundColor: '#ccc',
+                          color: '#666',
+                          border: 'none',
+                          padding: '12px',
+                          borderRadius: '8px',
+                          width: '100%',
+                          fontSize: '15px',
+                          fontWeight: 'bold',
+                          cursor: 'not-allowed'
+                        }}>
+                          Esgotado
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {Object.keys(carrinho).length > 0 && (
+        <div style={{ 
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          backgroundColor: 'white',
+          borderTop: '3px solid #5d34a4',
+          padding: '20px',
+          boxShadow: '0 -4px 20px rgba(0,0,0,0.15)',
+          zIndex: 1000
+        }}>
+          <div style={{ 
+            maxWidth: '1200px', 
+            margin: '0 auto',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '20px',
+            flexWrap: 'wrap'
+          }}>
+            <div>
+              <div style={{ fontSize: '14px', color: '#666', marginBottom: '5px' }}>
+                {Object.values(carrinho).reduce((a, b) => a + b, 0)} ingresso(s) selecionado(s)
+              </div>
+              <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#27ae60' }}>
+                Total: R$ {calcularTotalCarrinho().toFixed(2)}
+              </div>
+              {cupomAplicado && (
+                <div style={{ fontSize: '13px', color: '#28a745', marginTop: '3px' }}>
+                  ✅ Desconto aplicado: {cupomAplicado.codigo}
+                </div>
+              )}
+            </div>
+            <button
+              onClick={finalizarCompra}
+              style={{
+                backgroundColor: '#27ae60',
+                color: 'white',
+                border: 'none',
+                padding: '18px 50px',
+                borderRadius: '10px',
+                fontSize: '18px',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                boxShadow: '0 4px 15px rgba(39, 174, 96, 0.3)',
+                transition: 'all 0.3s'
+              }}
+            >
+              Comprar Ingressos →
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
