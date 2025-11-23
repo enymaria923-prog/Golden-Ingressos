@@ -592,6 +592,26 @@ export default function EventoPage() {
           </div>
         )}
 
+        {/* PAINEL DEBUG - REMOVER DEPOIS */}
+        <div style={{ backgroundColor: '#fff3cd', padding: '20px', borderRadius: '8px', marginBottom: '20px', border: '2px solid #ffc107' }}>
+          <h3 style={{ color: '#856404', margin: '0 0 15px 0' }}>🔍 DEBUG - Dados do Banco</h3>
+          <div style={{ fontSize: '13px', fontFamily: 'monospace', color: '#333' }}>
+            <p><strong>Total de ingressos encontrados:</strong> {ingressosDaSessao.length}</p>
+            {ingressosDaSessao.slice(0, 3).map((ing, i) => (
+              <div key={i} style={{ backgroundColor: 'white', padding: '10px', marginBottom: '10px', borderRadius: '5px', border: '1px solid #ddd' }}>
+                <p style={{ margin: '3px 0' }}><strong>Ingresso {i + 1}:</strong> {ing.tipo}</p>
+                <p style={{ margin: '3px 0' }}>- ID: {ing.id}</p>
+                <p style={{ margin: '3px 0' }}>- Setor: {ing.setor}</p>
+                <p style={{ margin: '3px 0' }}>- Quantidade (BD): <span style={{ color: 'blue', fontWeight: 'bold' }}>{ing.quantidade}</span></p>
+                <p style={{ margin: '3px 0' }}>- Vendidos (BD): <span style={{ color: 'red', fontWeight: 'bold' }}>{ing.vendidos}</span></p>
+                <p style={{ margin: '3px 0' }}>- Tipo no JS: {typeof ing.quantidade}</p>
+                <p style={{ margin: '3px 0' }}>- Disponíveis (calculado): <span style={{ color: 'green', fontWeight: 'bold' }}>{(parseInt(ing.quantidade) || 0) - (parseInt(ing.vendidos) || 0)}</span></p>
+              </div>
+            ))}
+            {ingressosDaSessao.length > 3 && <p>... e mais {ingressosDaSessao.length - 3} ingressos</p>}
+          </div>
+        </div>
+
         {/* INGRESSOS */}
         <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', marginBottom: '40px' }}>
           <h2 style={{ color: '#5d34a4', marginTop: 0, fontSize: '32px', marginBottom: '10px', textAlign: 'center' }}>
