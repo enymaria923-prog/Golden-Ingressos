@@ -742,6 +742,8 @@ borderLeft: '4px solid #9b59b6'
 📦 {lote.nome}
 </span>
 </div>
+                     <div>
+
                      {lote.tipos.map((tipo) => {
                       const valorBase = parseFloat(obterPrecoIngresso(tipo.id, tipo.preco));
                       const valorOriginal = parseFloat(tipo.preco);
