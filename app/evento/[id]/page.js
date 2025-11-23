@@ -22,8 +22,6 @@ export default function EventoPage() {
   const [codigoCupom, setCodigoCupom] = useState('');
   const [cupomAplicado, setCupomAplicado] = useState(null);
   const [mensagemCupom, setMensagemCupom] = useState('');
-  
-  // Carrinho de compras
   const [carrinho, setCarrinho] = useState({});
 
   useEffect(() => {
@@ -34,7 +32,6 @@ export default function EventoPage() {
     try {
       setLoading(true);
 
-      // Buscar evento
       const { data: eventoData, error: eventoError } = await supabase
         .from('eventos')
         .select('*')
@@ -48,7 +45,6 @@ export default function EventoPage() {
 
       setEvento(eventoData);
 
-      // Buscar sessões
       const { data: sessoesData } = await supabase
         .from('sessoes')
         .select('*')
@@ -57,18 +53,17 @@ export default function EventoPage() {
 
       setSessoes(sessoesData || []);
       
-      // Selecionar primeira sessão por padrão
       if (sessoesData && sessoesData.length > 0) {
         setSessaoSelecionada(sessoesData[0].id);
       }
 
-      // Buscar TODOS os ingressos de TODAS as sessões
       const { data: todosIngressos } = await supabase
         .from('ingressos')
         .select('*')
         .eq('evento_id', id);
 
-      // Organizar ingressos por sessão
+      console.log('📊 TODOS OS INGRESSOS DO BANCO:', todosIngressos);
+
       const ingressosPorSessaoTemp = {};
       (sessoesData || []).forEach(sessao => {
         ingressosPorSessaoTemp[sessao.id] = [];
@@ -80,9 +75,9 @@ export default function EventoPage() {
         }
       });
 
+      console.log('📦 INGRESSOS ORGANIZADOS POR SESSÃO:', ingressosPorSessaoTemp);
       setIngressosPorSessao(ingressosPorSessaoTemp);
 
-      // Buscar cupons ativos para o evento
       const { data: cuponsData } = await supabase
         .from('cupons')
         .select('*')
@@ -91,7 +86,6 @@ export default function EventoPage() {
 
       setCupons(cuponsData || []);
 
-      // Buscar produtos
       const { data: produtosData } = await supabase
         .from('produtos')
         .select('*')
@@ -101,7 +95,6 @@ export default function EventoPage() {
 
       setProdutos(produtosData || []);
 
-      // Buscar imagens da descrição
       const { data: imagensData } = await supabase
         .from('eventos_imagens_descricao')
         .select('*')
@@ -123,7 +116,6 @@ export default function EventoPage() {
       return;
     }
 
-    // Buscar cupom - agora aceita cupom de qualquer sessão do mesmo evento
     const cupomEncontrado = cupons.find(c => 
       c.codigo.toUpperCase() === codigoCupom.toUpperCase().trim()
     );
@@ -134,7 +126,6 @@ export default function EventoPage() {
       return;
     }
 
-    // Verificar validade
     const hoje = new Date();
     if (cupomEncontrado.data_validade_inicio) {
       const inicio = new Date(cupomEncontrado.data_validade_inicio);
@@ -154,7 +145,6 @@ export default function EventoPage() {
       }
     }
 
-    // Verificar quantidade
     if (cupomEncontrado.quantidade_total && cupomEncontrado.quantidade_usada >= cupomEncontrado.quantidade_total) {
       setMensagemCupom('❌ Este cupom atingiu o limite de usos');
       setCupomAplicado(null);
@@ -279,6 +269,8 @@ export default function EventoPage() {
       setoresOrganizados[setorNome].semLote.push(ingresso);
     }
   });
+
+  console.log('🎪 SETORES ORGANIZADOS:', setoresOrganizados);
 
   // Calcular menor preço
   const precoMaisBaixo = ingressosDaSessao.length > 0
@@ -468,7 +460,7 @@ export default function EventoPage() {
                   key={sessao.id}
                   onClick={() => {
                     setSessaoSelecionada(sessao.id);
-                    setCarrinho({}); // Limpar carrinho ao trocar sessão
+                    setCarrinho({});
                   }}
                   style={{
                     padding: '15px',
@@ -618,19 +610,24 @@ export default function EventoPage() {
             </div>
           ) : (
             Object.entries(setoresOrganizados).map(([setorNome, setorData]) => {
-              // Calcular totais do setor
+              // 🔧 CORREÇÃO: Converter valores para NUMBER antes de somar
               let totalDisponibilizado = 0;
               let totalVendido = 0;
 
               [...setorData.semLote, ...Object.values(setorData.lotes).flatMap(l => l.ingressos)].forEach(ing => {
-                totalDisponibilizado += (ing.quantidade || 0);
-                totalVendido += (ing.vendidos || 0);
+                const qtd = parseInt(ing.quantidade) || 0;
+                const vend = parseInt(ing.vendidos) || 0;
+                console.log(`📊 Ingresso ${ing.tipo}: quantidade=${qtd}, vendidos=${vend}`);
+                totalDisponibilizado += qtd;
+                totalVendido += vend;
               });
 
               const disponiveis = totalDisponibilizado - totalVendido;
               const percentualDisponivel = totalDisponibilizado > 0 ? (disponiveis / totalDisponibilizado) * 100 : 0;
               const ultimos = percentualDisponivel <= 15 && percentualDisponivel > 0;
               const esgotado = disponiveis === 0;
+
+              console.log(`🎪 SETOR ${setorNome}: total=${totalDisponibilizado}, vendidos=${totalVendido}, disponíveis=${disponiveis}`);
 
               return (
                 <div key={setorNome} style={{ 
@@ -683,7 +680,13 @@ export default function EventoPage() {
                         </div>
 
                         {loteData.ingressos.map(ingresso => {
-                          const ingressosDisponiveis = (ingresso.quantidade || 0) - (ingresso.vendidos || 0);
+                          // 🔧 CORREÇÃO PRINCIPAL: Converter para NUMBER
+                          const quantidade = parseInt(ingresso.quantidade) || 0;
+                          const vendidos = parseInt(ingresso.vendidos) || 0;
+                          const ingressosDisponiveis = quantidade - vendidos;
+                          
+                          console.log(`🎫 ${ingresso.tipo}: qtd=${quantidade}, vendidos=${vendidos}, disponíveis=${ingressosDisponiveis}`);
+
                           const precoBase = parseFloat(ingresso.valor);
                           const precoComCupom = calcularPrecoComCupom(precoBase);
                           const temDesconto = precoComCupom < precoBase;
@@ -776,7 +779,13 @@ export default function EventoPage() {
                     {setorData.semLote.length > 0 && (
                       <div>
                         {setorData.semLote.map(ingresso => {
-                          const ingressosDisponiveis = (ingresso.quantidade || 0) - (ingresso.vendidos || 0);
+                          // 🔧 CORREÇÃO PRINCIPAL: Converter para NUMBER
+                          const quantidade = parseInt(ingresso.quantidade) || 0;
+                          const vendidos = parseInt(ingresso.vendidos) || 0;
+                          const ingressosDisponiveis = quantidade - vendidos;
+                          
+                          console.log(`🎫 ${ingresso.tipo} (sem lote): qtd=${quantidade}, vendidos=${vendidos}, disponíveis=${ingressosDisponiveis}`);
+
                           const precoBase = parseFloat(ingresso.valor);
                           const precoComCupom = calcularPrecoComCupom(precoBase);
                           const temDesconto = precoComCupom < precoBase;
@@ -870,7 +879,7 @@ export default function EventoPage() {
             })
           )}
 
-          {/* Resumo do Carrinho e Botão Finalizar */}
+          {/* Resumo do Carrinho */}
           {totalItensCarrinho > 0 && (
             <div style={{ 
               marginTop: '30px', 
