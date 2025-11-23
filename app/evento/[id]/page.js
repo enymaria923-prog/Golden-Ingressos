@@ -14,7 +14,7 @@ export default function EventoPage() {
   const [evento, setEvento] = useState(null);
   const [sessoes, setSessoes] = useState([]);
   const [sessaoSelecionada, setSessaoSelecionada] = useState(null);
-  const [setoresPorSessao, setSetoresPorSessao] = useState({});
+  const [ingressos, setIngressos] = useState([]);
   const [produtos, setProdutos] = useState([]);
   const [cupons, setCupons] = useState([]);
   const [imagensDescricao, setImagensDescricao] = useState([]);
@@ -30,6 +30,7 @@ export default function EventoPage() {
     try {
       setLoading(true);
 
+      // Buscar evento
       const { data: eventoData, error: eventoError } = await supabase
         .from('eventos')
         .select('*')
@@ -43,6 +44,7 @@ export default function EventoPage() {
 
       setEvento(eventoData);
 
+      // Buscar sessões
       const { data: sessoesData } = await supabase
         .from('sessoes')
         .select('*')
@@ -51,10 +53,12 @@ export default function EventoPage() {
 
       setSessoes(sessoesData || []);
       
+      // Selecionar primeira sessão por padrão
       if (sessoesData && sessoesData.length > 0) {
         setSessaoSelecionada(sessoesData[0].id);
       }
 
+      // Buscar cupons ativos
       const { data: cuponsData } = await supabase
         .from('cupons')
         .select('*')
@@ -63,6 +67,7 @@ export default function EventoPage() {
 
       setCupons(cuponsData || []);
 
+      // Buscar produtos
       const { data: produtosData } = await supabase
         .from('produtos')
         .select('*')
@@ -72,6 +77,7 @@ export default function EventoPage() {
 
       setProdutos(produtosData || []);
 
+      // Buscar imagens da descrição
       const { data: imagensData } = await supabase
         .from('eventos_imagens_descricao')
         .select('*')
@@ -80,140 +86,32 @@ export default function EventoPage() {
 
       setImagensDescricao(imagensData || []);
 
-      const { data: setoresData } = await supabase
-        .from('setores')
-        .select('*')
-        .in('sessao_id', (sessoesData || []).map(s => s.id));
-
-      const { data: ingressosData } = await supabase
-        .from('ingressos')
-        .select('*')
-        .in('setor_id', (setoresData || []).map(s => s.id));
-
-      const { data: lotesData } = await supabase
-        .from('lotes')
-        .select('*')
-        .eq('evento_id', id);
-
-      const setoresPorSessaoTemp = {};
-
-      (sessoesData || []).forEach(sessao => {
-        setoresPorSessaoTemp[sessao.id] = [];
-      });
-
-      const setoresPorSessaoMap = {};
-      setoresData?.forEach(setor => {
-        if (!setor.sessao_id) return;
-        
-        if (!setoresPorSessaoMap[setor.sessao_id]) {
-          setoresPorSessaoMap[setor.sessao_id] = [];
-        }
-        setoresPorSessaoMap[setor.sessao_id].push(setor);
-      });
-
-      Object.keys(setoresPorSessaoMap).forEach(sessaoId => {
-      const carregarIngressosDaSessao = async (sessaoId) => {
-  try {
-    const { data: ingressosData } = await supabase
-      .from('ingressos')
-      .select('*')
-      .eq('evento_id', id)
-      .eq('sessao_id', sessaoId)
-      .order('setor', { ascending: true });
-
-    setIngressos(ingressosData || []);
-  } catch (error) {
-    console.error('Erro ao carregar ingressos:', error);
-  }
-};
-
-      ingressosData?.forEach(ingresso => {
-        // BUSCAR O SETOR PELO setor_id (não pelo nome)
-        const setorDoIngresso = setoresData?.find(s => s.id === ingresso.setor_id);
-        
-        if (!setorDoIngresso || !setorDoIngresso.sessao_id) {
-          console.warn('Ingresso sem setor ou sessão:', ingresso);
-          return;
-        }
-
-        const sessaoId = setorDoIngresso.sessao_id;
-
-        if (!setoresPorSessaoTemp[sessaoId]) {
-          console.warn('Sessão não existe no temp:', sessaoId);
-          return;
-        }
-
-        // BUSCAR O SETOR NO ARRAY DA SESSÃO PELO NOME
-        const setor = setoresPorSessaoTemp[sessaoId].find(s => s.nome === setorDoIngresso.nome);
-        
-        if (!setor) {
-          console.warn('Setor não encontrado no array da sessão:', setorDoIngresso.nome);
-          return;
-        }
-
-        const quantidade = parseInt(ingresso.quantidade) || 0;
-        const vendidos = parseInt(ingresso.vendidos) || 0;
-        const disponiveis = quantidade > 0 ? (quantidade - vendidos) : 0;
-        const preco = parseFloat(ingresso.valor) || 0;
-
-        const tipoObj = {
-          id: ingresso.id,
-          nome: ingresso.tipo,
-          preco: preco,
-          quantidade: quantidade,
-          vendidos: vendidos,
-          disponiveis: disponiveis,
-          bilheteria: vendidos * preco
-        };
-
-        if (ingresso.lote_id) {
-          let lote = setor.lotes.find(l => l.id === ingresso.lote_id);
-          
-          if (!lote) {
-            const loteInfo = lotesData?.find(l => l.id === ingresso.lote_id);
-            lote = {
-              id: ingresso.lote_id,
-              nome: loteInfo?.nome || 'Lote sem nome',
-              tipos: []
-            };
-            setor.lotes.push(lote);
-          }
-          
-          lote.tipos.push(tipoObj);
-        } else {
-          setor.tiposSemLote.push(tipoObj);
-        }
-      });
-
-      console.log('=== DEBUG INGRESSOS ===');
-      console.log('Sessões:', sessoesData);
-      console.log('Setores (ATENÇÃO - deve ter sessao_id):', setoresData);
-      console.log('Ingressos (ATENÇÃO - deve ter setor_id):', ingressosData);
-      console.log('Lotes:', lotesData);
-      console.log('SetoresPorSessao FINAL:', setoresPorSessaoTemp);
-      
-      // DEBUG DETALHADO POR SESSÃO
-      Object.keys(setoresPorSessaoTemp).forEach(sessaoId => {
-        console.log(`\n--- Sessão ${sessaoId} ---`);
-        const setoresDaSessao = setoresPorSessaoTemp[sessaoId];
-        console.log(`Total de setores: ${setoresDaSessao.length}`);
-        setoresDaSessao.forEach((setor, idx) => {
-          console.log(`  Setor ${idx}: ${setor.nome}`);
-          console.log(`    - Lotes: ${setor.lotes.length}`);
-          console.log(`    - Tipos sem lote: ${setor.tiposSemLote.length}`);
-          setor.lotes.forEach(lote => {
-            console.log(`      Lote "${lote.nome}": ${lote.tipos.length} tipos`);
-          });
-        });
-      });
-      console.log('======================');
-
-      setSetoresPorSessao(setoresPorSessaoTemp);
-
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (sessaoSelecionada) {
+      carregarIngressosDaSessao(sessaoSelecionada);
+    }
+  }, [sessaoSelecionada]);
+
+  const carregarIngressosDaSessao = async (sessaoId) => {
+    try {
+      const { data: ingressosData } = await supabase
+        .from('ingressos')
+        .select('*')
+        .eq('evento_id', id)
+        .eq('sessao_id', sessaoId)
+        .eq('status_ingresso', 'disponivel')
+        .order('setor', { ascending: true });
+
+      setIngressos(ingressosData || []);
+    } catch (error) {
+      console.error('Erro ao carregar ingressos:', error);
     }
   };
 
@@ -223,6 +121,7 @@ export default function EventoPage() {
       return;
     }
 
+    // Buscar cupom
     const cupomEncontrado = cupons.find(c => 
       c.codigo.toUpperCase() === codigoCupom.toUpperCase().trim() && 
       c.sessao_id === sessaoSelecionada
@@ -234,6 +133,7 @@ export default function EventoPage() {
       return;
     }
 
+    // Verificar validade
     const hoje = new Date();
     if (cupomEncontrado.data_validade_inicio) {
       const inicio = new Date(cupomEncontrado.data_validade_inicio);
@@ -253,12 +153,14 @@ export default function EventoPage() {
       }
     }
 
+    // Verificar quantidade
     if (cupomEncontrado.quantidade_total && cupomEncontrado.quantidade_usada >= cupomEncontrado.quantidade_total) {
       setMensagemCupom('❌ Este cupom atingiu o limite de usos');
       setCupomAplicado(null);
       return;
     }
 
+    // Buscar preços com cupom
     const { data: cuponsIngressosData } = await supabase
       .from('cupons_ingressos')
       .select('*')
@@ -285,34 +187,6 @@ export default function EventoPage() {
     return precoComCupom ? precoComCupom.preco_com_cupom : valorOriginal;
   };
 
-  const calcularTotaisSetor = (setor) => {
-    let vendidos = 0, bilheteria = 0;
-    let totalCalculado = 0;
-
-    setor.lotes.forEach(lote => {
-      lote.tipos.forEach(tipo => {
-        vendidos += tipo.vendidos;
-        bilheteria += tipo.bilheteria;
-        totalCalculado += tipo.quantidade;
-      });
-    });
-
-    setor.tiposSemLote.forEach(tipo => {
-      vendidos += tipo.vendidos;
-      bilheteria += tipo.bilheteria;
-      totalCalculado += tipo.quantidade;
-    });
-
-    const total = setor.capacidadeDefinida && setor.capacidadeDefinida > 0
-      ? setor.capacidadeDefinida
-      : totalCalculado;
-
-    const disponiveis = total - vendidos;
-    const controladoPorSetor = setor.capacidadeDefinida && setor.capacidadeDefinida > 0;
-
-    return { vendidos, disponiveis, total, bilheteria, controladoPorSetor };
-  };
-
   if (loading) {
     return (
       <div style={{ fontFamily: 'sans-serif', padding: '50px', textAlign: 'center' }}>
@@ -334,53 +208,60 @@ export default function EventoPage() {
     );
   }
 
-  const setoresDetalhados = setoresPorSessao[sessaoSelecionada] || [];
-  
-  console.log('=== RENDERIZANDO ===');
-  console.log('Sessão selecionada:', sessaoSelecionada);
-  console.log('Setores detalhados:', setoresDetalhados);
-  console.log('Quantidade de setores:', setoresDetalhados.length);
-  
-  // DEBUG DETALHADO
-  setoresDetalhados.forEach((setor, idx) => {
-    console.log(`Setor ${idx}:`, setor.nome);
-    console.log(`  - Lotes:`, setor.lotes.length);
-    setor.lotes.forEach((lote, lIdx) => {
-      console.log(`    Lote ${lIdx}:`, lote.nome, '- Tipos:', lote.tipos.length);
-      lote.tipos.forEach(tipo => {
-        console.log(`      Tipo:`, tipo.nome, '- Disponíveis:', tipo.disponiveis, '- ID:', tipo.id);
-      });
-    });
-    console.log(`  - Tipos sem lote:`, setor.tiposSemLote.length);
-    setor.tiposSemLote.forEach(tipo => {
-      console.log(`    Tipo:`, tipo.nome, '- Disponíveis:', tipo.disponiveis, '- ID:', tipo.id);
-    });
-  });
-  console.log('===================');
-  
-  let precoMaisBaixo = Infinity;
-  setoresDetalhados.forEach(setor => {
-    setor.lotes.forEach(lote => {
-      lote.tipos.forEach(tipo => {
-        if (tipo.disponiveis > 0) {
-          const precoFinal = obterPrecoIngresso(tipo.id, tipo.preco);
-          if (precoFinal < precoMaisBaixo) {
-            precoMaisBaixo = precoFinal;
-          }
-        }
-      });
-    });
-    setor.tiposSemLote.forEach(tipo => {
-      if (tipo.disponiveis > 0) {
-        const precoFinal = obterPrecoIngresso(tipo.id, tipo.preco);
-        if (precoFinal < precoMaisBaixo) {
-          precoMaisBaixo = precoFinal;
-        }
+  // Buscar setores e lotes
+  const setoresOrganizados = {};
+  const lotesMap = new Map();
+
+  ingressos.forEach(ingresso => {
+    const setorNome = ingresso.setor || 'Sem Setor';
+    
+    if (!setoresOrganizados[setorNome]) {
+      setoresOrganizados[setorNome] = {
+        totalDisponibilizado: 0,
+        totalVendido: 0,
+        lotes: {}
+      };
+    }
+
+    setoresOrganizados[setorNome].totalDisponibilizado += ingresso.quantidade;
+    setoresOrganizados[setorNome].totalVendido += ingresso.vendidos;
+
+    if (ingresso.lote_id) {
+      const loteKey = `${ingresso.setor}-${ingresso.lote_id}`;
+      
+      if (!lotesMap.has(loteKey)) {
+        lotesMap.set(loteKey, {
+          id: ingresso.lote_id,
+          nome: `Lote ${ingresso.lote_id}`,
+          ingressos: []
+        });
       }
-    });
+      
+      lotesMap.get(loteKey).ingressos.push(ingresso);
+
+      const loteNome = lotesMap.get(loteKey).nome;
+      if (!setoresOrganizados[setorNome].lotes[loteNome]) {
+        setoresOrganizados[setorNome].lotes[loteNome] = {
+          ingressos: []
+        };
+      }
+      setoresOrganizados[setorNome].lotes[loteNome].ingressos.push(ingresso);
+    } else {
+      if (!setoresOrganizados[setorNome].lotes['direto']) {
+        setoresOrganizados[setorNome].lotes['direto'] = {
+          ingressos: []
+        };
+      }
+      setoresOrganizados[setorNome].lotes['direto'].ingressos.push(ingresso);
+    }
   });
 
-  if (precoMaisBaixo === Infinity) precoMaisBaixo = 0;
+  const precoMaisBaixo = ingressos.length > 0
+    ? Math.min(...ingressos.map(i => {
+        const precoFinal = obterPrecoIngresso(i.id, parseFloat(i.valor));
+        return precoFinal;
+      }))
+    : 0;
 
   const taxaCliente = evento.TaxaCliente || 15;
 
@@ -462,6 +343,7 @@ export default function EventoPage() {
               {evento.descricao || 'Descrição não disponível.'}
             </p>
 
+            {/* IMAGENS DA DESCRIÇÃO */}
             {imagensDescricao.length > 0 && (
               <div style={{ marginTop: '30px' }}>
                 {imagensDescricao.map((img, index) => (
@@ -549,6 +431,7 @@ export default function EventoPage() {
           </div>
         </div>
 
+        {/* SELETOR DE SESSÕES */}
         {sessoes.length > 1 && (
           <div style={{ 
             backgroundColor: 'white', 
@@ -560,7 +443,7 @@ export default function EventoPage() {
             <h3 style={{ color: '#5d34a4', marginTop: 0, fontSize: '22px', marginBottom: '20px', textAlign: 'center' }}>
               🎬 Escolha a Sessão
             </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(200px, 1fr))`, gap: '15px' }}>
               {sessoes.map(sessao => (
                 <button
                   key={sessao.id}
@@ -590,6 +473,7 @@ export default function EventoPage() {
           </div>
         )}
 
+        {/* CUPOM */}
         {cupons.length > 0 && (
           <div style={{ 
             backgroundColor: cupomAplicado ? '#d4edda' : '#fff3cd', 
@@ -694,6 +578,7 @@ export default function EventoPage() {
           </div>
         )}
 
+        {/* INGRESSOS */}
         <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', marginBottom: '40px' }}>
           <h2 style={{ color: '#5d34a4', marginTop: 0, fontSize: '32px', marginBottom: '10px', textAlign: 'center' }}>
             🎫 Ingressos
@@ -705,19 +590,19 @@ export default function EventoPage() {
             {cupomAplicado && <span style={{ color: '#28a745', marginLeft: '10px' }}>✅ Com desconto aplicado!</span>}
           </p>
 
-          {setoresDetalhados.length === 0 ? (
+          {Object.keys(setoresOrganizados).length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
               <p style={{ fontSize: '18px' }}>⚠️ Nenhum ingresso disponível no momento</p>
             </div>
           ) : (
-            setoresDetalhados.map((setor, setorIndex) => {
-              const totaisSetor = calcularTotaisSetor(setor);
-              const percentualDisponivel = (totaisSetor.disponiveis / totaisSetor.total) * 100;
+            Object.entries(setoresOrganizados).map(([setorNome, setorData]) => {
+              const disponiveis = setorData.totalDisponibilizado - setorData.totalVendido;
+              const percentualDisponivel = (disponiveis / setorData.totalDisponibilizado) * 100;
               const ultimos = percentualDisponivel <= 15 && percentualDisponivel > 0;
-              const esgotado = totaisSetor.disponiveis === 0;
+              const esgotado = disponiveis === 0;
 
               return (
-                <div key={setorIndex} style={{ 
+                <div key={setorNome} style={{ 
                   marginBottom: '35px', 
                   border: '2px solid #e0e0e0', 
                   borderRadius: '10px',
@@ -734,7 +619,7 @@ export default function EventoPage() {
                     alignItems: 'center',
                     flexWrap: 'wrap'
                   }}>
-                    <span>🎪 {setor.nome}</span>
+                    <span>🎪 {setorNome}</span>
                     <span style={{ fontSize: '14px', fontWeight: 'normal' }}>
                       {esgotado ? (
                         <span style={{ backgroundColor: '#dc3545', padding: '5px 12px', borderRadius: '15px' }}>
@@ -742,44 +627,42 @@ export default function EventoPage() {
                         </span>
                       ) : ultimos ? (
                         <span style={{ backgroundColor: '#ffc107', color: '#000', padding: '5px 12px', borderRadius: '15px' }}>
-                          🔥 Últimos {totaisSetor.disponiveis} ingressos!
+                          🔥 Últimos {disponiveis} ingressos!
                         </span>
                       ) : (
-                        <span>{totaisSetor.disponiveis} disponíveis</span>
+                        <span>{disponiveis} disponíveis</span>
                       )}
                     </span>
                   </div>
 
                   <div style={{ padding: '25px' }}>
-                    {setor.lotes.map((lote, loteIndex) => (
-                      <div key={loteIndex} style={{ marginBottom: '20px' }}>
-                        <div style={{
-                          backgroundColor: '#f8f9fa',
-                          padding: '12px 20px',
-                          borderRadius: '8px',
-                          marginBottom: '15px',
-                          borderLeft: '4px solid #9b59b6'
-                        }}>
-                          <span style={{ fontWeight: 'bold', color: '#8e44ad', fontSize: '16px' }}>
-                            📦 {lote.nome}
-                          </span>
-                        </div>
+                    {Object.entries(setorData.lotes).map(([loteNome, loteData]) => (
+                      <div key={loteNome} style={{ marginBottom: '20px' }}>
+                        
+                        {loteNome !== 'direto' && (
+                          <div style={{ 
+                            backgroundColor: '#f8f9fa', 
+                            padding: '12px 20px', 
+                            borderRadius: '8px',
+                            marginBottom: '15px',
+                            borderLeft: '4px solid #9b59b6'
+                          }}>
+                            <span style={{ fontWeight: 'bold', color: '#8e44ad', fontSize: '16px' }}>
+                              📦 {loteNome}
+                            </span>
+                          </div>
+                        )}
 
-                        {lote.tipos.map((tipo) => {
-                          const valorBase = parseFloat(obterPrecoIngresso(tipo.id, tipo.preco));
-                          const valorOriginal = parseFloat(tipo.preco);
+                        {loteData.ingressos.map((ingresso) => {
+                          const ingressosDisponiveis = ingresso.quantidade - ingresso.vendidos;
+                          const valorBase = parseFloat(obterPrecoIngresso(ingresso.id, ingresso.valor));
+                          const valorOriginal = parseFloat(ingresso.valor);
                           const temDesconto = valorBase < valorOriginal;
                           const valorTaxa = valorBase * (taxaCliente / 100);
                           const valorTotal = valorBase + valorTaxa;
-                          
-                          const percentualDisponivelTipo = tipo.quantidade > 0 
-                            ? (tipo.disponiveis / tipo.quantidade) * 100 
-                            : 0;
-                          const ultimosTipo = percentualDisponivelTipo <= 15 && percentualDisponivelTipo > 0;
-                          const esgotadoTipo = tipo.disponiveis <= 0;
 
                           return (
-                            <div key={tipo.id} style={{ 
+                            <div key={ingresso.id} style={{ 
                               display: 'flex', 
                               justifyContent: 'space-between', 
                               alignItems: 'center',
@@ -791,17 +674,13 @@ export default function EventoPage() {
                             }}>
                               <div style={{ flex: 1 }}>
                                 <h4 style={{ margin: 0, fontSize: '18px', color: '#2c3e50', marginBottom: '5px' }}>
-                                  {tipo.nome}
+                                  {ingresso.tipo}
                                   {temDesconto && <span style={{ color: '#28a745', marginLeft: '10px' }}>🎟️ COM DESCONTO</span>}
-                                  {esgotadoTipo && <span style={{ color: '#dc3545', marginLeft: '10px' }}>❌ ESGOTADO</span>}
-                                  {ultimosTipo && !esgotadoTipo && <span style={{ color: '#ffc107', marginLeft: '10px' }}>🔥 ÚLTIMOS!</span>}
                                 </h4>
-                                <p style={{ margin: 0, fontSize: '13px', color: esgotadoTipo ? '#dc3545' : '#999' }}>
-                                  {esgotadoTipo 
-                                    ? '❌ Esgotado' 
-                                    : ultimosTipo 
-                                      ? `🔥 Últimos ${tipo.disponiveis} disponíveis!`
-                                      : `${tipo.disponiveis} disponíveis`}
+                                <p style={{ margin: 0, fontSize: '13px', color: '#999' }}>
+                                  {ingressosDisponiveis > 0 
+                                    ? `${ingressosDisponiveis} disponíveis` 
+                                    : '❌ Esgotado'}
                                 </p>
                               </div>
                               
@@ -819,8 +698,8 @@ export default function EventoPage() {
                                 </div>
                               </div>
 
-                              {!esgotadoTipo ? (
-                                <Link href={`/checkout?evento_id=${evento.id}&ingresso_id=${tipo.id}${cupomAplicado ? `&cupom_id=${cupomAplicado.id}` : ''}`}>
+                              {ingressosDisponiveis > 0 ? (
+                                <Link href={`/checkout?evento_id=${evento.id}&ingresso_id=${ingresso.id}${cupomAplicado ? `&cupom_id=${cupomAplicado.id}` : ''}`}>
                                   <button style={{
                                     backgroundColor: '#f1c40f',
                                     color: '#000',
@@ -854,98 +733,6 @@ export default function EventoPage() {
                         })}
                       </div>
                     ))}
-
-                    {setor.tiposSemLote.length > 0 && (
-                      <div style={{ marginBottom: '20px' }}>
-                        {setor.tiposSemLote.map((tipo) => {
-                          const valorBase = parseFloat(obterPrecoIngresso(tipo.id, tipo.preco));
-                          const valorOriginal = parseFloat(tipo.preco);
-                          const temDesconto = valorBase < valorOriginal;
-                          const valorTaxa = valorBase * (taxaCliente / 100);
-                          const valorTotal = valorBase + valorTaxa;
-                          
-                          const percentualDisponivelTipo = tipo.quantidade > 0 
-                            ? (tipo.disponiveis / tipo.quantidade) * 100 
-                            : 0;
-                          const ultimosTipo = percentualDisponivelTipo <= 15 && percentualDisponivelTipo > 0;
-                          const esgotadoTipo = tipo.disponiveis <= 0;
-
-                          return (
-                            <div key={tipo.id} style={{ 
-                              display: 'flex', 
-                              justifyContent: 'space-between', 
-                              alignItems: 'center',
-                              padding: '20px',
-                              backgroundColor: temDesconto ? '#d4edda' : '#fafafa',
-                              borderRadius: '8px',
-                              marginBottom: '12px',
-                              border: temDesconto ? '2px solid #28a745' : '1px solid #e0e0e0'
-                            }}>
-                              <div style={{ flex: 1 }}>
-                                <h4 style={{ margin: 0, fontSize: '18px', color: '#2c3e50', marginBottom: '5px' }}>
-                                  {tipo.nome}
-                                  {temDesconto && <span style={{ color: '#28a745', marginLeft: '10px' }}>🎟️ COM DESCONTO</span>}
-                                  {esgotadoTipo && <span style={{ color: '#dc3545', marginLeft: '10px' }}>❌ ESGOTADO</span>}
-                                  {ultimosTipo && !esgotadoTipo && <span style={{ color: '#ffc107', marginLeft: '10px' }}>🔥 ÚLTIMOS!</span>}
-                                </h4>
-                                <p style={{ margin: 0, fontSize: '13px', color: esgotadoTipo ? '#dc3545' : '#999' }}>
-                                  {esgotadoTipo 
-                                    ? '❌ Esgotado' 
-                                    : ultimosTipo 
-                                      ? `🔥 Últimos ${tipo.disponiveis} disponíveis!`
-                                      : `${tipo.disponiveis} disponíveis`}
-                                </p>
-                              </div>
-                              
-                              <div style={{ textAlign: 'right', marginRight: '20px' }}>
-                                {temDesconto && (
-                                  <div style={{ fontSize: '13px', color: '#999', textDecoration: 'line-through', marginBottom: '3px' }}>
-                                    R$ {valorOriginal.toFixed(2)}
-                                  </div>
-                                )}
-                                <div style={{ fontSize: '14px', color: '#666', marginBottom: '3px' }}>
-                                  R$ {valorBase.toFixed(2)} + R$ {valorTaxa.toFixed(2)} (taxa)
-                                </div>
-                                <div style={{ fontSize: '22px', fontWeight: 'bold', color: temDesconto ? '#28a745' : '#27ae60' }}>
-                                  R$ {valorTotal.toFixed(2)}
-                                </div>
-                              </div>
-
-                              {!esgotadoTipo ? (
-                                <Link href={`/checkout?evento_id=${evento.id}&ingresso_id=${tipo.id}${cupomAplicado ? `&cupom_id=${cupomAplicado.id}` : ''}`}>
-                                  <button style={{
-                                    backgroundColor: '#f1c40f',
-                                    color: '#000',
-                                    border: 'none',
-                                    padding: '12px 30px',
-                                    borderRadius: '8px',
-                                    fontSize: '16px',
-                                    fontWeight: 'bold',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.3s'
-                                  }}>
-                                    Comprar
-                                  </button>
-                                </Link>
-                              ) : (
-                                <button disabled style={{
-                                  backgroundColor: '#ccc',
-                                  color: '#666',
-                                  border: 'none',
-                                  padding: '12px 30px',
-                                  borderRadius: '8px',
-                                  fontSize: '16px',
-                                  fontWeight: 'bold',
-                                  cursor: 'not-allowed'
-                                }}>
-                                  Esgotado
-                                </button>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
                   </div>
                 </div>
               );
@@ -976,6 +763,7 @@ export default function EventoPage() {
           </div>
         </div>
 
+        {/* PRODUTOS */}
         {produtos && produtos.length > 0 && (
           <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
             <h2 style={{ color: '#5d34a4', marginTop: 0, fontSize: '32px', marginBottom: '30px', textAlign: 'center' }}>
@@ -1138,3 +926,4 @@ export default function EventoPage() {
     </div>
   );
 }
+
