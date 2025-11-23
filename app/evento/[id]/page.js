@@ -30,7 +30,6 @@ export default function EventoPage() {
     try {
       setLoading(true);
 
-      // Buscar evento
       const { data: eventoData, error: eventoError } = await supabase
         .from('eventos')
         .select('*')
@@ -44,7 +43,6 @@ export default function EventoPage() {
 
       setEvento(eventoData);
 
-      // Buscar sessões
       const { data: sessoesData } = await supabase
         .from('sessoes')
         .select('*')
@@ -53,12 +51,10 @@ export default function EventoPage() {
 
       setSessoes(sessoesData || []);
       
-      // Selecionar primeira sessão por padrão
       if (sessoesData && sessoesData.length > 0) {
         setSessaoSelecionada(sessoesData[0].id);
       }
 
-      // Buscar cupons ativos
       const { data: cuponsData } = await supabase
         .from('cupons')
         .select('*')
@@ -67,7 +63,6 @@ export default function EventoPage() {
 
       setCupons(cuponsData || []);
 
-      // Buscar produtos
       const { data: produtosData } = await supabase
         .from('produtos')
         .select('*')
@@ -77,7 +72,6 @@ export default function EventoPage() {
 
       setProdutos(produtosData || []);
 
-      // Buscar imagens da descrição
       const { data: imagensData } = await supabase
         .from('eventos_imagens_descricao')
         .select('*')
@@ -86,33 +80,27 @@ export default function EventoPage() {
 
       setImagensDescricao(imagensData || []);
 
-      // BUSCAR SETORES
       const { data: setoresData } = await supabase
         .from('setores')
         .select('*')
         .eq('eventos_id', id);
 
-      // BUSCAR TODOS OS INGRESSOS
       const { data: ingressosData } = await supabase
         .from('ingressos')
         .select('*')
         .eq('evento_id', id);
 
-      // BUSCAR LOTES
       const { data: lotesData } = await supabase
         .from('lotes')
         .select('*')
         .eq('evento_id', id);
 
-      // PROCESSAR INGRESSOS POR SESSÃO (IGUAL AO CÓDIGO DO PRODUTOR)
       const setoresPorSessaoTemp = {};
 
-      // Inicializar objeto para cada sessão
       (sessoesData || []).forEach(sessao => {
         setoresPorSessaoTemp[sessao.id] = [];
       });
 
-      // Criar um mapa de setores por sessão
       const setoresPorSessaoMap = {};
       setoresData?.forEach(setor => {
         if (!setor.sessao_id) return;
@@ -123,7 +111,6 @@ export default function EventoPage() {
         setoresPorSessaoMap[setor.sessao_id].push(setor);
       });
 
-      // Para cada sessão, inicializar seus setores
       Object.keys(setoresPorSessaoMap).forEach(sessaoId => {
         setoresPorSessaoTemp[sessaoId] = setoresPorSessaoMap[sessaoId].map(setor => ({
           nome: setor.nome,
@@ -134,7 +121,6 @@ export default function EventoPage() {
         }));
       });
 
-      // Processar os ingressos
       ingressosData?.forEach(ingresso => {
         const setorDoIngresso = setoresData?.find(s => s.nome === ingresso.setor);
         
@@ -188,7 +174,6 @@ export default function EventoPage() {
         }
       });
 
-      // DEBUG: ADICIONAR LOGS AQUI
       console.log('=== DEBUG INGRESSOS ===');
       console.log('Sessões:', sessoesData);
       console.log('Setores:', setoresData);
@@ -273,7 +258,6 @@ export default function EventoPage() {
     return precoComCupom ? precoComCupom.preco_com_cupom : valorOriginal;
   };
 
-  // FUNÇÃO IGUAL À DO CÓDIGO DO PRODUTOR
   const calcularTotaisSetor = (setor) => {
     let vendidos = 0, bilheteria = 0;
     let totalCalculado = 0;
@@ -325,13 +309,11 @@ export default function EventoPage() {
 
   const setoresDetalhados = setoresPorSessao[sessaoSelecionada] || [];
   
-  // DEBUG: ADICIONAR LOGS ANTES DE RENDERIZAR
   console.log('=== RENDERIZANDO ===');
   console.log('Sessão selecionada:', sessaoSelecionada);
   console.log('Setores detalhados:', setoresDetalhados);
   console.log('===================');
   
-  // Calcular preço mais baixo
   let precoMaisBaixo = Infinity;
   setoresDetalhados.forEach(setor => {
     setor.lotes.forEach(lote => {
@@ -523,7 +505,6 @@ export default function EventoPage() {
           </div>
         </div>
 
-        {/* SELETOR DE SESSÕES */}
         {sessoes.length > 1 && (
           <div style={{ 
             backgroundColor: 'white', 
@@ -535,7 +516,7 @@ export default function EventoPage() {
             <h3 style={{ color: '#5d34a4', marginTop: 0, fontSize: '22px', marginBottom: '20px', textAlign: 'center' }}>
               🎬 Escolha a Sessão
             </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(200px, 1fr))`, gap: '15px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
               {sessoes.map(sessao => (
                 <button
                   key={sessao.id}
@@ -565,7 +546,6 @@ export default function EventoPage() {
           </div>
         )}
 
-        {/* CUPOM */}
         {cupons.length > 0 && (
           <div style={{ 
             backgroundColor: cupomAplicado ? '#d4edda' : '#fff3cd', 
@@ -670,7 +650,6 @@ export default function EventoPage() {
           </div>
         )}
 
-        {/* INGRESSOS */}
         <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', marginBottom: '40px' }}>
           <h2 style={{ color: '#5d34a4', marginTop: 0, fontSize: '32px', marginBottom: '10px', textAlign: 'center' }}>
             🎫 Ingressos
@@ -728,392 +707,390 @@ export default function EventoPage() {
                   </div>
 
                   <div style={{ padding: '25px' }}>
-                    {/* LOTES */}
                     {setor.lotes.map((lote, loteIndex) => (
-<div key={loteIndex} style={{ marginBottom: '20px' }}>
-<div style={{
-backgroundColor: '#f8f9fa',
-padding: '12px 20px',
-borderRadius: '8px',
-marginBottom: '15px',
-borderLeft: '4px solid #9b59b6'
-}}>
-<span style={{ fontWeight: 'bold', color: '#8e44ad', fontSize: '16px' }}>
-📦 {lote.nome}
-</span>
-</div>
-                     <div>
-
-                     {lote.tipos.map((tipo) => {
-                      const valorBase = parseFloat(obterPrecoIngresso(tipo.id, tipo.preco));
-                      const valorOriginal = parseFloat(tipo.preco);
-                      const temDesconto = valorBase < valorOriginal;
-                      const valorTaxa = valorBase * (taxaCliente / 100);
-                      const valorTotal = valorBase + valorTaxa;
-                      
-                      const percentualDisponivelTipo = tipo.quantidade > 0 
-                        ? (tipo.disponiveis / tipo.quantidade) * 100 
-                        : 0;
-                      const ultimosTipo = percentualDisponivelTipo <= 15 && percentualDisponivelTipo > 0;
-                      const esgotadoTipo = tipo.disponiveis <= 0;
-
-                      return (
-                        <div key={tipo.id} style={{ 
-                          display: 'flex', 
-                          justifyContent: 'space-between', 
-                          alignItems: 'center',
-                          padding: '20px',
-                          backgroundColor: temDesconto ? '#d4edda' : '#fafafa',
+                      <div key={loteIndex} style={{ marginBottom: '20px' }}>
+                        <div style={{
+                          backgroundColor: '#f8f9fa',
+                          padding: '12px 20px',
                           borderRadius: '8px',
-                          marginBottom: '12px',
-                          border: temDesconto ? '2px solid #28a745' : '1px solid #e0e0e0'
+                          marginBottom: '15px',
+                          borderLeft: '4px solid #9b59b6'
                         }}>
-                          <div style={{ flex: 1 }}>
-                            <h4 style={{ margin: 0, fontSize: '18px', color: '#2c3e50', marginBottom: '5px' }}>
-                              {tipo.nome}
-                              {temDesconto && <span style={{ color: '#28a745', marginLeft: '10px' }}>🎟️ COM DESCONTO</span>}
-                              {esgotadoTipo && <span style={{ color: '#dc3545', marginLeft: '10px' }}>❌ ESGOTADO</span>}
-                              {ultimosTipo && !esgotadoTipo && <span style={{ color: '#ffc107', marginLeft: '10px' }}>🔥 ÚLTIMOS!</span>}
-                            </h4>
-                            <p style={{ margin: 0, fontSize: '13px', color: esgotadoTipo ? '#dc3545' : '#999' }}>
-                              {esgotadoTipo 
-                                ? '❌ Esgotado' 
-                                : ultimosTipo 
-                                  ? `🔥 Últimos ${tipo.disponiveis} disponíveis!`
-                                  : `${tipo.disponiveis} disponíveis`}
-                            </p>
-                          </div>
-                          
-                          <div style={{ textAlign: 'right', marginRight: '20px' }}>
-                            {temDesconto && (
-                              <div style={{ fontSize: '13px', color: '#999', textDecoration: 'line-through', marginBottom: '3px' }}>
-                                R$ {valorOriginal.toFixed(2)}
-                              </div>
-                            )}
-                            <div style={{ fontSize: '14px', color: '#666', marginBottom: '3px' }}>
-                              R$ {valorBase.toFixed(2)} + R$ {valorTaxa.toFixed(2)} (taxa)
-                            </div>
-                            <div style={{ fontSize: '22px', fontWeight: 'bold', color: temDesconto ? '#28a745' : '#27ae60' }}>
-                              R$ {valorTotal.toFixed(2)}
-                            </div>
-                          </div>
-
-                          {!esgotadoTipo ? (
-                            <Link href={`/checkout?evento_id=${evento.id}&ingresso_id=${tipo.id}${cupomAplicado ? `&cupom_id=${cupomAplicado.id}` : ''}`}>
-                              <button style={{
-                                backgroundColor: '#f1c40f',
-                                color: '#000',
-                                border: 'none',
-                                padding: '12px 30px',
-                                borderRadius: '8px',
-                                fontSize: '16px',
-                                fontWeight: 'bold',
-                                cursor: 'pointer',
-                                transition: 'all 0.3s'
-                              }}>
-                                Comprar
-                              </button>
-                            </Link>
-                          ) : (
-                            <button disabled style={{
-                              backgroundColor: '#ccc',
-                              color: '#666',
-                              border: 'none',
-                              padding: '12px 30px',
-                              borderRadius: '8px',
-                              fontSize: '16px',
-                              fontWeight: 'bold',
-                              cursor: 'not-allowed'
-                            }}>
-                              Esgotado
-                            </button>
-                          )}
+                          <span style={{ fontWeight: 'bold', color: '#8e44ad', fontSize: '16px' }}>
+                            📦 {lote.nome}
+                          </span>
                         </div>
-                      );
-                    })}
-                  </div>
-                ))}
 
-                {/* TIPOS SEM LOTE */}
-                {setor.tiposSemLote.length > 0 && (
-                  <div style={{ marginBottom: '20px' }}>
-                    {setor.tiposSemLote.map((tipo) => {
-                      const valorBase = parseFloat(obterPrecoIngresso(tipo.id, tipo.preco));
-                      const valorOriginal = parseFloat(tipo.preco);
-                      const temDesconto = valorBase < valorOriginal;
-                      const valorTaxa = valorBase * (taxaCliente / 100);
-                      const valorTotal = valorBase + valorTaxa;
-                      
-                      const percentualDisponivelTipo = tipo.quantidade > 0 
-                        ? (tipo.disponiveis / tipo.quantidade) * 100 
-                        : 0;
-                      const ultimosTipo = percentualDisponivelTipo <= 15 && percentualDisponivelTipo > 0;
-                      const esgotadoTipo = tipo.disponiveis <= 0;
-
-                      return (
-                        <div key={tipo.id} style={{ 
-                          display: 'flex', 
-                          justifyContent: 'space-between', 
-                          alignItems: 'center',
-                          padding: '20px',
-                          backgroundColor: temDesconto ? '#d4edda' : '#fafafa',
-                          borderRadius: '8px',
-                          marginBottom: '12px',
-                          border: temDesconto ? '2px solid #28a745' : '1px solid #e0e0e0'
-                        }}>
-                          <div style={{ flex: 1 }}>
-                            <h4 style={{ margin: 0, fontSize: '18px', color: '#2c3e50', marginBottom: '5px' }}>
-                              {tipo.nome}
-                              {temDesconto && <span style={{ color: '#28a745', marginLeft: '10px' }}>🎟️ COM DESCONTO</span>}
-                              {esgotadoTipo && <span style={{ color: '#dc3545', marginLeft: '10px' }}>❌ ESGOTADO</span>}
-                              {ultimosTipo && !esgotadoTipo && <span style={{ color: '#ffc107', marginLeft: '10px' }}>🔥 ÚLTIMOS!</span>}
-                            </h4>
-                            <p style={{ margin: 0, fontSize: '13px', color: esgotadoTipo ? '#dc3545' : '#999' }}>
-                              {esgotadoTipo 
-                                ? '❌ Esgotado' 
-                                : ultimosTipo 
-                                  ? `🔥 Últimos ${tipo.disponiveis} disponíveis!`
-                                  : `${tipo.disponiveis} disponíveis`}
-                            </p>
-                          </div>
+                        {lote.tipos.map((tipo) => {
+                          const valorBase = parseFloat(obterPrecoIngresso(tipo.id, tipo.preco));
+                          const valorOriginal = parseFloat(tipo.preco);
+                          const temDesconto = valorBase < valorOriginal;
+                          const valorTaxa = valorBase * (taxaCliente / 100);
+                          const valorTotal = valorBase + valorTaxa;
                           
-                          <div style={{ textAlign: 'right', marginRight: '20px' }}>
-                            {temDesconto && (
-                              <div style={{ fontSize: '13px', color: '#999', textDecoration: 'line-through', marginBottom: '3px' }}>
-                                R$ {valorOriginal.toFixed(2)}
-                              </div>
-                            )}
-                            <div style={{ fontSize: '14px', color: '#666', marginBottom: '3px' }}>
-                              R$ {valorBase.toFixed(2)} + R$ {valorTaxa.toFixed(2)} (taxa)
-                            </div>
-                            <div style={{ fontSize: '22px', fontWeight: 'bold', color: temDesconto ? '#28a745' : '#27ae60' }}>
-                              R$ {valorTotal.toFixed(2)}
-                            </div>
-                          </div>
+                          const percentualDisponivelTipo = tipo.quantidade > 0 
+                            ? (tipo.disponiveis / tipo.quantidade) * 100 
+                            : 0;
+                          const ultimosTipo = percentualDisponivelTipo <= 15 && percentualDisponivelTipo > 0;
+                          const esgotadoTipo = tipo.disponiveis <= 0;
 
-                          {!esgotadoTipo ? (
-                            <Link href={`/checkout?evento_id=${evento.id}&ingresso_id=${tipo.id}${cupomAplicado ? `&cupom_id=${cupomAplicado.id}` : ''}`}>
-                              <button style={{
-                                backgroundColor: '#f1c40f',
-                                color: '#000',
-                                border: 'none',
-                                padding: '12px 30px',
-                                borderRadius: '8px',
-                                fontSize: '16px',
-                                fontWeight: 'bold',
-                                cursor: 'pointer',
-                                transition: 'all 0.3s'
-                              }}>
-                                Comprar
-                              </button>
-                            </Link>
-                          ) : (
-                            <button disabled style={{
-                              backgroundColor: '#ccc',
-                              color: '#666',
-                              border: 'none',
-                              padding: '12px 30px',
+                          return (
+                            <div key={tipo.id} style={{ 
+                              display: 'flex', 
+                              justifyContent: 'space-between', 
+                              alignItems: 'center',
+                              padding: '20px',
+                              backgroundColor: temDesconto ? '#d4edda' : '#fafafa',
                               borderRadius: '8px',
-                              fontSize: '16px',
-                              fontWeight: 'bold',
-                              cursor: 'not-allowed'
+                              marginBottom: '12px',
+                              border: temDesconto ? '2px solid #28a745' : '1px solid #e0e0e0'
                             }}>
-                              Esgotado
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })
-      )}
+                              <div style={{ flex: 1 }}>
+                                <h4 style={{ margin: 0, fontSize: '18px', color: '#2c3e50', marginBottom: '5px' }}>
+                                  {tipo.nome}
+                                  {temDesconto && <span style={{ color: '#28a745', marginLeft: '10px' }}>🎟️ COM DESCONTO</span>}
+                                  {esgotadoTipo && <span style={{ color: '#dc3545', marginLeft: '10px' }}>❌ ESGOTADO</span>}
+                                  {ultimosTipo && !esgotadoTipo && <span style={{ color: '#ffc107', marginLeft: '10px' }}>🔥 ÚLTIMOS!</span>}
+                                </h4>
+                                <p style={{ margin: 0, fontSize: '13px', color: esgotadoTipo ? '#dc3545' : '#999' }}>
+                                  {esgotadoTipo 
+                                    ? '❌ Esgotado' 
+                                    : ultimosTipo 
+                                      ? `🔥 Últimos ${tipo.disponiveis} disponíveis!`
+                                      : `${tipo.disponiveis} disponíveis`}
+                                </p>
+                              </div>
+                              
+                              <div style={{ textAlign: 'right', marginRight: '20px' }}>
+                                {temDesconto && (
+                                  <div style={{ fontSize: '13px', color: '#999', textDecoration: 'line-through', marginBottom: '3px' }}>
+                                    R$ {valorOriginal.toFixed(2)}
+                                  </div>
+                                )}
+                                <div style={{ fontSize: '14px', color: '#666', marginBottom: '3px' }}>
+                                  R$ {valorBase.toFixed(2)} + R$ {valorTaxa.toFixed(2)} (taxa)
+                                </div>
+                                <div style={{ fontSize: '22px', fontWeight: 'bold', color: temDesconto ? '#28a745' : '#27ae60' }}>
+                                  R$ {valorTotal.toFixed(2)}
+                                </div>
+                              </div>
 
-      <div style={{ 
-        marginTop: '30px', 
-        padding: '20px', 
-        backgroundColor: '#e8f8f5', 
-        borderRadius: '8px',
-        border: '1px solid #27ae60'
-      }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', textAlign: 'center' }}>
-          <div>
-            <div style={{ fontSize: '28px', marginBottom: '8px' }}>✅</div>
-            <div style={{ fontSize: '14px', color: '#27ae60', fontWeight: '600' }}>Entrada garantida</div>
-          </div>
-          <div>
-            <div style={{ fontSize: '28px', marginBottom: '8px' }}>🔒</div>
-            <div style={{ fontSize: '14px', color: '#27ae60', fontWeight: '600' }}>Pagamento seguro</div>
-          </div>
-          <div>
-            <div style={{ fontSize: '28px', marginBottom: '8px' }}>💬</div>
-            <div style={{ fontSize: '14px', color: '#27ae60', fontWeight: '600' }}>Suporte 24h</div>
-          </div>
-        </div>
-      </div>
-    </div>
+                              {!esgotadoTipo ? (
+                                <Link href={`/checkout?evento_id=${evento.id}&ingresso_id=${tipo.id}${cupomAplicado ? `&cupom_id=${cupomAplicado.id}` : ''}`}>
+                                  <button style={{
+                                    backgroundColor: '#f1c40f',
+                                    color: '#000',
+                                    border: 'none',
+                                    padding: '12px 30px',
+                                    borderRadius: '8px',
+                                    fontSize: '16px',
+                                    fontWeight: 'bold',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.3s'
+                                  }}>
+                                    Comprar
+                                  </button>
+                                </Link>
+                              ) : (
+                                <button disabled style={{
+                                  backgroundColor: '#ccc',
+                                  color: '#666',
+                                  border: 'none',
+                                  padding: '12px 30px',
+                                  borderRadius: '8px',
+                                  fontSize: '16px',
+                                  fontWeight: 'bold',
+                                  cursor: 'not-allowed'
+                                }}>
+                                  Esgotado
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
 
-    {/* PRODUTOS */}
-    {produtos && produtos.length > 0 && (
-      <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
-        <h2 style={{ color: '#5d34a4', marginTop: 0, fontSize: '32px', marginBottom: '30px', textAlign: 'center' }}>
-          🛍️ Produtos do Evento
-        </h2>
+                    {setor.tiposSemLote.length > 0 && (
+                      <div style={{ marginBottom: '20px' }}>
+                        {setor.tiposSemLote.map((tipo) => {
+                          const valorBase = parseFloat(obterPrecoIngresso(tipo.id, tipo.preco));
+                          const valorOriginal = parseFloat(tipo.preco);
+                          const temDesconto = valorBase < valorOriginal;
+                          const valorTaxa = valorBase * (taxaCliente / 100);
+                          const valorTotal = valorBase + valorTaxa;
+                          
+                          const percentualDisponivelTipo = tipo.quantidade > 0 
+                            ? (tipo.disponiveis / tipo.quantidade) * 100 
+                            : 0;
+                          const ultimosTipo = percentualDisponivelTipo <= 15 && percentualDisponivelTipo > 0;
+                          const esgotadoTipo = tipo.disponiveis <= 0;
 
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', 
-          gap: '25px' 
-        }}>
-          {produtos.map(produto => {
-            const quantidadeTotal = (produto.quantidade_disponivel || 0) + (produto.quantidade_vendida || 0);
-            const quantidadeDisponivel = produto.quantidade_disponivel || 0;
-            const percentualDisponivel = quantidadeTotal > 0 ? (quantidadeDisponivel / quantidadeTotal) * 100 : 0;
-            const ultimos = percentualDisponivel <= 15 && percentualDisponivel > 0;
-            const esgotado = quantidadeDisponivel === 0;
+                          return (
+                            <div key={tipo.id} style={{ 
+                              display: 'flex', 
+                              justifyContent: 'space-between', 
+                              alignItems: 'center',
+                              padding: '20px',
+                              backgroundColor: temDesconto ? '#d4edda' : '#fafafa',
+                              borderRadius: '8px',
+                              marginBottom: '12px',
+                              border: temDesconto ? '2px solid #28a745' : '1px solid #e0e0e0'
+                            }}>
+                              <div style={{ flex: 1 }}>
+                                <h4 style={{ margin: 0, fontSize: '18px', color: '#2c3e50', marginBottom: '5px' }}>
+                                  {tipo.nome}
+                                  {temDesconto && <span style={{ color: '#28a745', marginLeft: '10px' }}>🎟️ COM DESCONTO</span>}
+                                  {esgotadoTipo && <span style={{ color: '#dc3545', marginLeft: '10px' }}>❌ ESGOTADO</span>}
+                                  {ultimosTipo && !esgotadoTipo && <span style={{ color: '#ffc107', marginLeft: '10px' }}>🔥 ÚLTIMOS!</span>}
+                                </h4>
+                                <p style={{ margin: 0, fontSize: '13px', color: esgotadoTipo ? '#dc3545' : '#999' }}>
+                                  {esgotadoTipo 
+                                    ? '❌ Esgotado' 
+                                    : ultimosTipo 
+                                      ? `🔥 Últimos ${tipo.disponiveis} disponíveis!`
+                                      : `${tipo.disponiveis} disponíveis`}
+                                </p>
+                              </div>
+                              
+                              <div style={{ textAlign: 'right', marginRight: '20px' }}>
+                                {temDesconto && (
+                                  <div style={{ fontSize: '13px', color: '#999', textDecoration: 'line-through', marginBottom: '3px' }}>
+                                    R$ {valorOriginal.toFixed(2)}
+                                  </div>
+                                )}
+                                <div style={{ fontSize: '14px', color: '#666', marginBottom: '3px' }}>
+                                  R$ {valorBase.toFixed(2)} + R$ {valorTaxa.toFixed(2)} (taxa)
+                                </div>
+                                <div style={{ fontSize: '22px', fontWeight: 'bold', color: temDesconto ? '#28a745' : '#27ae60' }}>
+                                  R$ {valorTotal.toFixed(2)}
+                                </div>
+                              </div>
 
-            return (
-              <div key={produto.id} style={{ 
-                border: '1px solid #e0e0e0', 
-                borderRadius: '10px', 
-                overflow: 'hidden',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                transition: 'transform 0.3s',
-                backgroundColor: 'white',
-                position: 'relative'
-              }}>
-                {ultimos && !esgotado && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '10px',
-                    right: '10px',
-                    backgroundColor: '#ffc107',
-                    color: '#000',
-                    padding: '5px 10px',
-                    borderRadius: '15px',
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    zIndex: 1
-                  }}>
-                    🔥 Últimos!
-                  </div>
-                )}
-
-                {esgotado && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '10px',
-                    right: '10px',
-                    backgroundColor: '#dc3545',
-                    color: 'white',
-                    padding: '5px 10px',
-                    borderRadius: '15px',
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    zIndex: 1
-                  }}>
-                    ❌ Esgotado
-                  </div>
-                )}
-
-                <div style={{ 
-                  width: '100%', 
-                  height: '200px', 
-                  backgroundColor: '#f0f0f0',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  overflow: 'hidden'
-                }}>
-                  {produto.imagem_url ? (
-                    <img 
-                      src={produto.imagem_url} 
-                      alt={produto.nome}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
-                  ) : (
-                    <span style={{ fontSize: '48px' }}>📦</span>
-                  )}
-                </div>
-
-                <div style={{ padding: '20px' }}>
-                  <h3 style={{ margin: '0 0 10px 0', fontSize: '18px', color: '#2c3e50' }}>
-                    {produto.nome}
-                  </h3>
-                  
-                  {produto.descricao && (
-                    <p style={{ fontSize: '14px', color: '#666', marginBottom: '12px', lineHeight: '1.5' }}>
-                      {produto.descricao}
-                    </p>
-                  )}
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                    <span style={{ fontSize: '22px', fontWeight: 'bold', color: '#27ae60' }}>
-                      R$ {parseFloat(produto.preco).toFixed(2)}
-                    </span>
-                    {produto.tamanho && (
-                      <span style={{ 
-                        backgroundColor: '#e8f4f8', 
-                        color: '#2980b9', 
-                        padding: '4px 12px', 
-                        borderRadius: '15px',
-                        fontSize: '13px',
-                        fontWeight: '600'
-                      }}>
-                        Tamanho: {produto.tamanho}
-                      </span>
+                              {!esgotadoTipo ? (
+                                <Link href={`/checkout?evento_id=${evento.id}&ingresso_id=${tipo.id}${cupomAplicado ? `&cupom_id=${cupomAplicado.id}` : ''}`}>
+                                  <button style={{
+                                    backgroundColor: '#f1c40f',
+                                    color: '#000',
+                                    border: 'none',
+                                    padding: '12px 30px',
+                                    borderRadius: '8px',
+                                    fontSize: '16px',
+                                    fontWeight: 'bold',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.3s'
+                                  }}>
+                                    Comprar
+                                  </button>
+                                </Link>
+                              ) : (
+                                <button disabled style={{
+                                  backgroundColor: '#ccc',
+                                  color: '#666',
+                                  border: 'none',
+                                  padding: '12px 30px',
+                                  borderRadius: '8px',
+                                  fontSize: '16px',
+                                  fontWeight: 'bold',
+                                  cursor: 'not-allowed'
+                                }}>
+                                  Esgotado
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     )}
                   </div>
-
-                  <p style={{ fontSize: '13px', color: '#999', marginBottom: '15px' }}>
-                    {esgotado 
-                      ? '❌ Esgotado' 
-                      : ultimos 
-                        ? `🔥 Últimos ${quantidadeDisponivel} disponíveis!`
-                        : `${quantidadeDisponivel} disponíveis`}
-                  </p>
-
-                  {quantidadeDisponivel > 0 ? (
-                    <Link href={`/checkout?evento_id=${evento.id}&produto_id=${produto.id}`}>
-                      <button style={{
-                        backgroundColor: '#3498db',
-                        color: 'white',
-                        border: 'none',
-                        padding: '12px',
-                        borderRadius: '8px',
-                        width: '100%',
-                        fontSize: '15px',
-                        fontWeight: 'bold',
-                        cursor: 'pointer',
-                        transition: 'all 0.3s'
-                      }}>
-                        Adicionar ao Carrinho
-                      </button>
-                    </Link>
-                  ) : (
-                    <button disabled style={{
-                      backgroundColor: '#ccc',
-                      color: '#666',
-                      border: 'none',
-                      padding: '12px',
-                      borderRadius: '8px',
-                      width: '100%',
-                      fontSize: '15px',
-                      fontWeight: 'bold',
-                      cursor: 'not-allowed'
-                    }}>
-                      Esgotado
-                    </button>
-                  )}
                 </div>
+              );
+            })
+          )}
+
+          <div style={{ 
+            marginTop: '30px', 
+            padding: '20px', 
+            backgroundColor: '#e8f8f5', 
+            borderRadius: '8px',
+            border: '1px solid #27ae60'
+          }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', textAlign: 'center' }}>
+              <div>
+                <div style={{ fontSize: '28px', marginBottom: '8px' }}>✅</div>
+                <div style={{ fontSize: '14px', color: '#27ae60', fontWeight: '600' }}>Entrada garantida</div>
               </div>
-            );
-          })}
+              <div>
+                <div style={{ fontSize: '28px', marginBottom: '8px' }}>🔒</div>
+                <div style={{ fontSize: '14px', color: '#27ae60', fontWeight: '600' }}>Pagamento seguro</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '28px', marginBottom: '8px' }}>💬</div>
+                <div style={{ fontSize: '14px', color: '#27ae60', fontWeight: '600' }}>Suporte 24h</div>
+              </div>
+            </div>
+          </div>
         </div>
+
+        {produtos && produtos.length > 0 && (
+          <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
+            <h2 style={{ color: '#5d34a4', marginTop: 0, fontSize: '32px', marginBottom: '30px', textAlign: 'center' }}>
+              🛍️ Produtos do Evento
+            </h2>
+
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', 
+              gap: '25px' 
+            }}>
+              {produtos.map(produto => {
+                const quantidadeTotal = (produto.quantidade_disponivel || 0) + (produto.quantidade_vendida || 0);
+                const quantidadeDisponivel = produto.quantidade_disponivel || 0;
+                const percentualDisponivel = quantidadeTotal > 0 ? (quantidadeDisponivel / quantidadeTotal) * 100 : 0;
+                const ultimos = percentualDisponivel <= 15 && percentualDisponivel > 0;
+                const esgotado = quantidadeDisponivel === 0;
+
+                return (
+                  <div key={produto.id} style={{ 
+                    border: '1px solid #e0e0e0', 
+                    borderRadius: '10px', 
+                    overflow: 'hidden',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                    transition: 'transform 0.3s',
+                    backgroundColor: 'white',
+                    position: 'relative'
+                  }}>
+                    {ultimos && !esgotado && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '10px',
+                        right: '10px',
+                        backgroundColor: '#ffc107',
+                        color: '#000',
+                        padding: '5px 10px',
+                        borderRadius: '15px',
+                        fontSize: '12px',
+                        fontWeight: 'bold',
+                        zIndex: 1
+                      }}>
+                        🔥 Últimos!
+                      </div>
+                    )}
+
+                    {esgotado && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '10px',
+                        right: '10px',
+                        backgroundColor: '#dc3545',
+                        color: 'white',
+                        padding: '5px 10px',
+                        borderRadius: '15px',
+                        fontSize: '12px',
+                        fontWeight: 'bold',
+                        zIndex: 1
+                      }}>
+                        ❌ Esgotado
+                      </div>
+                    )}
+
+                    <div style={{ 
+                      width: '100%', 
+                      height: '200px', 
+                      backgroundColor: '#f0f0f0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      overflow: 'hidden'
+                    }}>
+                      {produto.imagem_url ? (
+                        <img 
+                          src={produto.imagem_url} 
+                          alt={produto.nome}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                      ) : (
+                        <span style={{ fontSize: '48px' }}>📦</span>
+                      )}
+                    </div>
+
+                    <div style={{ padding: '20px' }}>
+                      <h3 style={{ margin: '0 0 10px 0', fontSize: '18px', color: '#2c3e50' }}>
+                        {produto.nome}
+                      </h3>
+                      
+                      {produto.descricao && (
+                        <p style={{ fontSize: '14px', color: '#666', marginBottom: '12px', lineHeight: '1.5' }}>
+                          {produto.descricao}
+                        </p>
+                      )}
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <span style={{ fontSize: '22px', fontWeight: 'bold', color: '#27ae60' }}>
+                          R$ {parseFloat(produto.preco).toFixed(2)}
+                        </span>
+                        {produto.tamanho && (
+                          <span style={{ 
+                            backgroundColor: '#e8f4f8', 
+                            color: '#2980b9', 
+                            padding: '4px 12px', 
+                            borderRadius: '15px',
+                            fontSize: '13px',
+                            fontWeight: '600'
+                          }}>
+                            Tamanho: {produto.tamanho}
+                          </span>
+                        )}
+                      </div>
+
+                      <p style={{ fontSize: '13px', color: '#999', marginBottom: '15px' }}>
+                        {esgotado 
+                          ? '❌ Esgotado' 
+                          : ultimos 
+                            ? `🔥 Últimos ${quantidadeDisponivel} disponíveis!`
+                            : `${quantidadeDisponivel} disponíveis`}
+                      </p>
+
+                      {quantidadeDisponivel > 0 ? (
+                        <Link href={`/checkout?evento_id=${evento.id}&produto_id=${produto.id}`}>
+                          <button style={{
+                            backgroundColor: '#3498db',
+                            color: 'white',
+                            border: 'none',
+                            padding: '12px',
+                            borderRadius: '8px',
+                            width: '100%',
+                            fontSize: '15px',
+                            fontWeight: 'bold',
+                            cursor: 'pointer',
+                            transition: 'all 0.3s'
+                          }}>
+                            Adicionar ao Carrinho
+                          </button>
+                        </Link>
+                      ) : (
+                        <button disabled style={{
+                          backgroundColor: '#ccc',
+                          color: '#666',
+                          border: 'none',
+                          padding: '12px',
+                          borderRadius: '8px',
+                          width: '100%',
+                          fontSize: '15px',
+                          fontWeight: 'bold',
+                          cursor: 'not-allowed'
+                        }}>
+                          Esgotado
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
-    )}
-  </div>
-</div>
+    </div>
+  );
+}
