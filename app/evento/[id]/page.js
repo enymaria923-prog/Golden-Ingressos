@@ -157,26 +157,19 @@ export default function EventoPage() {
             const nomeMatch = s.nome === ingresso.setor;
             const sessaoMatch = s.sessao_id === ingresso.sessao_id;
             console.log(`      Testando setor: nome="${s.nome}" (match=${nomeMatch}), sessao=${s.sessao_id} (match=${sessaoMatch})`);
-            return nomeMatch && sessaoMatch;
-          });
-          
-          console.log(`   - Setor encontrado:`, setorEncontrado);
-          
-          if (setorEncontrado && setorEncontrado.capacidade_definida) {
-            quantidadeDisponivel = parseInt(setorEncontrado.capacidade_definida) || 0;
-            console.log(`   ✅ SETOR (capacidade_definida): ${quantidadeDisponivel}`);
-          } else {
-            console.log(`   ⚠️ SETOR sem capacidade_definida - quantidade será por demanda`);
-          }
-        }
-
-        console.log(`   🎯 RESULTADO FINAL: quantidade_calculada = ${quantidadeDisponivel}, vendidos = ${vendidos}\n`);
-
-        return {
-          ...ingresso,
-          quantidade_calculada: quantidadeDisponivel
-        };
+           return nomeMatch && sessaoMatch;
       });
+      
+      if (setorEncontrado && setorEncontrado.capacidade_definida) {
+        quantidadeDisponivel = parseInt(setorEncontrado.capacidade_definida) || 0;
+      }
+    }
+
+    return {
+      ...ingresso,
+      quantidade_calculada: quantidadeDisponivel
+    };
+  });
 
       // Organizar por sessão
       const ingressosPorSessaoTemp = {};
