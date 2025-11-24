@@ -82,15 +82,39 @@ export default function EventoPage() {
       });
 
       // 🔧 PROCESSAR INGRESSOS COM QUANTIDADES CORRETAS
-      const ingressosProcessados = (todosIngressos || []).map(ingresso => {
-        let quantidadeDisponivel = 0;
+    const ingressosProcessados = (todosIngressos || []).map(ingresso => {
+  let quantidadeDisponivel = 0;
+  const quantidadePropria = parseInt(ingresso.quantidade) || 0;
+  const vendidos = parseInt(ingresso.vendidos) || 0;
 
-        console.log(`\n🔍 PROCESSANDO INGRESSO: ${ingresso.tipo}`);
-        console.log(`   - ID: ${ingresso.id}`);
-        console.log(`   - Setor: "${ingresso.setor}"`);
-        console.log(`   - Lote ID: ${ingresso.lote_id}`);
-        console.log(`   - Sessão ID: ${ingresso.sessao_id}`);
-        console.log(`   - Quantidade própria (ingressos.quantidade): ${ingresso.quantidade}`);
+  if (quantidadePropria > 0) {
+    quantidadeDisponivel = quantidadePropria;
+  } else if (ingresso.lote_id) {
+    const lote = lotesData?.find(l => l.id === ingresso.lote_id);
+    if (lote && lote.quantidade_total) {
+      quantidadeDisponivel = parseInt(lote.quantidade_total) || 0;
+    } else {
+      const setorEncontrado = setoresData?.find(s => 
+        s.nome === ingresso.setor && s.sessao_id === ingresso.sessao_id
+      );
+      if (setorEncontrado && setorEncontrado.capacidade_definida) {
+        quantidadeDisponivel = parseInt(setorEncontrado.capacidade_definida) || 0;
+      }
+    }
+  } else {
+    const setorEncontrado = setoresData?.find(s => 
+      s.nome === ingresso.setor && s.sessao_id === ingresso.sessao_id
+    );
+    if (setorEncontrado && setorEncontrado.capacidade_definida) {
+      quantidadeDisponivel = parseInt(setorEncontrado.capacidade_definida) || 0;
+    }
+  }
+
+  return {
+    ...ingresso,
+    quantidade_calculada: quantidadeDisponivel
+  };
+});
 
         // LÓGICA CORRETA:
         // 1. Se tem quantidade definida no próprio ingresso, usar ela
