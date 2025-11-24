@@ -4,21 +4,6 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { createClient } from '@/utils/supabase/client';
-import { 
-  Calendar, 
-  MapPin, 
-  Clock, 
-  Users, 
-  Tag, 
-  AlertCircle, 
-  CheckCircle,
-  Ticket,
-  X,
-  Plus,
-  Minus,
-  ChevronDown,
-  Info
-} from 'lucide-react';
 
 export default function EventoDetalhesPage() {
   const params = useParams();
@@ -315,7 +300,7 @@ export default function EventoDetalhesPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <div className="text-6xl mb-4">⚠️</div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Evento não encontrado</h2>
           <button
             onClick={() => router.push('/')}
@@ -346,16 +331,16 @@ export default function EventoDetalhesPage() {
             <h1 className="text-4xl font-bold mb-4">{evento.nome}</h1>
             <div className="flex flex-wrap gap-4 text-sm">
               <div className="flex items-center gap-2">
-                <Calendar className="w-5 h-5" />
+                <span>📅</span>
                 <span>{formatarData(evento.data)} • {formatarHora(evento.hora)}</span>
               </div>
               <div className="flex items-center gap-2">
-                <MapPin className="w-5 h-5" />
+                <span>📍</span>
                 <span>{evento.local}</span>
               </div>
               {evento.categoria && (
                 <div className="flex items-center gap-2">
-                  <Tag className="w-5 h-5" />
+                  <span>🏷️</span>
                   <span>{evento.categoria}</span>
                 </div>
               )}
@@ -395,7 +380,7 @@ export default function EventoDetalhesPage() {
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <Calendar className="w-5 h-5 text-purple-600" />
+                        <span className="text-2xl">📅</span>
                         <div className="text-left">
                           <div className="font-semibold text-gray-900">
                             {formatarData(sessao.data)}
@@ -416,7 +401,7 @@ export default function EventoDetalhesPage() {
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow-sm sticky top-4">
               <div className="p-6 border-b border-gray-200">
-                <h2 className="text-xl font-bold text-gray-900">Ingressos</h2>
+                <h2 className="text-xl font-bold text-gray-900">🎫 Ingressos</h2>
               </div>
 
               {/* Campo de Cupom */}
@@ -425,7 +410,7 @@ export default function EventoDetalhesPage() {
                   {!cupomAplicado ? (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Tem um cupom de desconto?
+                        🎟️ Tem um cupom de desconto?
                       </label>
                       <div className="flex gap-2">
                         <input
@@ -445,7 +430,7 @@ export default function EventoDetalhesPage() {
                       </div>
                       {cupomError && (
                         <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
-                          <AlertCircle className="w-4 h-4" />
+                          <span>⚠️</span>
                           {cupomError}
                         </p>
                       )}
@@ -453,7 +438,7 @@ export default function EventoDetalhesPage() {
                   ) : (
                     <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
                       <div className="flex items-center gap-2">
-                        <CheckCircle className="w-5 h-5 text-green-600" />
+                        <span className="text-xl">✅</span>
                         <div>
                           <div className="font-medium text-green-900">
                             Cupom aplicado!
@@ -465,9 +450,9 @@ export default function EventoDetalhesPage() {
                       </div>
                       <button
                         onClick={removerCupom}
-                        className="p-1 hover:bg-green-100 rounded"
+                        className="p-1 hover:bg-green-100 rounded text-xl"
                       >
-                        <X className="w-4 h-4 text-green-700" />
+                        ❌
                       </button>
                     </div>
                   )}
@@ -478,7 +463,7 @@ export default function EventoDetalhesPage() {
               <div className="p-6 max-h-[600px] overflow-y-auto">
                 {setoresData.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
-                    <Ticket className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                    <div className="text-5xl mb-3 opacity-50">🎫</div>
                     <p>Nenhum ingresso disponível</p>
                   </div>
                 ) : (
@@ -499,13 +484,13 @@ export default function EventoDetalhesPage() {
                                 </div>
                                 {lote.estaEsgotado ? (
                                   <div className="text-center py-2 text-sm text-red-600 font-medium">
-                                    Esgotado
+                                    ❌ Esgotado
                                   </div>
                                 ) : (
                                   <>
                                     {lote.saoUltimos && (
                                       <div className="mb-2 px-2 py-1 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800 flex items-center gap-1">
-                                        <AlertCircle className="w-3 h-3" />
+                                        <span>⚠️</span>
                                         Últimos ingressos!
                                       </div>
                                     )}
@@ -515,7 +500,6 @@ export default function EventoDetalhesPage() {
                                         const precoComCupom = calcularPrecoComCupom(ingresso, lote.id);
                                         const precoFinal = precoComCupom || precoOriginal;
                                         const taxa = calcularTaxaServico(precoFinal);
-                                        const precoTotal = precoFinal + taxa;
 
                                         return (
                                           <div key={ingresso.id} className="flex items-center justify-between">
@@ -540,18 +524,18 @@ export default function EventoDetalhesPage() {
                                             <div className="flex items-center gap-2">
                                               <button
                                                 onClick={() => alterarQuantidade(ingresso.id, 'remove', lote.id)}
-                                                className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-300 hover:bg-gray-100"
+                                                className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-300 hover:bg-gray-100 text-xl"
                                               >
-                                                <Minus className="w-4 h-4" />
+                                                −
                                               </button>
                                               <span className="w-8 text-center font-medium">
                                                 {carrinhoItens[`${ingresso.id}-${lote.id}`] || 0}
                                               </span>
                                               <button
                                                 onClick={() => alterarQuantidade(ingresso.id, 'add', lote.id)}
-                                                className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-300 hover:bg-gray-100"
+                                                className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-300 hover:bg-gray-100 text-xl"
                                               >
-                                                <Plus className="w-4 h-4" />
+                                                +
                                               </button>
                                             </div>
                                           </div>
@@ -568,13 +552,13 @@ export default function EventoDetalhesPage() {
                           <div>
                             {setor.estaEsgotado ? (
                               <div className="text-center py-4 text-sm text-red-600 font-medium border border-red-200 rounded-lg">
-                                Setor esgotado
+                                ❌ Setor esgotado
                               </div>
                             ) : (
                               <>
                                 {setor.saoUltimos && (
                                   <div className="mb-3 px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800 flex items-center gap-2">
-                                    <AlertCircle className="w-4 h-4" />
+                                    <span>⚠️</span>
                                     Últimos ingressos disponíveis!
                                   </div>
                                 )}
@@ -584,7 +568,6 @@ export default function EventoDetalhesPage() {
                                     const precoComCupom = calcularPrecoComCupom(ingresso);
                                     const precoFinal = precoComCupom || precoOriginal;
                                     const taxa = calcularTaxaServico(precoFinal);
-                                    const precoTotal = precoFinal + taxa;
 
                                     return (
                                       <div key={ingresso.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
@@ -609,18 +592,18 @@ export default function EventoDetalhesPage() {
                                         <div className="flex items-center gap-2">
                                           <button
                                             onClick={() => alterarQuantidade(ingresso.id, 'remove')}
-                                            className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-300 hover:bg-gray-100"
+                                            className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-300 hover:bg-gray-100 text-xl"
                                           >
-                                            <Minus className="w-4 h-4" />
+                                            −
                                           </button>
                                           <span className="w-8 text-center font-medium">
                                             {carrinhoItens[ingresso.id] || 0}
                                           </span>
                                           <button
                                             onClick={() => alterarQuantidade(ingresso.id, 'add')}
-                                            className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-300 hover:bg-gray-100"
+                                            className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-300 hover:bg-gray-100 text-xl"
                                           >
-                                            <Plus className="w-4 h-4" />
+                                            +
                                           </button>
                                         </div>
                                       </div>
@@ -644,7 +627,7 @@ export default function EventoDetalhesPage() {
                     onClick={() => router.push(`/checkout/${params.id}`)}
                     className="w-full py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors"
                   >
-                    Comprar Ingressos ({getTotalItensCarrinho()})
+                    🛒 Comprar Ingressos ({getTotalItensCarrinho()})
                   </button>
                 </div>
               )}
