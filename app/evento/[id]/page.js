@@ -57,25 +57,78 @@ export default function EventoPage() {
         setSessaoSelecionada(sessoesData[0].id);
       }
 
+      // 🔧 BUSCAR INGRESSOS COM DADOS DE SETORES E LOTES
       const { data: todosIngressos } = await supabase
         .from('ingressos')
         .select('*')
         .eq('evento_id', id);
 
-      console.log('📊 TODOS OS INGRESSOS DO BANCO:', todosIngressos);
+      // BUSCAR SETORES
+      const { data: setoresData } = await supabase
+        .from('setores')
+        .select('*')
+        .eq('eventos_id', id);
 
+      // BUSCAR LOTES
+      const { data: lotesData } = await supabase
+        .from('lotes')
+        .select('*')
+        .eq('evento_id', id);
+
+      console.log('📊 DADOS DO BANCO:', {
+        ingressos: todosIngressos,
+        setores: setoresData,
+        lotes: lotesData
+      });
+
+      // 🔧 PROCESSAR INGRESSOS COM QUANTIDADES CORRETAS
+      const ingressosProcessados = (todosIngressos || []).map(ingresso => {
+        let quantidadeDisponivel = 0;
+
+        // Se tem lote, pegar quantidade do lote
+        if (ingresso.lote_id) {
+          const lote = lotesData?.find(l => l.id === ingresso.lote_id);
+          if (lote) {
+            const quantidadeVendidaLote = parseInt(lote.quantidade_vendida) || 0;
+            const quantidadeTotalLote = parseInt(lote.quantidade_total) || 0;
+            quantidadeDisponivel = quantidadeTotalLote - quantidadeVendidaLote;
+            console.log(`🎫 ${ingresso.tipo} (Lote ${lote.nome}): total=${quantidadeTotalLote}, vendidos=${quantidadeVendidaLote}, disponíveis=${quantidadeDisponivel}`);
+          }
+        } else {
+          // Se NÃO tem lote, pegar do setor
+          const setor = setoresData?.find(s => s.nome === ingresso.setor && s.sessao_id === ingresso.sessao_id);
+          if (setor) {
+            if (setor.capacidade_definida && setor.capacidade_definida > 0) {
+              // Setor com capacidade definida
+              quantidadeDisponivel = parseInt(setor.capacidade_definida) || 0;
+              console.log(`🏟️ ${ingresso.tipo} (Setor ${setor.nome} - definido): ${quantidadeDisponivel}`);
+            } else if (setor.capacidade_calculada && setor.capacidade_calculada > 0) {
+              // Setor com capacidade calculada
+              quantidadeDisponivel = parseInt(setor.capacidade_calculada) || 0;
+              console.log(`🏟️ ${ingresso.tipo} (Setor ${setor.nome} - calculado): ${quantidadeDisponivel}`);
+            }
+          }
+        }
+
+        return {
+          ...ingresso,
+          quantidade_calculada: quantidadeDisponivel
+        };
+      });
+
+      // Organizar por sessão
       const ingressosPorSessaoTemp = {};
       (sessoesData || []).forEach(sessao => {
         ingressosPorSessaoTemp[sessao.id] = [];
       });
 
-      (todosIngressos || []).forEach(ingresso => {
+      ingressosProcessados.forEach(ingresso => {
         if (ingressosPorSessaoTemp[ingresso.sessao_id]) {
           ingressosPorSessaoTemp[ingresso.sessao_id].push(ingresso);
         }
       });
 
-      console.log('📦 INGRESSOS ORGANIZADOS POR SESSÃO:', ingressosPorSessaoTemp);
+      console.log('📦 INGRESSOS PROCESSADOS:', ingressosPorSessaoTemp);
       setIngressosPorSessao(ingressosPorSessaoTemp);
 
       const { data: cuponsData } = await supabase
@@ -602,10 +655,10 @@ export default function EventoPage() {
                 <p style={{ margin: '3px 0' }}><strong>Ingresso {i + 1}:</strong> {ing.tipo}</p>
                 <p style={{ margin: '3px 0' }}>- ID: {ing.id}</p>
                 <p style={{ margin: '3px 0' }}>- Setor: {ing.setor}</p>
-                <p style={{ margin: '3px 0' }}>- Quantidade (BD): <span style={{ color: 'blue', fontWeight: 'bold' }}>{ing.quantidade}</span></p>
-                <p style={{ margin: '3px 0' }}>- Vendidos (BD): <span style={{ color: 'red', fontWeight: 'bold' }}>{ing.vendidos}</span></p>
-                <p style={{ margin: '3px 0' }}>- Tipo no JS: {typeof ing.quantidade}</p>
-                <p style={{ margin: '3px 0' }}>- Disponíveis (calculado): <span style={{ color: 'green', fontWeight: 'bold' }}>{(parseInt(ing.quantidade) || 0) - (parseInt(ing.vendidos) || 0)}</span></p>
+                <p style={{ margin: '3px 0' }}>- Quantidade (BD - coluna antiga): <span style={{ color: 'red', fontWeight: 'bold', textDecoration: 'line-through' }}>{ing.quantidade}</span></p>
+                <p style={{ margin: '3px 0' }}>- ✅ Quantidade CALCULADA: <span style={{ color: 'blue', fontWeight: 'bold' }}>{ing.quantidade_calculada}</span></p>
+                <p style={{ margin: '3px 0' }}>- Vendidos (BD): <span style={{ color: 'orange', fontWeight: 'bold' }}>{ing.vendidos}</span></p>
+                <p style={{ margin: '3px 0' }}>- Disponíveis (calculado): <span style={{ color: 'green', fontWeight: 'bold' }}>{(parseInt(ing.quantidade_calculada) || 0) - (parseInt(ing.vendidos) || 0)}</span></p>
               </div>
             ))}
             {ingressosDaSessao.length > 3 && <p>... e mais {ingressosDaSessao.length - 3} ingressos</p>}
@@ -635,9 +688,9 @@ export default function EventoPage() {
               let totalVendido = 0;
 
               [...setorData.semLote, ...Object.values(setorData.lotes).flatMap(l => l.ingressos)].forEach(ing => {
-                const qtd = parseInt(ing.quantidade) || 0;
+                const qtd = parseInt(ing.quantidade_calculada) || 0;
                 const vend = parseInt(ing.vendidos) || 0;
-                console.log(`📊 Ingresso ${ing.tipo}: quantidade=${qtd}, vendidos=${vend}`);
+                console.log(`📊 Ingresso ${ing.tipo}: quantidade_calculada=${qtd}, vendidos=${vend}`);
                 totalDisponibilizado += qtd;
                 totalVendido += vend;
               });
@@ -700,12 +753,12 @@ export default function EventoPage() {
                         </div>
 
                         {loteData.ingressos.map(ingresso => {
-                          // 🔧 CORREÇÃO PRINCIPAL: Converter para NUMBER
-                          const quantidade = parseInt(ingresso.quantidade) || 0;
+                          // 🔧 USAR quantidade_calculada ao invés de quantidade
+                          const quantidade = parseInt(ingresso.quantidade_calculada) || 0;
                           const vendidos = parseInt(ingresso.vendidos) || 0;
                           const ingressosDisponiveis = quantidade - vendidos;
                           
-                          console.log(`🎫 ${ingresso.tipo}: qtd=${quantidade}, vendidos=${vendidos}, disponíveis=${ingressosDisponiveis}`);
+                          console.log(`🎫 ${ingresso.tipo}: qtd_calculada=${quantidade}, vendidos=${vendidos}, disponíveis=${ingressosDisponiveis}`);
 
                           const precoBase = parseFloat(ingresso.valor);
                           const precoComCupom = calcularPrecoComCupom(precoBase);
@@ -799,12 +852,12 @@ export default function EventoPage() {
                     {setorData.semLote.length > 0 && (
                       <div>
                         {setorData.semLote.map(ingresso => {
-                          // 🔧 CORREÇÃO PRINCIPAL: Converter para NUMBER
-                          const quantidade = parseInt(ingresso.quantidade) || 0;
+                          // 🔧 USAR quantidade_calculada ao invés de quantidade
+                          const quantidade = parseInt(ingresso.quantidade_calculada) || 0;
                           const vendidos = parseInt(ingresso.vendidos) || 0;
                           const ingressosDisponiveis = quantidade - vendidos;
                           
-                          console.log(`🎫 ${ingresso.tipo} (sem lote): qtd=${quantidade}, vendidos=${vendidos}, disponíveis=${ingressosDisponiveis}`);
+                          console.log(`🎫 ${ingresso.tipo} (sem lote): qtd_calculada=${quantidade}, vendidos=${vendidos}, disponíveis=${ingressosDisponiveis}`);
 
                           const precoBase = parseFloat(ingresso.valor);
                           const precoComCupom = calcularPrecoComCupom(precoBase);
