@@ -57,17 +57,19 @@ export default function EventoPage() {
         setSessaoSelecionada(sessoesData[0].id);
       }
 
-      // 🔧 BUSCAR TODOS OS DADOS NECESSÁRIOS
+      // 🔧 BUSCAR INGRESSOS COM DADOS DE SETORES E LOTES
       const { data: todosIngressos } = await supabase
         .from('ingressos')
         .select('*')
         .eq('evento_id', id);
 
+      // BUSCAR SETORES
       const { data: setoresData } = await supabase
         .from('setores')
         .select('*')
         .eq('eventos_id', id);
 
+      // BUSCAR LOTES
       const { data: lotesData } = await supabase
         .from('lotes')
         .select('*')
@@ -79,7 +81,7 @@ export default function EventoPage() {
         lotes: lotesData
       });
 
-      // 🔧 CORREÇÃO: CALCULAR QUANTIDADE DISPONÍVEL CORRETAMENTE
+      // 🔧 PROCESSAR INGRESSOS COM QUANTIDADES CORRETAS
       const ingressosProcessados = (todosIngressos || []).map(ingresso => {
         let quantidadeDisponivel = 0;
 
@@ -89,26 +91,24 @@ export default function EventoPage() {
         console.log(`   - Lote ID: ${ingresso.lote_id}`);
         console.log(`   - Sessão ID: ${ingresso.sessao_id}`);
 
-        // 🔧 CORREÇÃO: Buscar informações de quantidade das tabelas corretas
+        // Se tem lote, pegar quantidade do lote
         if (ingresso.lote_id) {
-          // Se tem lote, buscar quantidade do lote
           console.log(`   ➡️ TEM LOTE! Buscando lote ${ingresso.lote_id}...`);
           const lote = lotesData?.find(l => l.id === ingresso.lote_id);
           console.log(`   - Lote encontrado:`, lote);
           
           if (lote) {
-            // 🔧 CORREÇÃO: Usar quantidade_total da tabela lotes
-            const quantidadeTotalLote = parseInt(lote.quantidade_total) || 0;
             const quantidadeVendidaLote = parseInt(lote.quantidade_vendida) || 0;
-            quantidadeDisponivel = Math.max(0, quantidadeTotalLote - quantidadeVendidaLote);
+            const quantidadeTotalLote = parseInt(lote.quantidade_total) || 0;
+            quantidadeDisponivel = quantidadeTotalLote - quantidadeVendidaLote;
             console.log(`   ✅ LOTE: total=${quantidadeTotalLote}, vendidos=${quantidadeVendidaLote}, disponíveis=${quantidadeDisponivel}`);
           } else {
             console.log(`   ❌ LOTE NÃO ENCONTRADO!`);
           }
         } else {
-          // 🔧 CORREÇÃO: Se não tem lote, buscar capacidade do setor
           console.log(`   ➡️ SEM LOTE! Buscando setor "${ingresso.setor}" na sessão ${ingresso.sessao_id}...`);
           
+          // Se NÃO tem lote, pegar do setor
           const setorEncontrado = setoresData?.find(s => {
             const nomeMatch = s.nome === ingresso.setor;
             const sessaoMatch = s.sessao_id === ingresso.sessao_id;
@@ -119,11 +119,15 @@ export default function EventoPage() {
           console.log(`   - Setor encontrado:`, setorEncontrado);
           
           if (setorEncontrado) {
-            // 🔧 CORREÇÃO: Usar capacidade_definida da tabela setores
-            const capacidadeSetor = parseInt(setorEncontrado.capacidade_definida) || 0;
-            const vendidosSetor = parseInt(setorEncontrado.vendidos) || 0;
-            quantidadeDisponivel = Math.max(0, capacidadeSetor - vendidosSetor);
-            console.log(`   ✅ SETOR: capacidade=${capacidadeSetor}, vendidos=${vendidosSetor}, disponíveis=${quantidadeDisponivel}`);
+            if (setorEncontrado.capacidade_definida && setorEncontrado.capacidade_definida > 0) {
+              quantidadeDisponivel = parseInt(setorEncontrado.capacidade_definida) || 0;
+              console.log(`   ✅ SETOR (definida): ${quantidadeDisponivel}`);
+            } else if (setorEncontrado.capacidade_calculada && setorEncontrado.capacidade_calculada > 0) {
+              quantidadeDisponivel = parseInt(setorEncontrado.capacidade_calculada) || 0;
+              console.log(`   ✅ SETOR (calculada): ${quantidadeDisponivel}`);
+            } else {
+              console.log(`   ⚠️ SETOR encontrado mas SEM capacidade!`);
+            }
           } else {
             console.log(`   ❌ SETOR NÃO ENCONTRADO!`);
             console.log(`   📋 Setores disponíveis:`, setoresData?.map(s => ({nome: s.nome, sessao: s.sessao_id})));
