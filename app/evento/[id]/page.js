@@ -85,30 +85,56 @@ export default function EventoPage() {
       const ingressosProcessados = (todosIngressos || []).map(ingresso => {
         let quantidadeDisponivel = 0;
 
+        console.log(`\n🔍 PROCESSANDO INGRESSO: ${ingresso.tipo}`);
+        console.log(`   - ID: ${ingresso.id}`);
+        console.log(`   - Setor: "${ingresso.setor}"`);
+        console.log(`   - Lote ID: ${ingresso.lote_id}`);
+        console.log(`   - Sessão ID: ${ingresso.sessao_id}`);
+
         // Se tem lote, pegar quantidade do lote
         if (ingresso.lote_id) {
+          console.log(`   ➡️ TEM LOTE! Buscando lote ${ingresso.lote_id}...`);
           const lote = lotesData?.find(l => l.id === ingresso.lote_id);
+          console.log(`   - Lote encontrado:`, lote);
+          
           if (lote) {
             const quantidadeVendidaLote = parseInt(lote.quantidade_vendida) || 0;
             const quantidadeTotalLote = parseInt(lote.quantidade_total) || 0;
             quantidadeDisponivel = quantidadeTotalLote - quantidadeVendidaLote;
-            console.log(`🎫 ${ingresso.tipo} (Lote ${lote.nome}): total=${quantidadeTotalLote}, vendidos=${quantidadeVendidaLote}, disponíveis=${quantidadeDisponivel}`);
+            console.log(`   ✅ LOTE: total=${quantidadeTotalLote}, vendidos=${quantidadeVendidaLote}, disponíveis=${quantidadeDisponivel}`);
+          } else {
+            console.log(`   ❌ LOTE NÃO ENCONTRADO!`);
           }
         } else {
+          console.log(`   ➡️ SEM LOTE! Buscando setor "${ingresso.setor}" na sessão ${ingresso.sessao_id}...`);
+          
           // Se NÃO tem lote, pegar do setor
-          const setor = setoresData?.find(s => s.nome === ingresso.setor && s.sessao_id === ingresso.sessao_id);
-          if (setor) {
-            if (setor.capacidade_definida && setor.capacidade_definida > 0) {
-              // Setor com capacidade definida
-              quantidadeDisponivel = parseInt(setor.capacidade_definida) || 0;
-              console.log(`🏟️ ${ingresso.tipo} (Setor ${setor.nome} - definido): ${quantidadeDisponivel}`);
-            } else if (setor.capacidade_calculada && setor.capacidade_calculada > 0) {
-              // Setor com capacidade calculada
-              quantidadeDisponivel = parseInt(setor.capacidade_calculada) || 0;
-              console.log(`🏟️ ${ingresso.tipo} (Setor ${setor.nome} - calculado): ${quantidadeDisponivel}`);
+          const setorEncontrado = setoresData?.find(s => {
+            const nomeMatch = s.nome === ingresso.setor;
+            const sessaoMatch = s.sessao_id === ingresso.sessao_id;
+            console.log(`      Testando setor: nome="${s.nome}" (match=${nomeMatch}), sessao=${s.sessao_id} (match=${sessaoMatch})`);
+            return nomeMatch && sessaoMatch;
+          });
+          
+          console.log(`   - Setor encontrado:`, setorEncontrado);
+          
+          if (setorEncontrado) {
+            if (setorEncontrado.capacidade_definida && setorEncontrado.capacidade_definida > 0) {
+              quantidadeDisponivel = parseInt(setorEncontrado.capacidade_definida) || 0;
+              console.log(`   ✅ SETOR (definida): ${quantidadeDisponivel}`);
+            } else if (setorEncontrado.capacidade_calculada && setorEncontrado.capacidade_calculada > 0) {
+              quantidadeDisponivel = parseInt(setorEncontrado.capacidade_calculada) || 0;
+              console.log(`   ✅ SETOR (calculada): ${quantidadeDisponivel}`);
+            } else {
+              console.log(`   ⚠️ SETOR encontrado mas SEM capacidade!`);
             }
+          } else {
+            console.log(`   ❌ SETOR NÃO ENCONTRADO!`);
+            console.log(`   📋 Setores disponíveis:`, setoresData?.map(s => ({nome: s.nome, sessao: s.sessao_id})));
           }
         }
+
+        console.log(`   🎯 RESULTADO FINAL: quantidade_calculada = ${quantidadeDisponivel}\n`);
 
         return {
           ...ingresso,
