@@ -1,1224 +1,656 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '../../../utils/supabase/client';
 import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
+import Image from 'next/image';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { 
+  Calendar, 
+  MapPin, 
+  Clock, 
+  Users, 
+  Tag, 
+  AlertCircle, 
+  CheckCircle,
+  Ticket,
+  X,
+  Plus,
+  Minus,
+  ChevronDown,
+  Info
+} from 'lucide-react';
 
-export default function EventoPage() {
-  const supabase = createClient();
+export default function EventoDetalhesPage() {
   const params = useParams();
   const router = useRouter();
-  const id = params.id;
-
-  const [loading, setLoading] = useState(true);
+  const supabase = createClientComponentClient();
+  
   const [evento, setEvento] = useState(null);
   const [sessoes, setSessoes] = useState([]);
-  const [sessaoSelecionada, setSessaoSelecionada] = useState(null);
-  const [ingressosPorSessao, setIngressosPorSessao] = useState({});
-  const [produtos, setProdutos] = useState([]);
-  const [cupons, setCupons] = useState([]);
-  const [imagensDescricao, setImagensDescricao] = useState([]);
-  const [codigoCupom, setCodigoCupom] = useState('');
+  const [setoresData, setSetoresData] = useState([]);
+  const [cupomCodigo, setCupomCodigo] = useState('');
   const [cupomAplicado, setCupomAplicado] = useState(null);
-  const [mensagemCupom, setMensagemCupom] = useState('');
-  const [carrinho, setCarrinho] = useState({});
-  const [setores, setSetores] = useState([]);
-  const [lotes, setLotes] = useState([]);
+  const [cupomError, setCupomError] = useState('');
+  const [carrinhoItens, setCarrinhoItens] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [sessaoSelecionada, setSessaoSelecionada] = useState(null);
+  const [temCupons, setTemCupons] = useState(false);
+  const [aplicandoCupom, setAplicandoCupom] = useState(false);
 
   useEffect(() => {
-    carregarDados();
-  }, [id]);
+    carregarEvento();
+  }, [params.id]);
 
-  const carregarDados = async () => {
+  const carregarEvento = async () => {
     try {
       setLoading(true);
 
+      // Carregar dados do evento
       const { data: eventoData, error: eventoError } = await supabase
         .from('eventos')
         .select('*')
-        .eq('id', id)
+        .eq('id', params.id)
         .single();
 
-      if (eventoError || !eventoData) {
-        console.error('Evento não encontrado');
-        return;
-      }
-
+      if (eventoError) throw eventoError;
       setEvento(eventoData);
 
+      // Verificar se tem cupons ativos
+      const { data: cuponsData } = await supabase
+        .from('cupons')
+        .select('id')
+        .eq('evento_id', params.id)
+        .eq('ativo', true)
+        .gte('data_validade', new Date().toISOString())
+        .limit(1);
+
+      setTemCupons(cuponsData && cuponsData.length > 0);
+
+      // Carregar sessões (se houver)
       const { data: sessoesData } = await supabase
         .from('sessoes')
         .select('*')
-        .eq('evento_id', id)
-        .order('numero', { ascending: true });
+        .eq('evento_id', params.id)
+        .order('data', { ascending: true })
+        .order('hora', { ascending: true });
 
       setSessoes(sessoesData || []);
-      
+
+      // Se tem sessões, selecionar a primeira
       if (sessoesData && sessoesData.length > 0) {
         setSessaoSelecionada(sessoesData[0].id);
+        await carregarIngressos(params.id, sessoesData[0].id);
+      } else {
+        await carregarIngressos(params.id, null);
       }
 
-      // BUSCAR TODOS OS DADOS NECESSÁRIOS
-      const { data: todosIngressos } = await supabase
-        .from('ingressos')
-        .select('*')
-        .eq('evento_id', id);
-
-      const { data: setoresData } = await supabase
-        .from('setores')
-        .select('*')
-        .eq('eventos_id', id);
-
-      const { data: lotesData } = await supabase
-        .from('lotes')
-        .select('*')
-        .eq('evento_id', id);
-
-      setSetores(setoresData || []);
-      setLotes(lotesData || []);
-
-      console.log('📊 DADOS DO BANCO:', {
-        ingressos: todosIngressos,
-        setores: setoresData,
-        lotes: lotesData
-      });
-
-      // CORREÇÃO: PROCESSAR INGRESSOS COM QUANTIDADES DAS TABELAS CORRETAS
-      const ingressosProcessados = (todosIngressos || []).map(ingresso => {
-        let quantidadeDisponivel = 0;
-
-        console.log(`\n🔍 PROCESSANDO INGRESSO: ${ingresso.tipo}`);
-        console.log(`   - ID: ${ingresso.id}`);
-        console.log(`   - Setor: "${ingresso.setor}"`);
-        console.log(`   - Lote ID: ${ingresso.lote_id}`);
-        console.log(`   - Sessão ID: ${ingresso.sessao_id}`);
-
-        // CORREÇÃO: Buscar quantidade da tabela correta conforme hierarquia
-        if (ingresso.lote_id) {
-          // Se tem lote, buscar quantidade_total da tabela lotes
-          console.log(`   ➡️ TEM LOTE! Buscando lote ${ingresso.lote_id}...`);
-          const lote = lotesData?.find(l => l.id === ingresso.lote_id);
-          console.log(`   - Lote encontrado:`, lote);
-          
-          if (lote && lote.quantidade_total) {
-            quantidadeDisponivel = parseInt(lote.quantidade_total) || 0;
-            console.log(`   ✅ LOTE: quantidade_total=${quantidadeDisponivel}`);
-          } else {
-            console.log(`   ⚠️ LOTE SEM quantidade_total - definido por demanda`);
-            // Se não tem número no lote, é definido por demanda
-            quantidadeDisponivel = 0; // Será tratado como ilimitado na interface
-          }
-        } else {
-          // CORREÇÃO: Se não tem lote, buscar capacidade_definida da tabela setores
-          console.log(`   ➡️ SEM LOTE! Buscando setor "${ingresso.setor}" na sessão ${ingresso.sessao_id}...`);
-          
-          const setorEncontrado = setoresData?.find(s => {
-            const nomeMatch = s.nome === ingresso.setor;
-            const sessaoMatch = s.sessao_id === ingresso.sessao_id;
-            console.log(`      Testando setor: nome="${s.nome}" (match=${nomeMatch}), sessao=${s.sessao_id} (match=${sessaoMatch})`);
-            return nomeMatch && sessaoMatch;
-          });
-          
-          console.log(`   - Setor encontrado:`, setorEncontrado);
-          
-          if (setorEncontrado && setorEncontrado.capacidade_definida) {
-            quantidadeDisponivel = parseInt(setorEncontrado.capacidade_definida) || 0;
-            console.log(`   ✅ SETOR: capacidade_definida=${quantidadeDisponivel}`);
-          } else {
-            console.log(`   ⚠️ SETOR SEM capacidade_definida - definido por demanda`);
-            // Se não tem capacidade definida no setor, é definido por demanda
-            quantidadeDisponivel = 0; // Será tratado como ilimitado na interface
-          }
-        }
-
-        // CORREÇÃO: Se não tem quantidade definida nem no lote nem no setor, verificar se tem na tabela ingressos
-        if (quantidadeDisponivel === 0 && ingresso.quantidade) {
-          quantidadeDisponivel = parseInt(ingresso.quantidade) || 0;
-          console.log(`   ✅ INGRESSO: quantidade=${quantidadeDisponivel}`);
-        }
-
-        console.log(`   🎯 RESULTADO FINAL: quantidade_calculada = ${quantidadeDisponivel}\n`);
-
-        return {
-          ...ingresso,
-          quantidade_calculada: quantidadeDisponivel
-        };
-      });
-
-      // Organizar por sessão
-      const ingressosPorSessaoTemp = {};
-      (sessoesData || []).forEach(sessao => {
-        ingressosPorSessaoTemp[sessao.id] = [];
-      });
-
-      ingressosProcessados.forEach(ingresso => {
-        if (ingressosPorSessaoTemp[ingresso.sessao_id]) {
-          ingressosPorSessaoTemp[ingresso.sessao_id].push(ingresso);
-        }
-      });
-
-      console.log('📦 INGRESSOS PROCESSADOS:', ingressosPorSessaoTemp);
-      setIngressosPorSessao(ingressosPorSessaoTemp);
-
-      const { data: cuponsData } = await supabase
-        .from('cupons')
-        .select('*')
-        .eq('evento_id', id)
-        .eq('ativo', true);
-
-      setCupons(cuponsData || []);
-
-      const { data: produtosData } = await supabase
-        .from('produtos')
-        .select('*')
-        .eq('evento_id', id)
-        .eq('ativo', true)
-        .order('id', { ascending: true });
-
-      setProdutos(produtosData || []);
-
-      const { data: imagensData } = await supabase
-        .from('eventos_imagens_descricao')
-        .select('*')
-        .eq('evento_id', id)
-        .order('ordem', { ascending: true });
-
-      setImagensDescricao(imagensData || []);
-
     } catch (error) {
-      console.error('Erro ao carregar dados:', error);
+      console.error('Erro ao carregar evento:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  // ... (restante das funções permanecem EXATAMENTE iguais)
+  const carregarIngressos = async (eventoId, sessaoId) => {
+    try {
+      // Carregar setores
+      let querySetores = supabase
+        .from('setores')
+        .select('*')
+        .eq('eventos_id', eventoId);
+
+      if (sessaoId) {
+        querySetores = querySetores.eq('sessao_id', sessaoId);
+      } else {
+        querySetores = querySetores.is('sessao_id', null);
+      }
+
+      const { data: setores, error: setoresError } = await querySetores;
+      if (setoresError) throw setoresError;
+
+      // Para cada setor, carregar lotes e ingressos
+      const setoresCompletos = await Promise.all(
+        setores.map(async (setor) => {
+          // Carregar lotes do setor (ativos e dentro da data)
+          const { data: lotes } = await supabase
+            .from('lotes')
+            .select('*')
+            .eq('setor', setor.nome)
+            .eq('ativo', true)
+            .lte('data_inicio', new Date().toISOString())
+            .gte('data_fim', new Date().toISOString());
+
+          // Se tem lotes, carregar ingressos dos lotes
+          if (lotes && lotes.length > 0) {
+            const lotesComIngressos = await Promise.all(
+              lotes.map(async (lote) => {
+                const { data: ingressos } = await supabase
+                  .from('ingressos')
+                  .select('*')
+                  .eq('evento_id', eventoId)
+                  .eq('lote_id', lote.id)
+                  .eq('setor', setor.nome);
+
+                const disponiveis = lote.quantidade_total - lote.quantidade_vendida;
+                const porcentagemRestante = (disponiveis / lote.quantidade_total) * 100;
+
+                return {
+                  ...lote,
+                  ingressos: ingressos || [],
+                  disponiveis,
+                  porcentagemRestante,
+                  estaEsgotado: disponiveis === 0,
+                  saoUltimos: porcentagemRestante <= 15 && porcentagemRestante > 0
+                };
+              })
+            );
+
+            return {
+              ...setor,
+              temLotes: true,
+              lotes: lotesComIngressos
+            };
+          } else {
+            // Sem lotes, carregar ingressos direto do setor
+            const { data: ingressos } = await supabase
+              .from('ingressos')
+              .select('*')
+              .eq('evento_id', eventoId)
+              .eq('setor', setor.nome)
+              .is('lote_id', null);
+
+            const totalVendidos = ingressos?.reduce((sum, ing) => sum + (ing.vendidos || 0), 0) || 0;
+            const capacidade = setor.capacidade_definida || 0;
+            const disponiveis = capacidade - totalVendidos;
+            const porcentagemRestante = capacidade > 0 ? (disponiveis / capacidade) * 100 : 0;
+
+            return {
+              ...setor,
+              temLotes: false,
+              ingressos: ingressos || [],
+              disponiveis,
+              porcentagemRestante,
+              estaEsgotado: disponiveis === 0,
+              saoUltimos: porcentagemRestante <= 15 && porcentagemRestante > 0
+            };
+          }
+        })
+      );
+
+      setSetoresData(setoresCompletos);
+    } catch (error) {
+      console.error('Erro ao carregar ingressos:', error);
+    }
+  };
+
   const aplicarCupom = async () => {
-    if (!codigoCupom.trim()) {
-      setMensagemCupom('❌ Digite um código de cupom');
+    if (!cupomCodigo.trim()) {
+      setCupomError('Digite um código de cupom');
       return;
     }
 
-    const cupomEncontrado = cupons.find(c => 
-      c.codigo.toUpperCase() === codigoCupom.toUpperCase().trim()
-    );
+    setAplicandoCupom(true);
+    setCupomError('');
 
-    if (!cupomEncontrado) {
-      setMensagemCupom('❌ Cupom inválido');
-      setCupomAplicado(null);
-      return;
-    }
+    try {
+      // Buscar cupom
+      const { data: cupom, error: cupomError } = await supabase
+        .from('cupons')
+        .select('*')
+        .eq('evento_id', params.id)
+        .eq('codigo', cupomCodigo.trim().toUpperCase())
+        .eq('ativo', true)
+        .gte('data_validade', new Date().toISOString())
+        .single();
 
-    const hoje = new Date();
-    if (cupomEncontrado.data_validade_inicio) {
-      const inicio = new Date(cupomEncontrado.data_validade_inicio);
-      if (hoje < inicio) {
-        setMensagemCupom('❌ Este cupom ainda não está válido');
-        setCupomAplicado(null);
+      if (cupomError || !cupom) {
+        setCupomError('Cupom inválido ou expirado');
+        setAplicandoCupom(false);
         return;
       }
-    }
 
-    if (cupomEncontrado.data_validade_fim) {
-      const fim = new Date(cupomEncontrado.data_validade_fim);
-      if (hoje > fim) {
-        setMensagemCupom('❌ Este cupom expirou');
-        setCupomAplicado(null);
+      // Verificar se ainda tem usos disponíveis
+      const usosDisponiveis = cupom.quantidade_total - cupom.quantidade_usada;
+      if (usosDisponiveis <= 0) {
+        setCupomError('Este cupom já atingiu o limite de usos');
+        setAplicandoCupom(false);
         return;
       }
-    }
 
-    if (cupomEncontrado.quantidade_total && cupomEncontrado.quantidade_usada >= cupomEncontrado.quantidade_total) {
-      setMensagemCupom('❌ Este cupom atingiu o limite de usos');
-      setCupomAplicado(null);
-      return;
-    }
+      // Buscar preços com cupom para ingressos
+      const { data: precosIngressos } = await supabase
+        .from('cupom_ingresso_preco')
+        .select('*')
+        .eq('cupom_id', cupom.id);
 
-    setCupomAplicado(cupomEncontrado);
-    setMensagemCupom(`✅ Cupom "${cupomEncontrado.codigo}" aplicado com sucesso!`);
+      setCupomAplicado({
+        ...cupom,
+        precosIngressos: precosIngressos || []
+      });
+
+      // Recarregar ingressos para aplicar os novos preços
+      await carregarIngressos(params.id, sessaoSelecionada);
+
+    } catch (error) {
+      console.error('Erro ao aplicar cupom:', error);
+      setCupomError('Erro ao aplicar cupom');
+    } finally {
+      setAplicandoCupom(false);
+    }
   };
 
   const removerCupom = () => {
     setCupomAplicado(null);
-    setCodigoCupom('');
-    setMensagemCupom('');
+    setCupomCodigo('');
+    setCupomError('');
+    carregarIngressos(params.id, sessaoSelecionada);
   };
 
-  const calcularPrecoComCupom = (precoOriginal) => {
-    if (!cupomAplicado) return precoOriginal;
+  const calcularPrecoComCupom = (ingresso, loteId = null) => {
+    if (!cupomAplicado) return null;
 
-    if (cupomAplicado.tipo_desconto === 'percentual') {
-      const desconto = precoOriginal * (cupomAplicado.valor_desconto / 100);
-      return precoOriginal - desconto;
-    } else {
-      return Math.max(0, precoOriginal - cupomAplicado.valor_desconto);
-    }
+    const precoComCupom = cupomAplicado.precosIngressos.find(
+      p => p.setor === ingresso.setor && 
+           p.tipo_ingresso === ingresso.tipo &&
+           (loteId ? p.lote_id === loteId : true)
+    );
+
+    return precoComCupom?.preco_com_cupom || null;
   };
 
-  const atualizarCarrinho = (ingressoId, quantidade) => {
-    setCarrinho(prev => {
-      const novo = { ...prev };
-      if (quantidade > 0) {
-        novo[ingressoId] = quantidade;
+  const calcularTaxaServico = (preco) => {
+    if (!evento) return 0;
+    const taxaCliente = evento.taxacliente || 0;
+    return (preco * taxaCliente) / 100;
+  };
+
+  const alterarQuantidade = (ingressoId, acao, loteId = null) => {
+    const chave = loteId ? `${ingressoId}-${loteId}` : ingressoId;
+    const quantidadeAtual = carrinhoItens[chave] || 0;
+
+    if (acao === 'add') {
+      setCarrinhoItens({
+        ...carrinhoItens,
+        [chave]: quantidadeAtual + 1
+      });
+    } else if (acao === 'remove' && quantidadeAtual > 0) {
+      const novoCarrinho = { ...carrinhoItens };
+      if (quantidadeAtual === 1) {
+        delete novoCarrinho[chave];
       } else {
-        delete novo[ingressoId];
+        novoCarrinho[chave] = quantidadeAtual - 1;
       }
-      return novo;
-    });
-  };
-
-  const calcularTotalCarrinho = () => {
-    const ingressosDaSessao = ingressosPorSessao[sessaoSelecionada] || [];
-    let total = 0;
-    
-    Object.entries(carrinho).forEach(([ingressoId, quantidade]) => {
-      const ingresso = ingressosDaSessao.find(i => i.id === ingressoId);
-      if (ingresso) {
-        const precoBase = parseFloat(ingresso.valor);
-        const precoComCupom = calcularPrecoComCupom(precoBase);
-        const taxaCliente = evento?.TaxaCliente || 15;
-        const valorComTaxa = precoComCupom * (1 + taxaCliente / 100);
-        total += valorComTaxa * quantidade;
-      }
-    });
-    
-    return total;
-  };
-
-  const finalizarCompra = () => {
-    const itens = Object.entries(carrinho).map(([ingressoId, quantidade]) => ({
-      ingressoId,
-      quantidade
-    }));
-
-    const params = new URLSearchParams({
-      evento_id: evento.id,
-      sessao_id: sessaoSelecionada,
-      itens: JSON.stringify(itens)
-    });
-
-    if (cupomAplicado) {
-      params.append('cupom_id', cupomAplicado.id);
+      setCarrinhoItens(novoCarrinho);
     }
+  };
 
-    router.push(`/checkout?${params.toString()}`);
+  const getTotalItensCarrinho = () => {
+    return Object.values(carrinhoItens).reduce((sum, qtd) => sum + qtd, 0);
+  };
+
+  const formatarData = (data) => {
+    return new Date(data).toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
+  };
+
+  const formatarHora = (hora) => {
+    return hora?.substring(0, 5) || '';
   };
 
   if (loading) {
     return (
-      <div style={{ fontFamily: 'sans-serif', padding: '50px', textAlign: 'center' }}>
-        <h2>🔄 Carregando...</h2>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Carregando evento...</p>
+        </div>
       </div>
     );
   }
 
   if (!evento) {
     return (
-      <div style={{ fontFamily: 'sans-serif', padding: '50px', textAlign: 'center' }}>
-        <h2>⚠️ Evento não encontrado</h2>
-        <Link href="/">
-          <button style={{ padding: '10px 20px', marginTop: '20px', cursor: 'pointer' }}>
-            Voltar para Home
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Evento não encontrado</h2>
+          <button
+            onClick={() => router.push('/')}
+            className="mt-4 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+          >
+            Voltar para home
           </button>
-        </Link>
+        </div>
       </div>
     );
   }
 
-  const ingressosDaSessao = ingressosPorSessao[sessaoSelecionada] || [];
-
-  // Organizar ingressos por setor e lote
-  const setoresOrganizados = {};
-  ingressosDaSessao.forEach(ingresso => {
-    const setorNome = ingresso.setor || 'Sem Setor';
-    
-    if (!setoresOrganizados[setorNome]) {
-      setoresOrganizados[setorNome] = {
-        lotes: {},
-        semLote: []
-      };
-    }
-
-    if (ingresso.lote_id) {
-      const loteKey = `lote_${ingresso.lote_id}`;
-      if (!setoresOrganizados[setorNome].lotes[loteKey]) {
-        setoresOrganizados[setorNome].lotes[loteKey] = {
-          id: ingresso.lote_id,
-          ingressos: []
-        };
-      }
-      setoresOrganizados[setorNome].lotes[loteKey].ingressos.push(ingresso);
-    } else {
-      setoresOrganizados[setorNome].semLote.push(ingresso);
-    }
-  });
-
-  console.log('🎪 SETORES ORGANIZADOS:', setoresOrganizados);
-
-  // Calcular menor preço
-  const precoMaisBaixo = ingressosDaSessao.length > 0
-    ? Math.min(...ingressosDaSessao.map(i => {
-        const precoBase = parseFloat(i.valor);
-        const precoComCupom = calcularPrecoComCupom(precoBase);
-        const taxaCliente = evento.TaxaCliente || 15;
-        return precoComCupom * (1 + taxaCliente / 100);
-      }))
-    : 0;
-
-  const totalItensCarrinho = Object.values(carrinho).reduce((sum, qtd) => sum + qtd, 0);
-
   return (
-    <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', paddingBottom: '40px' }}>
-      <header style={{ backgroundColor: '#5d34a4', color: 'white', padding: '15px 30px', marginBottom: '0' }}>
-        <Link href="/" style={{ color: 'white', textDecoration: 'none', fontSize: '16px' }}>
-          &larr; Voltar para Home
-        </Link>
-      </header>
-
-      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
-        
-        {/* ... (o restante do JSX permanece EXATAMENTE igual) */}
-        <div style={{ marginTop: '30px', textAlign: 'center' }}>
-          <img 
-            src={evento.imagem_url || 'https://placehold.co/1200x500/5d34a4/ffffff?text=EVENTO'} 
+    <div className="min-h-screen bg-gray-50">
+      {/* Header do Evento */}
+      <div className="relative h-96 bg-gradient-to-br from-purple-600 to-blue-600">
+        {evento.imagem_url && (
+          <Image
+            src={evento.imagem_url}
             alt={evento.nome}
-            style={{ 
-              width: '100%', 
-              maxWidth: '1200px',
-              height: '400px',
-              objectFit: 'cover',
-              borderRadius: '12px',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
-            }}
+            fill
+            className="object-cover"
           />
+        )}
+        <div className="absolute inset-0 bg-black bg-opacity-40" />
+        <div className="absolute bottom-0 left-0 right-0 p-8 text-white">
+          <div className="max-w-6xl mx-auto">
+            <h1 className="text-4xl font-bold mb-4">{evento.nome}</h1>
+            <div className="flex flex-wrap gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-5 h-5" />
+                <span>{formatarData(evento.data)} • {formatarHora(evento.hora)}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <MapPin className="w-5 h-5" />
+                <span>{evento.local}</span>
+              </div>
+              {evento.categoria && (
+                <div className="flex items-center gap-2">
+                  <Tag className="w-5 h-5" />
+                  <span>{evento.categoria}</span>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
+      </div>
 
-        <h1 style={{ 
-          textAlign: 'center', 
-          fontSize: '42px', 
-          color: '#2c3e50', 
-          marginTop: '30px',
-          marginBottom: '10px',
-          fontWeight: 'bold'
-        }}>
-          {evento.nome}
-        </h1>
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Coluna Principal */}
+          <div className="lg:col-span-2">
+            {/* Descrição */}
+            <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">Descrição do evento</h2>
+              <div className="prose max-w-none text-gray-700 whitespace-pre-wrap">
+                {evento.descricao}
+              </div>
+            </div>
 
-        <div style={{ 
-          textAlign: 'center', 
-          fontSize: '20px', 
-          color: '#5d34a4',
-          fontWeight: '600',
-          marginBottom: '40px',
-          display: 'flex',
-          justifyContent: 'center',
-          gap: '30px',
-          flexWrap: 'wrap'
-        }}>
-          <span>📅 {new Date(evento.data + 'T00:00:00').toLocaleDateString('pt-BR', { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
-          })}</span>
-          <span>🕐 {evento.hora}</span>
-          {sessoes.length > 1 && <span>🎬 {sessoes.length} sessões disponíveis</span>}
-        </div>
-
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: '2fr 1fr', 
-          gap: '30px',
-          marginBottom: '40px'
-        }}>
-          
-          <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
-            <h2 style={{ color: '#5d34a4', marginTop: 0, fontSize: '28px', marginBottom: '20px' }}>
-              📋 Sobre o Evento
-            </h2>
-            <p style={{ fontSize: '16px', lineHeight: '1.8', color: '#555', whiteSpace: 'pre-wrap' }}>
-              {evento.descricao || 'Descrição não disponível.'}
-            </p>
-
-            {imagensDescricao.length > 0 && (
-              <div style={{ marginTop: '30px' }}>
-                {imagensDescricao.map((img, index) => (
-                  <div key={index} style={{ marginBottom: '30px' }}>
-                    {img.texto_antes && (
-                      <p style={{ fontSize: '16px', lineHeight: '1.8', color: '#555', marginBottom: '15px', whiteSpace: 'pre-wrap' }}>
-                        {img.texto_antes}
-                      </p>
-                    )}
-                    <img 
-                      src={img.imagem_url} 
-                      alt={`Imagem ${index + 1}`}
-                      style={{ 
-                        width: '100%', 
-                        maxHeight: '500px', 
-                        objectFit: 'contain',
-                        borderRadius: '8px',
-                        marginBottom: '15px'
+            {/* Seletor de Sessões */}
+            {sessoes.length > 1 && (
+              <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+                <h2 className="text-xl font-bold text-gray-900 mb-4">Selecione a sessão</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {sessoes.map((sessao) => (
+                    <button
+                      key={sessao.id}
+                      onClick={() => {
+                        setSessaoSelecionada(sessao.id);
+                        carregarIngressos(params.id, sessao.id);
                       }}
-                    />
-                    {img.texto_depois && (
-                      <p style={{ fontSize: '16px', lineHeight: '1.8', color: '#555', whiteSpace: 'pre-wrap' }}>
-                        {img.texto_depois}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div style={{ marginTop: '25px' }}>
-              <span style={{ 
-                backgroundColor: '#e8f4f8', 
-                color: '#2980b9', 
-                padding: '8px 16px', 
-                borderRadius: '20px',
-                fontSize: '14px',
-                fontWeight: '600',
-                display: 'inline-block'
-              }}>
-                🎭 {evento.categoria}
-              </span>
-            </div>
-          </div>
-
-          <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ color: '#5d34a4', marginTop: 0, fontSize: '22px', marginBottom: '20px' }}>
-              📍 Local
-            </h3>
-            <p style={{ fontSize: '18px', fontWeight: 'bold', color: '#2c3e50', marginBottom: '8px' }}>
-              {evento.local || 'A definir'}
-            </p>
-            {evento.cidade && (
-              <p style={{ fontSize: '15px', color: '#666', marginBottom: '8px' }}>
-                📍 {evento.cidade}
-              </p>
-            )}
-            {evento.endereco && (
-              <p style={{ fontSize: '14px', color: '#666', lineHeight: '1.6' }}>
-                {evento.endereco}
-              </p>
-            )}
-
-            <div style={{ marginTop: '25px', paddingTop: '25px', borderTop: '1px solid #eee' }}>
-              <p style={{ margin: '10px 0', color: '#555' }}>
-                {evento.tem_lugar_marcado ? '🪑 Evento com lugar marcado' : '🎫 Entrada livre (sem lugar marcado)'}
-              </p>
-            </div>
-
-            {evento.mostrar_produtor && evento.produtor_nome && (
-              <div style={{ marginTop: '25px', paddingTop: '25px', borderTop: '1px solid #eee' }}>
-                <h4 style={{ color: '#5d34a4', fontSize: '16px', marginBottom: '10px' }}>
-                  Produtor
-                </h4>
-                <p style={{ margin: '5px 0', color: '#555', fontSize: '14px' }}>
-                  <strong>{evento.produtor_nome}</strong>
-                </p>
-                {evento.produtor_email && (
-                  <p style={{ margin: '5px 0', color: '#666', fontSize: '13px' }}>
-                    📧 {evento.produtor_email}
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {sessoes.length > 1 && (
-          <div style={{ 
-            backgroundColor: 'white', 
-            padding: '25px', 
-            borderRadius: '12px', 
-            boxShadow: '0 2px 10px rgba(0,0,0,0.1)', 
-            marginBottom: '30px'
-          }}>
-            <h3 style={{ color: '#5d34a4', marginTop: 0, fontSize: '22px', marginBottom: '20px', textAlign: 'center' }}>
-              🎬 Escolha a Sessão
-            </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(200px, 1fr))`, gap: '15px' }}>
-              {sessoes.map(sessao => (
-                <button
-                  key={sessao.id}
-                  onClick={() => {
-                    setSessaoSelecionada(sessao.id);
-                    setCarrinho({});
-                  }}
-                  style={{
-                    padding: '15px',
-                    border: sessaoSelecionada === sessao.id ? '3px solid #5d34a4' : '2px solid #e0e0e0',
-                    borderRadius: '10px',
-                    backgroundColor: sessaoSelecionada === sessao.id ? '#f0e6ff' : 'white',
-                    cursor: 'pointer',
-                    transition: 'all 0.3s',
-                    fontWeight: sessaoSelecionada === sessao.id ? 'bold' : 'normal'
-                  }}
-                >
-                  <div style={{ fontSize: '16px', color: '#2c3e50', marginBottom: '5px' }}>
-                    Sessão {sessao.numero}
-                  </div>
-                  <div style={{ fontSize: '14px', color: '#666' }}>
-                    📅 {new Date(sessao.data).toLocaleDateString('pt-BR')}
-                  </div>
-                  <div style={{ fontSize: '14px', color: '#666' }}>
-                    🕐 {sessao.hora}
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {cupons.length > 0 && (
-          <div style={{ 
-            backgroundColor: cupomAplicado ? '#d4edda' : '#fff3cd', 
-            padding: '25px', 
-            borderRadius: '12px', 
-            boxShadow: '0 2px 10px rgba(0,0,0,0.1)', 
-            marginBottom: '40px',
-            border: cupomAplicado ? '2px solid #28a745' : '2px solid #ffc107'
-          }}>
-            <h3 style={{ color: cupomAplicado ? '#155724' : '#856404', marginTop: 0, fontSize: '22px', marginBottom: '15px', textAlign: 'center' }}>
-              {cupomAplicado ? '✅ Cupom Aplicado!' : '🎟️ Tem um cupom de desconto?'}
-            </h3>
-            
-            {cupomAplicado ? (
-              <div>
-                <p style={{ textAlign: 'center', color: '#155724', marginBottom: '15px', fontSize: '16px', fontWeight: 'bold' }}>
-                  Cupom: {cupomAplicado.codigo} - {cupomAplicado.tipo_desconto === 'percentual' ? `${cupomAplicado.valor_desconto}% OFF` : `R$ ${cupomAplicado.valor_desconto} OFF`}
-                </p>
-                {cupomAplicado.descricao && (
-                  <p style={{ textAlign: 'center', color: '#155724', marginBottom: '15px', fontSize: '14px' }}>
-                    {cupomAplicado.descricao}
-                  </p>
-                )}
-                <div style={{ textAlign: 'center' }}>
-                  <button
-                    onClick={removerCupom}
-                    style={{
-                      backgroundColor: '#dc3545',
-                      color: 'white',
-                      border: 'none',
-                      padding: '10px 25px',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      fontWeight: 'bold',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Remover Cupom
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <>
-                <p style={{ textAlign: 'center', color: '#856404', marginBottom: '20px', fontSize: '14px' }}>
-                  Digite seu código de cupom para ganhar desconto nos ingressos!
-                </p>
-                <div style={{ 
-                  display: 'flex', 
-                  justifyContent: 'center', 
-                  gap: '10px',
-                  maxWidth: '500px',
-                  margin: '0 auto',
-                  marginBottom: '15px'
-                }}>
-                  <input
-                    type="text"
-                    placeholder="Digite o código do cupom"
-                    value={codigoCupom}
-                    onChange={(e) => setCodigoCupom(e.target.value.toUpperCase())}
-                    onKeyPress={(e) => e.key === 'Enter' && aplicarCupom()}
-                    style={{
-                      flex: 1,
-                      padding: '12px 20px',
-                      border: '2px solid #ffc107',
-                      borderRadius: '8px',
-                      fontSize: '16px',
-                      fontWeight: 'bold',
-                      textTransform: 'uppercase',
-                      textAlign: 'center',
-                      backgroundColor: 'white'
-                    }}
-                  />
-                  <button
-                    onClick={aplicarCupom}
-                    style={{
-                      backgroundColor: '#f39c12',
-                      color: 'white',
-                      border: 'none',
-                      padding: '12px 30px',
-                      borderRadius: '8px',
-                      fontSize: '16px',
-                      fontWeight: 'bold',
-                      cursor: 'pointer',
-                      transition: 'all 0.3s'
-                    }}
-                  >
-                    Aplicar
-                  </button>
-                </div>
-                {mensagemCupom && (
-                  <p style={{ 
-                    textAlign: 'center', 
-                    color: mensagemCupom.includes('✅') ? '#155724' : '#721c24',
-                    marginTop: '10px', 
-                    fontSize: '14px',
-                    fontWeight: 'bold'
-                  }}>
-                    {mensagemCupom}
-                  </p>
-                )}
-              </>
-            )}
-          </div>
-        )}
-
-        {/* PAINEL DEBUG - REMOVER DEPOIS */}
-        <div style={{ backgroundColor: '#fff3cd', padding: '20px', borderRadius: '8px', marginBottom: '20px', border: '2px solid #ffc107' }}>
-          <h3 style={{ color: '#856404', margin: '0 0 15px 0' }}>🔍 DEBUG - Dados do Banco</h3>
-          <div style={{ fontSize: '13px', fontFamily: 'monospace', color: '#333' }}>
-            <p><strong>Total de ingressos encontrados:</strong> {ingressosDaSessao.length}</p>
-            {ingressosDaSessao.slice(0, 3).map((ing, i) => (
-              <div key={i} style={{ backgroundColor: 'white', padding: '10px', marginBottom: '10px', borderRadius: '5px', border: '1px solid #ddd' }}>
-                <p style={{ margin: '3px 0' }}><strong>Ingresso {i + 1}:</strong> {ing.tipo}</p>
-                <p style={{ margin: '3px 0' }}>- ID: {ing.id}</p>
-                <p style={{ margin: '3px 0' }}>- Setor: {ing.setor}</p>
-                <p style={{ margin: '3px 0' }}>- Quantidade (BD - coluna antiga): <span style={{ color: 'red', fontWeight: 'bold', textDecoration: 'line-through' }}>{ing.quantidade}</span></p>
-                <p style={{ margin: '3px 0' }}>- ✅ Quantidade CALCULADA: <span style={{ color: 'blue', fontWeight: 'bold' }}>{ing.quantidade_calculada}</span></p>
-                <p style={{ margin: '3px 0' }}>- Vendidos (BD): <span style={{ color: 'orange', fontWeight: 'bold' }}>{ing.vendidos}</span></p>
-                <p style={{ margin: '3px 0' }}>- Disponíveis (calculado): <span style={{ color: 'green', fontWeight: 'bold' }}>{(parseInt(ing.quantidade_calculada) || 0) - (parseInt(ing.vendidos) || 0)}</span></p>
-              </div>
-            ))}
-            {ingressosDaSessao.length > 3 && <p>... e mais {ingressosDaSessao.length - 3} ingressos</p>}
-          </div>
-        </div>
-
-        {/* INGRESSOS */}
-        <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', marginBottom: '40px' }}>
-          <h2 style={{ color: '#5d34a4', marginTop: 0, fontSize: '32px', marginBottom: '10px', textAlign: 'center' }}>
-            🎫 Ingressos
-          </h2>
-          <p style={{ textAlign: 'center', color: '#666', fontSize: '16px', marginBottom: '30px' }}>
-            A partir de <span style={{ fontSize: '24px', fontWeight: 'bold', color: '#27ae60' }}>
-              R$ {precoMaisBaixo.toFixed(2)}
-            </span>
-            {cupomAplicado && <span style={{ color: '#28a745', marginLeft: '10px' }}>✅ Com desconto aplicado!</span>}
-          </p>
-
-          {Object.keys(setoresOrganizados).length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-              <p style={{ fontSize: '18px' }}>⚠️ Nenhum ingresso disponível no momento</p>
-            </div>
-          ) : (
-            Object.entries(setoresOrganizados).map(([setorNome, setorData]) => {
-              // CORREÇÃO: Buscar informações do setor para calcular disponibilidade
-              const setorEncontrado = setores?.find(s => 
-                s.nome === setorNome && s.sessao_id === sessaoSelecionada
-              );
-
-              let totalDisponibilizado = 0;
-              let totalVendido = 0;
-
-              if (setorEncontrado) {
-                totalDisponibilizado = parseInt(setorEncontrado.capacidade_definida) || 0;
-                totalVendido = parseInt(setorEncontrado.vendidos) || 0;
-              }
-
-              const disponiveis = totalDisponibilizado - totalVendido;
-              const percentualDisponivel = totalDisponibilizado > 0 ? (disponiveis / totalDisponibilizado) * 100 : 0;
-              const ultimos = percentualDisponivel <= 15 && percentualDisponivel > 0;
-              const esgotado = disponiveis === 0;
-
-              console.log(`🎪 SETOR ${setorNome}: total=${totalDisponibilizado}, vendidos=${totalVendido}, disponíveis=${disponiveis}`);
-
-              return (
-                <div key={setorNome} style={{ 
-                  marginBottom: '35px', 
-                  border: '2px solid #e0e0e0', 
-                  borderRadius: '10px',
-                  overflow: 'hidden'
-                }}>
-                  <div style={{ 
-                    backgroundColor: '#5d34a4', 
-                    color: 'white', 
-                    padding: '15px 25px',
-                    fontSize: '20px',
-                    fontWeight: 'bold',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    flexWrap: 'wrap'
-                  }}>
-                    <span>🎪 {setorNome}</span>
-                    <span style={{ fontSize: '14px', fontWeight: 'normal' }}>
-                      {esgotado ? (
-                        <span style={{ backgroundColor: '#dc3545', padding: '5px 12px', borderRadius: '15px' }}>
-                          ❌ Esgotado
-                        </span>
-                      ) : ultimos ? (
-                        <span style={{ backgroundColor: '#ffc107', color: '#000', padding: '5px 12px', borderRadius: '15px' }}>
-                          🔥 Últimos {disponiveis} ingressos!
-                        </span>
-                      ) : (
-                        <span>{disponiveis} disponíveis</span>
-                      )}
-                    </span>
-                  </div>
-
-                  <div style={{ padding: '25px' }}>
-                    {/* Lotes */}
-                    {Object.entries(setorData.lotes).map(([loteKey, loteData]) => (
-                      <div key={loteKey} style={{ marginBottom: '20px' }}>
-                        <div style={{ 
-                          backgroundColor: '#f8f9fa', 
-                          padding: '12px 20px', 
-                          borderRadius: '8px',
-                          marginBottom: '15px',
-                          borderLeft: '4px solid #9b59b6'
-                        }}>
-                          <span style={{ fontWeight: 'bold', color: '#8e44ad', fontSize: '16px' }}>
-                            📦 Lote {loteData.id}
-                          </span>
+                      className={`p-4 rounded-lg border-2 transition-all ${
+                        sessaoSelecionada === sessao.id
+                          ? 'border-purple-600 bg-purple-50'
+                          : 'border-gray-200 hover:border-purple-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Calendar className="w-5 h-5 text-purple-600" />
+                        <div className="text-left">
+                          <div className="font-semibold text-gray-900">
+                            {formatarData(sessao.data)}
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            {formatarHora(sessao.hora)}
+                          </div>
                         </div>
-
-                        {loteData.ingressos.map(ingresso => {
-                          // CORREÇÃO: Usar quantidade_calculada que agora vem das tabelas corretas
-                          const quantidade = parseInt(ingresso.quantidade_calculada) || 0;
-                          const vendidos = parseInt(ingresso.vendidos) || 0;
-                          const ingressosDisponiveis = quantidade - vendidos;
-                          
-                          console.log(`🎫 ${ingresso.tipo}: qtd_calculada=${quantidade}, vendidos=${vendidos}, disponíveis=${ingressosDisponiveis}`);
-
-                          const precoBase = parseFloat(ingresso.valor);
-                          const precoComCupom = calcularPrecoComCupom(precoBase);
-                          const temDesconto = precoComCupom < precoBase;
-                          const taxaCliente = evento.TaxaCliente || 15;
-                          const valorTaxa = precoComCupom * (taxaCliente / 100);
-                          const valorTotal = precoComCupom + valorTaxa;
-                          const quantidadeNoCarrinho = carrinho[ingresso.id] || 0;
-
-                          return (
-                            <div key={ingresso.id} style={{ 
-                              display: 'flex', 
-                              justifyContent: 'space-between', 
-                              alignItems: 'center',
-                              padding: '20px',
-                              backgroundColor: temDesconto ? '#d4edda' : '#fafafa',
-                              borderRadius: '8px',
-                              marginBottom: '12px',
-                              border: temDesconto ? '2px solid #28a745' : '1px solid #e0e0e0',
-                              flexWrap: 'wrap',
-                              gap: '15px'
-                            }}>
-                              <div style={{ flex: 1, minWidth: '200px' }}>
-                                <h4 style={{ margin: 0, fontSize: '18px', color: '#2c3e50', marginBottom: '5px' }}>
-                                  {ingresso.tipo}
-                                  {temDesconto && <span style={{ color: '#28a745', marginLeft: '10px', fontSize: '14px' }}>🎟️ COM DESCONTO</span>}
-                                </h4>
-                                <p style={{ margin: 0, fontSize: '13px', color: ingressosDisponiveis > 0 ? '#999' : '#dc3545' }}>
-                                  {ingressosDisponiveis > 0 
-                                    ? `${ingressosDisponiveis} disponíveis` 
-                                    : '❌ Esgotado'}
-                                </p>
-                              </div>
-                              
-                              <div style={{ textAlign: 'right', marginRight: '20px' }}>
-                                {temDesconto && (
-                                  <div style={{ fontSize: '13px', color: '#999', textDecoration: 'line-through', marginBottom: '3px' }}>
-                                    R$ {precoBase.toFixed(2)}
-                                  </div>
-                                )}
-                                <div style={{ fontSize: '14px', color: '#666', marginBottom: '3px' }}>
-                                  R$ {precoComCupom.toFixed(2)} + R$ {valorTaxa.toFixed(2)} (taxa)
-                                </div>
-                                <div style={{ fontSize: '22px', fontWeight: 'bold', color: temDesconto ? '#28a745' : '#27ae60' }}>
-                                  R$ {valorTotal.toFixed(2)}
-                                </div>
-                              </div>
-
-                              {ingressosDisponiveis > 0 ? (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                  <select
-                                    value={quantidadeNoCarrinho}
-                                    onChange={(e) => atualizarCarrinho(ingresso.id, parseInt(e.target.value))}
-                                    style={{
-                                      padding: '10px 15px',
-                                      border: '2px solid #5d34a4',
-                                      borderRadius: '8px',
-                                      fontSize: '16px',
-                                      fontWeight: 'bold',
-                                      cursor: 'pointer',
-                                      backgroundColor: 'white'
-                                    }}
-                                  >
-                                    <option value="0">0</option>
-                                    {[...Array(Math.min(10, ingressosDisponiveis))].map((_, i) => (
-                                      <option key={i + 1} value={i + 1}>{i + 1}</option>
-                                    ))}
-                                  </select>
-                                </div>
-                              ) : (
-                                <button disabled style={{
-                                  backgroundColor: '#ccc',
-                                  color: '#666',
-                                  border: 'none',
-                                  padding: '12px 30px',
-                                  borderRadius: '8px',
-                                  fontSize: '16px',
-                                  fontWeight: 'bold',
-                                  cursor: 'not-allowed'
-                                }}>
-                                  Esgotado
-                                </button>
-                              )}
-                            </div>
-                          );
-                        })}
                       </div>
-                    ))}
-
-                    {/* Ingressos sem lote */}
-                    {setorData.semLote.length > 0 && (
-                      <div>
-                        {setorData.semLote.map(ingresso => {
-                          // CORREÇÃO: Usar quantidade_calculada que agora vem das tabelas corretas
-                          const quantidade = parseInt(ingresso.quantidade_calculada) || 0;
-                          const vendidos = parseInt(ingresso.vendidos) || 0;
-                          const ingressosDisponiveis = quantidade - vendidos;
-                          
-                          console.log(`🎫 ${ingresso.tipo} (sem lote): qtd_calculada=${quantidade}, vendidos=${vendidos}, disponíveis=${ingressosDisponiveis}`);
-
-                          const precoBase = parseFloat(ingresso.valor);
-                          const precoComCupom = calcularPrecoComCupom(precoBase);
-                          const temDesconto = precoComCupom < precoBase;
-                          const taxaCliente = evento.TaxaCliente || 15;
-                          const valorTaxa = precoComCupom * (taxaCliente / 100);
-                          const valorTotal = precoComCupom + valorTaxa;
-                          const quantidadeNoCarrinho = carrinho[ingresso.id] || 0;
-
-                          return (
-                            <div key={ingresso.id} style={{ 
-                              display: 'flex', 
-                              justifyContent: 'space-between', 
-                              alignItems: 'center',
-                              padding: '20px',
-                              backgroundColor: temDesconto ? '#d4edda' : '#fafafa',
-                              borderRadius: '8px',
-                              marginBottom: '12px',
-                              border: temDesconto ? '2px solid #28a745' : '1px solid #e0e0e0',
-                              flexWrap: 'wrap',
-                              gap: '15px'
-                            }}>
-                              <div style={{ flex: 1, minWidth: '200px' }}>
-                                <h4 style={{ margin: 0, fontSize: '18px', color: '#2c3e50', marginBottom: '5px' }}>
-                                  {ingresso.tipo}
-                                  {temDesconto && <span style={{ color: '#28a745', marginLeft: '10px', fontSize: '14px' }}>🎟️ COM DESCONTO</span>}
-                                </h4>
-                                <p style={{ margin: 0, fontSize: '13px', color: ingressosDisponiveis > 0 ? '#999' : '#dc3545' }}>
-                                  {ingressosDisponiveis > 0 
-                                    ? `${ingressosDisponiveis} disponíveis` 
-                                    : '❌ Esgotado'}
-                                </p>
-                              </div>
-                              
-                              <div style={{ textAlign: 'right', marginRight: '20px' }}>
-                                {temDesconto && (
-                                  <div style={{ fontSize: '13px', color: '#999', textDecoration: 'line-through', marginBottom: '3px' }}>
-                                    R$ {precoBase.toFixed(2)}
-                                  </div>
-                                )}
-                                <div style={{ fontSize: '14px', color: '#666', marginBottom: '3px' }}>
-                                  R$ {precoComCupom.toFixed(2)} + R$ {valorTaxa.toFixed(2)} (taxa)
-                                </div>
-                                <div style={{ fontSize: '22px', fontWeight: 'bold', color: temDesconto ? '#28a745' : '#27ae60' }}>
-                                  R$ {valorTotal.toFixed(2)}
-                                </div>
-                              </div>
-
-                              {ingressosDisponiveis > 0 ? (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                  <select
-                                    value={quantidadeNoCarrinho}
-                                    onChange={(e) => atualizarCarrinho(ingresso.id, parseInt(e.target.value))}
-                                    style={{
-                                      padding: '10px 15px',
-                                      border: '2px solid #5d34a4',
-                                      borderRadius: '8px',
-                                      fontSize: '16px',
-                                      fontWeight: 'bold',
-                                      cursor: 'pointer',
-                                      backgroundColor: 'white'
-                                    }}
-                                  >
-                                    <option value="0">0</option>
-                                    {[...Array(Math.min(10, ingressosDisponiveis))].map((_, i) => (
-                                      <option key={i + 1} value={i + 1}>{i + 1}</option>
-                                    ))}
-                                  </select>
-                                </div>
-                              ) : (
-                                <button disabled style={{
-                                  backgroundColor: '#ccc',
-                                  color: '#666',
-                                  border: 'none',
-                                  padding: '12px 30px',
-                                  borderRadius: '8px',
-                                  fontSize: '16px',
-                                  fontWeight: 'bold',
-                                  cursor: 'not-allowed'
-                                }}>
-                                  Esgotado
-                                </button>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })
-          )}
-
-          {/* Resumo do Carrinho */}
-          {totalItensCarrinho > 0 && (
-            <div style={{ 
-              marginTop: '30px', 
-              padding: '25px', 
-              backgroundColor: '#f8f9fa', 
-              borderRadius: '12px',
-              border: '3px solid #5d34a4'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <div>
-                  <h3 style={{ margin: 0, color: '#5d34a4', fontSize: '24px' }}>
-                    🛒 Seu Carrinho
-                  </h3>
-                  <p style={{ margin: '5px 0 0 0', color: '#666', fontSize: '14px' }}>
-                    {totalItensCarrinho} {totalItensCarrinho === 1 ? 'ingresso selecionado' : 'ingressos selecionados'}
-                  </p>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '16px', color: '#666', marginBottom: '5px' }}>
-                    Total:
-                  </div>
-                  <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#27ae60' }}>
-                    R$ {calcularTotalCarrinho().toFixed(2)}
-                  </div>
+                    </button>
+                  ))}
                 </div>
               </div>
-
-              <button
-                onClick={finalizarCompra}
-                style={{
-                  width: '100%',
-                  backgroundColor: '#f1c40f',
-                  color: '#000',
-                  border: 'none',
-                  padding: '18px',
-                  borderRadius: '10px',
-                  fontSize: '20px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s',
-                  boxShadow: '0 4px 10px rgba(241, 196, 15, 0.3)'
-                }}
-                onMouseOver={(e) => e.target.style.transform = 'scale(1.02)'}
-                onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
-              >
-                🎫 Finalizar Compra
-              </button>
-            </div>
-          )}
-
-          <div style={{ 
-            marginTop: '30px', 
-            padding: '20px', 
-            backgroundColor: '#e8f8f5', 
-            borderRadius: '8px',
-            border: '1px solid #27ae60'
-          }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', textAlign: 'center' }}>
-              <div>
-                <div style={{ fontSize: '28px', marginBottom: '8px' }}>✅</div>
-                <div style={{ fontSize: '14px', color: '#27ae60', fontWeight: '600' }}>Entrada garantida</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '28px', marginBottom: '8px' }}>🔒</div>
-                <div style={{ fontSize: '14px', color: '#27ae60', fontWeight: '600' }}>Pagamento seguro</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '28px', marginBottom: '8px' }}>💬</div>
-                <div style={{ fontSize: '14px', color: '#27ae60', fontWeight: '600' }}>Suporte 24h</div>
-              </div>
-            </div>
+            )}
           </div>
-        </div>
 
-        {/* PRODUTOS */}
-        {produtos && produtos.length > 0 && (
-          <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
-            <h2 style={{ color: '#5d34a4', marginTop: 0, fontSize: '32px', marginBottom: '30px', textAlign: 'center' }}>
-              🛍️ Produtos do Evento
-            </h2>
+          {/* Sidebar - Ingressos */}
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-lg shadow-sm sticky top-4">
+              <div className="p-6 border-b border-gray-200">
+                <h2 className="text-xl font-bold text-gray-900">Ingressos</h2>
+              </div>
 
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', 
-              gap: '25px' 
-            }}>
-              {produtos.map(produto => {
-                const quantidadeTotal = (produto.quantidade_disponivel || 0) + (produto.quantidade_vendida || 0);
-                const quantidadeDisponivel = produto.quantidade_disponivel || 0;
-                const percentualDisponivel = quantidadeTotal > 0 ? (quantidadeDisponivel / quantidadeTotal) * 100 : 0;
-                const ultimos = percentualDisponivel <= 15 && percentualDisponivel > 0;
-                const esgotado = quantidadeDisponivel === 0;
-
-                return (
-                  <div key={produto.id} style={{ 
-                    border: '1px solid #e0e0e0', 
-                    borderRadius: '10px', 
-                    overflow: 'hidden',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                    transition: 'transform 0.3s',
-                    backgroundColor: 'white',
-                    position: 'relative'
-                  }}>
-                    {ultimos && !esgotado && (
-                      <div style={{
-                        position: 'absolute',
-                        top: '10px',
-                        right: '10px',
-                        backgroundColor: '#ffc107',
-                        color: '#000',
-                        padding: '5px 10px',
-                        borderRadius: '15px',
-                        fontSize: '12px',
-                        fontWeight: 'bold',
-                        zIndex: 1
-                      }}>
-                        🔥 Últimos!
-                      </div>
-                    )}
-
-                    {esgotado && (
-                      <div style={{
-                        position: 'absolute',
-                        top: '10px',
-                        right: '10px',
-                        backgroundColor: '#dc3545',
-                        color: 'white',
-                        padding: '5px 10px',
-                        borderRadius: '15px',
-                        fontSize: '12px',
-                        fontWeight: 'bold',
-                        zIndex: 1
-                      }}>
-                        ❌ Esgotado
-                      </div>
-                    )}
-
-                    <div style={{ 
-                      width: '100%', 
-                      height: '200px', 
-                      backgroundColor: '#f0f0f0',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      overflow: 'hidden'
-                    }}>
-                      {produto.imagem_url ? (
-                        <img 
-                          src={produto.imagem_url} 
-                          alt={produto.nome}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              {/* Campo de Cupom */}
+              {temCupons && (
+                <div className="p-6 border-b border-gray-200 bg-gray-50">
+                  {!cupomAplicado ? (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Tem um cupom de desconto?
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={cupomCodigo}
+                          onChange={(e) => setCupomCodigo(e.target.value.toUpperCase())}
+                          placeholder="Digite o código"
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent"
                         />
-                      ) : (
-                        <span style={{ fontSize: '48px' }}>📦</span>
-                      )}
-                    </div>
-
-                    <div style={{ padding: '20px' }}>
-                      <h3 style={{ margin: '0 0 10px 0', fontSize: '18px', color: '#2c3e50' }}>
-                        {produto.nome}
-                      </h3>
-                      
-                      {produto.descricao && (
-                        <p style={{ fontSize: '14px', color: '#666', marginBottom: '12px', lineHeight: '1.5' }}>
-                          {produto.descricao}
+                        <button
+                          onClick={aplicarCupom}
+                          disabled={aplicandoCupom}
+                          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                        >
+                          {aplicandoCupom ? '...' : 'OK'}
+                        </button>
+                      </div>
+                      {cupomError && (
+                        <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                          <AlertCircle className="w-4 h-4" />
+                          {cupomError}
                         </p>
                       )}
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle className="w-5 h-5 text-green-600" />
+                        <div>
+                          <div className="font-medium text-green-900">
+                            Cupom aplicado!
+                          </div>
+                          <div className="text-sm text-green-700">
+                            {cupomAplicado.codigo}
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={removerCupom}
+                        className="p-1 hover:bg-green-100 rounded"
+                      >
+                        <X className="w-4 h-4 text-green-700" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
 
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                        <span style={{ fontSize: '22px', fontWeight: 'bold', color: '#27ae60' }}>
-                          R$ {parseFloat(produto.preco).toFixed(2)}
-                        </span>
-                        {produto.tamanho && (
-                          <span style={{ 
-                            backgroundColor: '#e8f4f8', 
-                            color: '#2980b9', 
-                            padding: '4px 12px', 
-                            borderRadius: '15px',
-                            fontSize: '13px',
-                            fontWeight: '600'
-                          }}>
-                            Tamanho: {produto.tamanho}
-                          </span>
+              {/* Lista de Ingressos */}
+              <div className="p-6 max-h-[600px] overflow-y-auto">
+                {setoresData.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <Ticket className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                    <p>Nenhum ingresso disponível</p>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {setoresData.map((setor) => (
+                      <div key={setor.id}>
+                        <h3 className="font-semibold text-gray-900 mb-3">
+                          {setor.nome}
+                        </h3>
+
+                        {setor.temLotes ? (
+                          // Renderizar por lotes
+                          <div className="space-y-4">
+                            {setor.lotes.map((lote) => (
+                              <div key={lote.id} className="border border-gray-200 rounded-lg p-3">
+                                <div className="text-sm font-medium text-gray-700 mb-2">
+                                  {lote.nome}
+                                </div>
+                                {lote.estaEsgotado ? (
+                                  <div className="text-center py-2 text-sm text-red-600 font-medium">
+                                    Esgotado
+                                  </div>
+                                ) : (
+                                  <>
+                                    {lote.saoUltimos && (
+                                      <div className="mb-2 px-2 py-1 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800 flex items-center gap-1">
+                                        <AlertCircle className="w-3 h-3" />
+                                        Últimos ingressos!
+                                      </div>
+                                    )}
+                                    <div className="space-y-3">
+                                      {lote.ingressos.map((ingresso) => {
+                                        const precoOriginal = parseFloat(ingresso.valor || 0);
+                                        const precoComCupom = calcularPrecoComCupom(ingresso, lote.id);
+                                        const precoFinal = precoComCupom || precoOriginal;
+                                        const taxa = calcularTaxaServico(precoFinal);
+                                        const precoTotal = precoFinal + taxa;
+
+                                        return (
+                                          <div key={ingresso.id} className="flex items-center justify-between">
+                                            <div className="flex-1">
+                                              <div className="text-sm font-medium text-gray-900">
+                                                {ingresso.tipo}
+                                              </div>
+                                              <div className="text-sm text-gray-600">
+                                                {precoComCupom && (
+                                                  <span className="line-through text-gray-400 mr-2">
+                                                    R$ {precoOriginal.toFixed(2)}
+                                                  </span>
+                                                )}
+                                                R$ {precoFinal.toFixed(2)}
+                                                {taxa > 0 && (
+                                                  <span className="text-xs text-gray-500">
+                                                    {' '}(+ R$ {taxa.toFixed(2)} taxa)
+                                                  </span>
+                                                )}
+                                              </div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                              <button
+                                                onClick={() => alterarQuantidade(ingresso.id, 'remove', lote.id)}
+                                                className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-300 hover:bg-gray-100"
+                                              >
+                                                <Minus className="w-4 h-4" />
+                                              </button>
+                                              <span className="w-8 text-center font-medium">
+                                                {carrinhoItens[`${ingresso.id}-${lote.id}`] || 0}
+                                              </span>
+                                              <button
+                                                onClick={() => alterarQuantidade(ingresso.id, 'add', lote.id)}
+                                                className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-300 hover:bg-gray-100"
+                                              >
+                                                <Plus className="w-4 h-4" />
+                                              </button>
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          // Renderizar sem lotes
+                          <div>
+                            {setor.estaEsgotado ? (
+                              <div className="text-center py-4 text-sm text-red-600 font-medium border border-red-200 rounded-lg">
+                                Setor esgotado
+                              </div>
+                            ) : (
+                              <>
+                                {setor.saoUltimos && (
+                                  <div className="mb-3 px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800 flex items-center gap-2">
+                                    <AlertCircle className="w-4 h-4" />
+                                    Últimos ingressos disponíveis!
+                                  </div>
+                                )}
+                                <div className="space-y-3">
+                                  {setor.ingressos.map((ingresso) => {
+                                    const precoOriginal = parseFloat(ingresso.valor || 0);
+                                    const precoComCupom = calcularPrecoComCupom(ingresso);
+                                    const precoFinal = precoComCupom || precoOriginal;
+                                    const taxa = calcularTaxaServico(precoFinal);
+                                    const precoTotal = precoFinal + taxa;
+
+                                    return (
+                                      <div key={ingresso.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
+                                        <div className="flex-1">
+                                          <div className="font-medium text-gray-900">
+                                            {ingresso.tipo}
+                                          </div>
+                                          <div className="text-sm text-gray-600">
+                                            {precoComCupom && (
+                                              <span className="line-through text-gray-400 mr-2">
+                                                R$ {precoOriginal.toFixed(2)}
+                                              </span>
+                                            )}
+                                            R$ {precoFinal.toFixed(2)}
+                                            {taxa > 0 && (
+                                              <span className="text-xs text-gray-500">
+                                                {' '}(+ R$ {taxa.toFixed(2)} taxa)
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                          <button
+                                            onClick={() => alterarQuantidade(ingresso.id, 'remove')}
+                                            className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-300 hover:bg-gray-100"
+                                          >
+                                            <Minus className="w-4 h-4" />
+                                          </button>
+                                          <span className="w-8 text-center font-medium">
+                                            {carrinhoItens[ingresso.id] || 0}
+                                          </span>
+                                          <button
+                                            onClick={() => alterarQuantidade(ingresso.id, 'add')}
+                                            className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-300 hover:bg-gray-100"
+                                          >
+                                            <Plus className="w-4 h-4" />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </>
+                            )}
+                          </div>
                         )}
                       </div>
-
-                      <p style={{ fontSize: '13px', color: '#999', marginBottom: '15px' }}>
-                        {esgotado 
-                          ? '❌ Esgotado' 
-                          : ultimos 
-                            ? `🔥 Últimos ${quantidadeDisponivel} disponíveis!`
-                            : `${quantidadeDisponivel} disponíveis`}
-                      </p>
-
-                      {quantidadeDisponivel > 0 ? (
-                        <Link href={`/checkout?evento_id=${evento.id}&produto_id=${produto.id}`}>
-                          <button style={{
-                            backgroundColor: '#3498db',
-                            color: 'white',
-                            border: 'none',
-                            padding: '12px',
-                            borderRadius: '8px',
-                            width: '100%',
-                            fontSize: '15px',
-                            fontWeight: 'bold',
-                            cursor: 'pointer',
-                            transition: 'all 0.3s'
-                          }}>
-                            Adicionar ao Carrinho
-                          </button>
-                        </Link>
-                      ) : (
-                        <button disabled style={{
-                          backgroundColor: '#ccc',
-                          color: '#666',
-                          border: 'none',
-                          padding: '12px',
-                          borderRadius: '8px',
-                          width: '100%',
-                          fontSize: '15px',
-                          fontWeight: 'bold',
-                          cursor: 'not-allowed'
-                        }}>
-                          Esgotado
-                        </button>
-                      )}
-                    </div>
+                    ))}
                   </div>
-                );
-              })}
+                )}
+              </div>
+
+              {/* Botão Comprar */}
+              {getTotalItensCarrinho() > 0 && (
+                <div className="p-6 border-t border-gray-200">
+                  <button
+                    onClick={() => router.push(`/checkout/${params.id}`)}
+                    className="w-full py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    Comprar Ingressos ({getTotalItensCarrinho()})
+                  </button>
+                </div>
+              )}
             </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
