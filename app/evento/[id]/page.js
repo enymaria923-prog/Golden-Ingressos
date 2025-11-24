@@ -23,6 +23,8 @@ export default function EventoPage() {
   const [cupomAplicado, setCupomAplicado] = useState(null);
   const [mensagemCupom, setMensagemCupom] = useState('');
   const [carrinho, setCarrinho] = useState({});
+  const [setores, setSetores] = useState([]);
+  const [lotes, setLotes] = useState([]);
 
   useEffect(() => {
     carregarDados();
@@ -57,23 +59,24 @@ export default function EventoPage() {
         setSessaoSelecionada(sessoesData[0].id);
       }
 
-      // 🔧 BUSCAR INGRESSOS COM DADOS DE SETORES E LOTES
+      // BUSCAR TODOS OS DADOS NECESSÁRIOS
       const { data: todosIngressos } = await supabase
         .from('ingressos')
         .select('*')
         .eq('evento_id', id);
 
-      // BUSCAR SETORES
       const { data: setoresData } = await supabase
         .from('setores')
         .select('*')
         .eq('eventos_id', id);
 
-      // BUSCAR LOTES
       const { data: lotesData } = await supabase
         .from('lotes')
         .select('*')
         .eq('evento_id', id);
+
+      setSetores(setoresData || []);
+      setLotes(lotesData || []);
 
       console.log('📊 DADOS DO BANCO:', {
         ingressos: todosIngressos,
@@ -81,7 +84,7 @@ export default function EventoPage() {
         lotes: lotesData
       });
 
-      // 🔧 PROCESSAR INGRESSOS COM QUANTIDADES CORRETAS
+      // CORREÇÃO: PROCESSAR INGRESSOS COM QUANTIDADES DAS TABELAS CORRETAS
       const ingressosProcessados = (todosIngressos || []).map(ingresso => {
         let quantidadeDisponivel = 0;
 
@@ -91,24 +94,25 @@ export default function EventoPage() {
         console.log(`   - Lote ID: ${ingresso.lote_id}`);
         console.log(`   - Sessão ID: ${ingresso.sessao_id}`);
 
-        // Se tem lote, pegar quantidade do lote
+        // CORREÇÃO: Buscar quantidade da tabela correta conforme hierarquia
         if (ingresso.lote_id) {
+          // Se tem lote, buscar quantidade_total da tabela lotes
           console.log(`   ➡️ TEM LOTE! Buscando lote ${ingresso.lote_id}...`);
           const lote = lotesData?.find(l => l.id === ingresso.lote_id);
           console.log(`   - Lote encontrado:`, lote);
           
-          if (lote) {
-            const quantidadeVendidaLote = parseInt(lote.quantidade_vendida) || 0;
-            const quantidadeTotalLote = parseInt(lote.quantidade_total) || 0;
-            quantidadeDisponivel = quantidadeTotalLote - quantidadeVendidaLote;
-            console.log(`   ✅ LOTE: total=${quantidadeTotalLote}, vendidos=${quantidadeVendidaLote}, disponíveis=${quantidadeDisponivel}`);
+          if (lote && lote.quantidade_total) {
+            quantidadeDisponivel = parseInt(lote.quantidade_total) || 0;
+            console.log(`   ✅ LOTE: quantidade_total=${quantidadeDisponivel}`);
           } else {
-            console.log(`   ❌ LOTE NÃO ENCONTRADO!`);
+            console.log(`   ⚠️ LOTE SEM quantidade_total - definido por demanda`);
+            // Se não tem número no lote, é definido por demanda
+            quantidadeDisponivel = 0; // Será tratado como ilimitado na interface
           }
         } else {
+          // CORREÇÃO: Se não tem lote, buscar capacidade_definida da tabela setores
           console.log(`   ➡️ SEM LOTE! Buscando setor "${ingresso.setor}" na sessão ${ingresso.sessao_id}...`);
           
-          // Se NÃO tem lote, pegar do setor
           const setorEncontrado = setoresData?.find(s => {
             const nomeMatch = s.nome === ingresso.setor;
             const sessaoMatch = s.sessao_id === ingresso.sessao_id;
@@ -118,20 +122,20 @@ export default function EventoPage() {
           
           console.log(`   - Setor encontrado:`, setorEncontrado);
           
-          if (setorEncontrado) {
-            if (setorEncontrado.capacidade_definida && setorEncontrado.capacidade_definida > 0) {
-              quantidadeDisponivel = parseInt(setorEncontrado.capacidade_definida) || 0;
-              console.log(`   ✅ SETOR (definida): ${quantidadeDisponivel}`);
-            } else if (setorEncontrado.capacidade_calculada && setorEncontrado.capacidade_calculada > 0) {
-              quantidadeDisponivel = parseInt(setorEncontrado.capacidade_calculada) || 0;
-              console.log(`   ✅ SETOR (calculada): ${quantidadeDisponivel}`);
-            } else {
-              console.log(`   ⚠️ SETOR encontrado mas SEM capacidade!`);
-            }
+          if (setorEncontrado && setorEncontrado.capacidade_definida) {
+            quantidadeDisponivel = parseInt(setorEncontrado.capacidade_definida) || 0;
+            console.log(`   ✅ SETOR: capacidade_definida=${quantidadeDisponivel}`);
           } else {
-            console.log(`   ❌ SETOR NÃO ENCONTRADO!`);
-            console.log(`   📋 Setores disponíveis:`, setoresData?.map(s => ({nome: s.nome, sessao: s.sessao_id})));
+            console.log(`   ⚠️ SETOR SEM capacidade_definida - definido por demanda`);
+            // Se não tem capacidade definida no setor, é definido por demanda
+            quantidadeDisponivel = 0; // Será tratado como ilimitado na interface
           }
+        }
+
+        // CORREÇÃO: Se não tem quantidade definida nem no lote nem no setor, verificar se tem na tabela ingressos
+        if (quantidadeDisponivel === 0 && ingresso.quantidade) {
+          quantidadeDisponivel = parseInt(ingresso.quantidade) || 0;
+          console.log(`   ✅ INGRESSO: quantidade=${quantidadeDisponivel}`);
         }
 
         console.log(`   🎯 RESULTADO FINAL: quantidade_calculada = ${quantidadeDisponivel}\n`);
@@ -189,6 +193,7 @@ export default function EventoPage() {
     }
   };
 
+  // ... (restante das funções permanecem EXATAMENTE iguais)
   const aplicarCupom = async () => {
     if (!codigoCupom.trim()) {
       setMensagemCupom('❌ Digite um código de cupom');
@@ -373,6 +378,7 @@ export default function EventoPage() {
 
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 20px' }}>
         
+        {/* ... (o restante do JSX permanece EXATAMENTE igual) */}
         <div style={{ marginTop: '30px', textAlign: 'center' }}>
           <img 
             src={evento.imagem_url || 'https://placehold.co/1200x500/5d34a4/ffffff?text=EVENTO'} 
@@ -709,17 +715,18 @@ export default function EventoPage() {
             </div>
           ) : (
             Object.entries(setoresOrganizados).map(([setorNome, setorData]) => {
-              // 🔧 CORREÇÃO: Converter valores para NUMBER antes de somar
+              // CORREÇÃO: Buscar informações do setor para calcular disponibilidade
+              const setorEncontrado = setores?.find(s => 
+                s.nome === setorNome && s.sessao_id === sessaoSelecionada
+              );
+
               let totalDisponibilizado = 0;
               let totalVendido = 0;
 
-              [...setorData.semLote, ...Object.values(setorData.lotes).flatMap(l => l.ingressos)].forEach(ing => {
-                const qtd = parseInt(ing.quantidade_calculada) || 0;
-                const vend = parseInt(ing.vendidos) || 0;
-                console.log(`📊 Ingresso ${ing.tipo}: quantidade_calculada=${qtd}, vendidos=${vend}`);
-                totalDisponibilizado += qtd;
-                totalVendido += vend;
-              });
+              if (setorEncontrado) {
+                totalDisponibilizado = parseInt(setorEncontrado.capacidade_definida) || 0;
+                totalVendido = parseInt(setorEncontrado.vendidos) || 0;
+              }
 
               const disponiveis = totalDisponibilizado - totalVendido;
               const percentualDisponivel = totalDisponibilizado > 0 ? (disponiveis / totalDisponibilizado) * 100 : 0;
@@ -779,7 +786,7 @@ export default function EventoPage() {
                         </div>
 
                         {loteData.ingressos.map(ingresso => {
-                          // 🔧 USAR quantidade_calculada ao invés de quantidade
+                          // CORREÇÃO: Usar quantidade_calculada que agora vem das tabelas corretas
                           const quantidade = parseInt(ingresso.quantidade_calculada) || 0;
                           const vendidos = parseInt(ingresso.vendidos) || 0;
                           const ingressosDisponiveis = quantidade - vendidos;
@@ -878,7 +885,7 @@ export default function EventoPage() {
                     {setorData.semLote.length > 0 && (
                       <div>
                         {setorData.semLote.map(ingresso => {
-                          // 🔧 USAR quantidade_calculada ao invés de quantidade
+                          // CORREÇÃO: Usar quantidade_calculada que agora vem das tabelas corretas
                           const quantidade = parseInt(ingresso.quantidade_calculada) || 0;
                           const vendidos = parseInt(ingresso.vendidos) || 0;
                           const ingressosDisponiveis = quantidade - vendidos;
