@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@/utils/supabase/client';
 import { 
   Calendar, 
   MapPin, 
@@ -23,7 +23,7 @@ import {
 export default function EventoDetalhesPage() {
   const params = useParams();
   const router = useRouter();
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
   
   const [evento, setEvento] = useState(null);
   const [sessoes, setSessoes] = useState([]);
