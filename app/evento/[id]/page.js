@@ -30,7 +30,6 @@ export default function EventoDetalhesPage() {
     try {
       setLoading(true);
 
-      // Carregar dados do evento
       const { data: eventoData, error: eventoError } = await supabase
         .from('eventos')
         .select('*')
@@ -40,7 +39,6 @@ export default function EventoDetalhesPage() {
       if (eventoError) throw eventoError;
       setEvento(eventoData);
 
-      // Verificar se tem cupons ativos
       const { data: cuponsData } = await supabase
         .from('cupons')
         .select('id')
@@ -51,7 +49,6 @@ export default function EventoDetalhesPage() {
 
       setTemCupons(cuponsData && cuponsData.length > 0);
 
-      // Carregar sessões (se houver)
       const { data: sessoesData } = await supabase
         .from('sessoes')
         .select('*')
@@ -61,7 +58,6 @@ export default function EventoDetalhesPage() {
 
       setSessoes(sessoesData || []);
 
-      // Se tem sessões, selecionar a primeira
       if (sessoesData && sessoesData.length > 0) {
         setSessaoSelecionada(sessoesData[0].id);
         await carregarIngressos(params.id, sessoesData[0].id);
@@ -78,7 +74,6 @@ export default function EventoDetalhesPage() {
 
   const carregarIngressos = async (eventoId, sessaoId) => {
     try {
-      // Carregar setores
       let querySetores = supabase
         .from('setores')
         .select('*')
@@ -90,13 +85,10 @@ export default function EventoDetalhesPage() {
         querySetores = querySetores.is('sessao_id', null);
       }
 
-      const { data: setores, error: setoresError } = await querySetores;
-      if (setoresError) throw setoresError;
+      const { data: setores } = await querySetores;
 
-      // Para cada setor, carregar lotes e ingressos
       const setoresCompletos = await Promise.all(
-        setores.map(async (setor) => {
-          // Carregar lotes do setor (ativos e dentro da data)
+        (setores || []).map(async (setor) => {
           const { data: lotes } = await supabase
             .from('lotes')
             .select('*')
@@ -105,7 +97,6 @@ export default function EventoDetalhesPage() {
             .lte('data_inicio', new Date().toISOString())
             .gte('data_fim', new Date().toISOString());
 
-          // Se tem lotes, carregar ingressos dos lotes
           if (lotes && lotes.length > 0) {
             const lotesComIngressos = await Promise.all(
               lotes.map(async (lote) => {
@@ -136,7 +127,6 @@ export default function EventoDetalhesPage() {
               lotes: lotesComIngressos
             };
           } else {
-            // Sem lotes, carregar ingressos direto do setor
             const { data: ingressos } = await supabase
               .from('ingressos')
               .select('*')
@@ -178,7 +168,6 @@ export default function EventoDetalhesPage() {
     setCupomError('');
 
     try {
-      // Buscar cupom
       const { data: cupom, error: cupomError } = await supabase
         .from('cupons')
         .select('*')
@@ -194,7 +183,6 @@ export default function EventoDetalhesPage() {
         return;
       }
 
-      // Verificar se ainda tem usos disponíveis
       const usosDisponiveis = cupom.quantidade_total - cupom.quantidade_usada;
       if (usosDisponiveis <= 0) {
         setCupomError('Este cupom já atingiu o limite de usos');
@@ -202,7 +190,6 @@ export default function EventoDetalhesPage() {
         return;
       }
 
-      // Buscar preços com cupom para ingressos
       const { data: precosIngressos } = await supabase
         .from('cupom_ingresso_preco')
         .select('*')
@@ -213,7 +200,6 @@ export default function EventoDetalhesPage() {
         precosIngressos: precosIngressos || []
       });
 
-      // Recarregar ingressos para aplicar os novos preços
       await carregarIngressos(params.id, sessaoSelecionada);
 
     } catch (error) {
@@ -314,57 +300,75 @@ export default function EventoDetalhesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header do Evento */}
-      <div className="relative h-96 bg-gradient-to-br from-purple-600 to-blue-600">
-        {evento.imagem_url && (
-          <Image
-            src={evento.imagem_url}
-            alt={evento.nome}
-            fill
-            className="object-cover"
-          />
-        )}
-        <div className="absolute inset-0 bg-black bg-opacity-40" />
-        <div className="absolute bottom-0 left-0 right-0 p-8 text-white">
-          <div className="max-w-6xl mx-auto">
-            <h1 className="text-4xl font-bold mb-4">{evento.nome}</h1>
-            <div className="flex flex-wrap gap-4 text-sm">
-              <div className="flex items-center gap-2">
-                <span>📅</span>
-                <span>{formatarData(evento.data)} • {formatarHora(evento.hora)}</span>
+    <div className="min-h-screen bg-white">
+      {/* Header com Imagem */}
+      <div className="relative w-full bg-black">
+        <div className="max-w-7xl mx-auto">
+          <div className="relative h-[400px]">
+            {evento.imagem_url ? (
+              <Image
+                src={evento.imagem_url}
+                alt={evento.nome}
+                fill
+                className="object-cover"
+                priority
+              />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center">
+                <span className="text-white text-6xl">🎉</span>
               </div>
-              <div className="flex items-center gap-2">
-                <span>📍</span>
-                <span>{evento.local}</span>
-              </div>
-              {evento.categoria && (
-                <div className="flex items-center gap-2">
-                  <span>🏷️</span>
-                  <span>{evento.categoria}</span>
-                </div>
-              )}
-            </div>
+            )}
           </div>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Coluna Principal */}
+      {/* Informações do Evento */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="py-8">
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">{evento.nome}</h1>
+          
+          <div className="flex flex-col gap-3 text-gray-700 mb-6">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">📅</span>
+              <span className="text-lg">
+                {formatarData(evento.data)} • {formatarHora(evento.hora)}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xl">📍</span>
+              <span className="text-lg">{evento.local}</span>
+            </div>
+            {evento.categoria && (
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🏷️</span>
+                <span className="text-lg">{evento.categoria}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Parcelamento */}
+          {evento.preco && (
+            <div className="inline-block bg-green-100 text-green-800 px-4 py-2 rounded-full text-sm font-medium mb-8">
+              💳 Parcele em até 12x
+            </div>
+          )}
+        </div>
+
+        {/* Grid Principal */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pb-12">
+          {/* Coluna Esquerda - Descrição */}
           <div className="lg:col-span-2">
-            {/* Descrição */}
-            <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <div className="bg-white rounded-lg">
               <h2 className="text-2xl font-bold text-gray-900 mb-4">Descrição do evento</h2>
-              <div className="prose max-w-none text-gray-700 whitespace-pre-wrap">
+              <div className="text-gray-700 whitespace-pre-wrap leading-relaxed">
                 {evento.descricao}
               </div>
             </div>
 
             {/* Seletor de Sessões */}
             {sessoes.length > 1 && (
-              <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">Selecione a sessão</h2>
+              <div className="mt-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">Selecione a sessão</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {sessoes.map((sessao) => (
                     <button
@@ -373,7 +377,7 @@ export default function EventoDetalhesPage() {
                         setSessaoSelecionada(sessao.id);
                         carregarIngressos(params.id, sessao.id);
                       }}
-                      className={`p-4 rounded-lg border-2 transition-all ${
+                      className={`p-4 rounded-lg border-2 transition-all text-left ${
                         sessaoSelecionada === sessao.id
                           ? 'border-purple-600 bg-purple-50'
                           : 'border-gray-200 hover:border-purple-300'
@@ -381,7 +385,7 @@ export default function EventoDetalhesPage() {
                     >
                       <div className="flex items-center gap-3">
                         <span className="text-2xl">📅</span>
-                        <div className="text-left">
+                        <div>
                           <div className="font-semibold text-gray-900">
                             {formatarData(sessao.data)}
                           </div>
@@ -397,20 +401,18 @@ export default function EventoDetalhesPage() {
             )}
           </div>
 
-          {/* Sidebar - Ingressos */}
+          {/* Coluna Direita - Ingressos */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow-sm sticky top-4">
-              <div className="p-6 border-b border-gray-200">
-                <h2 className="text-xl font-bold text-gray-900">🎫 Ingressos</h2>
-              </div>
+            <div className="bg-gray-50 rounded-lg p-6 sticky top-4">
+              <h2 className="text-xl font-bold text-gray-900 mb-6">Ingressos</h2>
 
               {/* Campo de Cupom */}
               {temCupons && (
-                <div className="p-6 border-b border-gray-200 bg-gray-50">
+                <div className="mb-6 p-4 bg-white rounded-lg border border-gray-200">
                   {!cupomAplicado ? (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        🎟️ Tem um cupom de desconto?
+                        Tem um cupom de desconto?
                       </label>
                       <div className="flex gap-2">
                         <input
@@ -418,41 +420,38 @@ export default function EventoDetalhesPage() {
                           value={cupomCodigo}
                           onChange={(e) => setCupomCodigo(e.target.value.toUpperCase())}
                           placeholder="Digite o código"
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent"
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent text-sm"
                         />
                         <button
                           onClick={aplicarCupom}
                           disabled={aplicandoCupom}
-                          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 text-sm font-medium"
                         >
-                          {aplicandoCupom ? '...' : 'OK'}
+                          {aplicandoCupom ? '...' : 'Aplicar'}
                         </button>
                       </div>
                       {cupomError && (
-                        <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
-                          <span>⚠️</span>
-                          {cupomError}
-                        </p>
+                        <p className="mt-2 text-xs text-red-600">{cupomError}</p>
                       )}
                     </div>
                   ) : (
                     <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
                       <div className="flex items-center gap-2">
-                        <span className="text-xl">✅</span>
+                        <span className="text-lg">✅</span>
                         <div>
-                          <div className="font-medium text-green-900">
+                          <div className="text-sm font-medium text-green-900">
                             Cupom aplicado!
                           </div>
-                          <div className="text-sm text-green-700">
+                          <div className="text-xs text-green-700">
                             {cupomAplicado.codigo}
                           </div>
                         </div>
                       </div>
                       <button
                         onClick={removerCupom}
-                        className="p-1 hover:bg-green-100 rounded text-xl"
+                        className="text-green-700 hover:text-green-900"
                       >
-                        ❌
+                        ✕
                       </button>
                     </div>
                   )}
@@ -460,176 +459,195 @@ export default function EventoDetalhesPage() {
               )}
 
               {/* Lista de Ingressos */}
-              <div className="p-6 max-h-[600px] overflow-y-auto">
+              <div className="space-y-4">
                 {setoresData.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
-                    <div className="text-5xl mb-3 opacity-50">🎫</div>
-                    <p>Nenhum ingresso disponível</p>
+                    <div className="text-4xl mb-2">🎫</div>
+                    <p className="text-sm">Nenhum ingresso disponível</p>
                   </div>
                 ) : (
-                  <div className="space-y-6">
-                    {setoresData.map((setor) => (
-                      <div key={setor.id}>
-                        <h3 className="font-semibold text-gray-900 mb-3">
-                          {setor.nome}
-                        </h3>
+                  setoresData.map((setor) => (
+                    <div key={setor.id}>
+                      {setor.temLotes ? (
+                        setor.lotes.map((lote) => (
+                          <div key={lote.id} className="mb-4">
+                            {lote.ingressos.map((ingresso) => {
+                              const precoOriginal = parseFloat(ingresso.valor || 0);
+                              const precoComCupom = calcularPrecoComCupom(ingresso, lote.id);
+                              const precoFinal = precoComCupom || precoOriginal;
+                              const taxa = calcularTaxaServico(precoFinal);
+                              const precoTotal = precoFinal + taxa;
+                              const quantidade = carrinhoItens[`${ingresso.id}-${lote.id}`] || 0;
 
-                        {setor.temLotes ? (
-                          // Renderizar por lotes
-                          <div className="space-y-4">
-                            {setor.lotes.map((lote) => (
-                              <div key={lote.id} className="border border-gray-200 rounded-lg p-3">
-                                <div className="text-sm font-medium text-gray-700 mb-2">
-                                  {lote.nome}
-                                </div>
-                                {lote.estaEsgotado ? (
-                                  <div className="text-center py-2 text-sm text-red-600 font-medium">
-                                    ❌ Esgotado
+                              if (lote.estaEsgotado) {
+                                return (
+                                  <div key={ingresso.id} className="bg-white rounded-lg border border-gray-200 p-4 opacity-60">
+                                    <div className="flex justify-between items-start mb-2">
+                                      <div>
+                                        <div className="font-semibold text-gray-900">{ingresso.tipo}</div>
+                                        <div className="text-sm text-gray-500">{setor.nome} • {lote.nome}</div>
+                                      </div>
+                                      <div className="text-red-600 text-sm font-medium">Esgotado</div>
+                                    </div>
                                   </div>
-                                ) : (
-                                  <>
-                                    {lote.saoUltimos && (
-                                      <div className="mb-2 px-2 py-1 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800 flex items-center gap-1">
-                                        <span>⚠️</span>
-                                        Últimos ingressos!
+                                );
+                              }
+
+                              return (
+                                <div key={ingresso.id} className="bg-white rounded-lg border border-gray-200 p-4 mb-3">
+                                  <div className="flex justify-between items-start mb-3">
+                                    <div className="flex-1">
+                                      <div className="font-semibold text-gray-900 mb-1">{ingresso.tipo}</div>
+                                      <div className="text-xs text-gray-500 mb-2">{setor.nome} • {lote.nome}</div>
+                                      
+                                      {lote.saoUltimos && (
+                                        <div className="inline-block bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs font-medium mb-2">
+                                          ⚠️ Últimos ingressos!
+                                        </div>
+                                      )}
+
+                                      <div className="mt-2">
+                                        {precoComCupom && (
+                                          <div className="text-sm text-gray-400 line-through">
+                                            R$ {precoOriginal.toFixed(2)}
+                                          </div>
+                                        )}
+                                        <div className="text-lg font-bold text-gray-900">
+                                          R$ {precoFinal.toFixed(2)}
+                                          {taxa > 0 && (
+                                            <span className="text-xs font-normal text-gray-500">
+                                              {' '}(+ R$ {taxa.toFixed(2)} taxa)
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div className="text-xs text-green-600 font-medium">
+                                          em até 12x R$ {(precoTotal / 12).toFixed(2)}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                                    <span className="text-sm text-gray-600">Quantidade</span>
+                                    <div className="flex items-center gap-3">
+                                      <button
+                                        onClick={() => alterarQuantidade(ingresso.id, 'remove', lote.id)}
+                                        disabled={quantidade === 0}
+                                        className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                                      >
+                                        <span className="text-lg">−</span>
+                                      </button>
+                                      <span className="w-8 text-center font-semibold text-gray-900">
+                                        {quantidade}
+                                      </span>
+                                      <button
+                                        onClick={() => alterarQuantidade(ingresso.id, 'add', lote.id)}
+                                        className="w-8 h-8 flex items-center justify-center rounded-full bg-purple-600 hover:bg-purple-700 text-white"
+                                      >
+                                        <span className="text-lg">+</span>
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ))
+                      ) : (
+                        setor.ingressos.map((ingresso) => {
+                          const precoOriginal = parseFloat(ingresso.valor || 0);
+                          const precoComCupom = calcularPrecoComCupom(ingresso);
+                          const precoFinal = precoComCupom || precoOriginal;
+                          const taxa = calcularTaxaServico(precoFinal);
+                          const precoTotal = precoFinal + taxa;
+                          const quantidade = carrinhoItens[ingresso.id] || 0;
+
+                          if (setor.estaEsgotado) {
+                            return (
+                              <div key={ingresso.id} className="bg-white rounded-lg border border-gray-200 p-4 opacity-60 mb-3">
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <div className="font-semibold text-gray-900">{ingresso.tipo}</div>
+                                    <div className="text-sm text-gray-500">{setor.nome}</div>
+                                  </div>
+                                  <div className="text-red-600 text-sm font-medium">Esgotado</div>
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <div key={ingresso.id} className="bg-white rounded-lg border border-gray-200 p-4 mb-3">
+                              <div className="flex justify-between items-start mb-3">
+                                <div className="flex-1">
+                                  <div className="font-semibold text-gray-900 mb-1">{ingresso.tipo}</div>
+                                  <div className="text-xs text-gray-500 mb-2">{setor.nome}</div>
+                                  
+                                  {setor.saoUltimos && (
+                                    <div className="inline-block bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs font-medium mb-2">
+                                      ⚠️ Últimos ingressos!
+                                    </div>
+                                  )}
+
+                                  <div className="mt-2">
+                                    {precoComCupom && (
+                                      <div className="text-sm text-gray-400 line-through">
+                                        R$ {precoOriginal.toFixed(2)}
                                       </div>
                                     )}
-                                    <div className="space-y-3">
-                                      {lote.ingressos.map((ingresso) => {
-                                        const precoOriginal = parseFloat(ingresso.valor || 0);
-                                        const precoComCupom = calcularPrecoComCupom(ingresso, lote.id);
-                                        const precoFinal = precoComCupom || precoOriginal;
-                                        const taxa = calcularTaxaServico(precoFinal);
-
-                                        return (
-                                          <div key={ingresso.id} className="flex items-center justify-between">
-                                            <div className="flex-1">
-                                              <div className="text-sm font-medium text-gray-900">
-                                                {ingresso.tipo}
-                                              </div>
-                                              <div className="text-sm text-gray-600">
-                                                {precoComCupom && (
-                                                  <span className="line-through text-gray-400 mr-2">
-                                                    R$ {precoOriginal.toFixed(2)}
-                                                  </span>
-                                                )}
-                                                R$ {precoFinal.toFixed(2)}
-                                                {taxa > 0 && (
-                                                  <span className="text-xs text-gray-500">
-                                                    {' '}(+ R$ {taxa.toFixed(2)} taxa)
-                                                  </span>
-                                                )}
-                                              </div>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                              <button
-                                                onClick={() => alterarQuantidade(ingresso.id, 'remove', lote.id)}
-                                                className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-300 hover:bg-gray-100 text-xl"
-                                              >
-                                                −
-                                              </button>
-                                              <span className="w-8 text-center font-medium">
-                                                {carrinhoItens[`${ingresso.id}-${lote.id}`] || 0}
-                                              </span>
-                                              <button
-                                                onClick={() => alterarQuantidade(ingresso.id, 'add', lote.id)}
-                                                className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-300 hover:bg-gray-100 text-xl"
-                                              >
-                                                +
-                                              </button>
-                                            </div>
-                                          </div>
-                                        );
-                                      })}
+                                    <div className="text-lg font-bold text-gray-900">
+                                      R$ {precoFinal.toFixed(2)}
+                                      {taxa > 0 && (
+                                        <span className="text-xs font-normal text-gray-500">
+                                          {' '}(+ R$ {taxa.toFixed(2)} taxa)
+                                        </span>
+                                      )}
                                     </div>
-                                  </>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          // Renderizar sem lotes
-                          <div>
-                            {setor.estaEsgotado ? (
-                              <div className="text-center py-4 text-sm text-red-600 font-medium border border-red-200 rounded-lg">
-                                ❌ Setor esgotado
-                              </div>
-                            ) : (
-                              <>
-                                {setor.saoUltimos && (
-                                  <div className="mb-3 px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800 flex items-center gap-2">
-                                    <span>⚠️</span>
-                                    Últimos ingressos disponíveis!
+                                    <div className="text-xs text-green-600 font-medium">
+                                      em até 12x R$ {(precoTotal / 12).toFixed(2)}
+                                    </div>
                                   </div>
-                                )}
-                                <div className="space-y-3">
-                                  {setor.ingressos.map((ingresso) => {
-                                    const precoOriginal = parseFloat(ingresso.valor || 0);
-                                    const precoComCupom = calcularPrecoComCupom(ingresso);
-                                    const precoFinal = precoComCupom || precoOriginal;
-                                    const taxa = calcularTaxaServico(precoFinal);
-
-                                    return (
-                                      <div key={ingresso.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                                        <div className="flex-1">
-                                          <div className="font-medium text-gray-900">
-                                            {ingresso.tipo}
-                                          </div>
-                                          <div className="text-sm text-gray-600">
-                                            {precoComCupom && (
-                                              <span className="line-through text-gray-400 mr-2">
-                                                R$ {precoOriginal.toFixed(2)}
-                                              </span>
-                                            )}
-                                            R$ {precoFinal.toFixed(2)}
-                                            {taxa > 0 && (
-                                              <span className="text-xs text-gray-500">
-                                                {' '}(+ R$ {taxa.toFixed(2)} taxa)
-                                              </span>
-                                            )}
-                                          </div>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                          <button
-                                            onClick={() => alterarQuantidade(ingresso.id, 'remove')}
-                                            className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-300 hover:bg-gray-100 text-xl"
-                                          >
-                                            −
-                                          </button>
-                                          <span className="w-8 text-center font-medium">
-                                            {carrinhoItens[ingresso.id] || 0}
-                                          </span>
-                                          <button
-                                            onClick={() => alterarQuantidade(ingresso.id, 'add')}
-                                            className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-300 hover:bg-gray-100 text-xl"
-                                          >
-                                            +
-                                          </button>
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
                                 </div>
-                              </>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+                              </div>
+
+                              <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                                <span className="text-sm text-gray-600">Quantidade</span>
+                                <div className="flex items-center gap-3">
+                                  <button
+                                    onClick={() => alterarQuantidade(ingresso.id, 'remove')}
+                                    disabled={quantidade === 0}
+                                    className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                                  >
+                                    <span className="text-lg">−</span>
+                                  </button>
+                                  <span className="w-8 text-center font-semibold text-gray-900">
+                                    {quantidade}
+                                  </span>
+                                  <button
+                                    onClick={() => alterarQuantidade(ingresso.id, 'add')}
+                                    className="w-8 h-8 flex items-center justify-center rounded-full bg-purple-600 hover:bg-purple-700 text-white"
+                                  >
+                                    <span className="text-lg">+</span>
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  ))
                 )}
               </div>
 
               {/* Botão Comprar */}
               {getTotalItensCarrinho() > 0 && (
-                <div className="p-6 border-t border-gray-200">
-                  <button
-                    onClick={() => router.push(`/checkout/${params.id}`)}
-                    className="w-full py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors"
-                  >
-                    🛒 Comprar Ingressos ({getTotalItensCarrinho()})
-                  </button>
-                </div>
+                <button
+                  onClick={() => router.push(`/checkout/${params.id}`)}
+                  className="w-full mt-6 py-4 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition-colors text-lg"
+                >
+                  Selecione um Ingresso
+                </button>
               )}
             </div>
           </div>
