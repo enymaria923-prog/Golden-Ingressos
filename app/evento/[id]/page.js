@@ -63,13 +63,13 @@ export default function EventoPage() {
         .select('*')
         .eq('evento_id', id);
 
-      // BUSCAR SETORES
+      // BUSCAR SETORES - usando eventos_id
       const { data: setoresData } = await supabase
         .from('setores')
         .select('*')
         .eq('eventos_id', id);
 
-      // BUSCAR LOTES
+      // BUSCAR LOTES - usando evento_id
       const { data: lotesData } = await supabase
         .from('lotes')
         .select('*')
@@ -90,25 +90,45 @@ export default function EventoPage() {
         console.log(`   - Setor: "${ingresso.setor}"`);
         console.log(`   - Lote ID: ${ingresso.lote_id}`);
         console.log(`   - Sessão ID: ${ingresso.sessao_id}`);
+        console.log(`   - Quantidade própria (ingressos.quantidade): ${ingresso.quantidade}`);
 
-        // Se tem lote, pegar quantidade do lote
-        if (ingresso.lote_id) {
-          console.log(`   ➡️ TEM LOTE! Buscando lote ${ingresso.lote_id}...`);
+        // LÓGICA CORRETA:
+        // 1. Se tem quantidade definida no próprio ingresso, usar ela
+        // 2. Se tem lote, buscar quantidade_total da tabela lotes
+        // 3. Se não tem lote, buscar capacidade_definida da tabela setores
+        // 4. Quantidade disponível = total - vendidos (sempre da tabela ingressos.vendidos)
+
+        const quantidadePropria = parseInt(ingresso.quantidade) || 0;
+        const vendidos = parseInt(ingresso.vendidos) || 0;
+
+        if (quantidadePropria > 0) {
+          // Tem quantidade específica definida para este tipo de ingresso
+          quantidadeDisponivel = quantidadePropria;
+          console.log(`   ✅ QUANTIDADE PRÓPRIA DO INGRESSO: ${quantidadeDisponivel}`);
+        } else if (ingresso.lote_id) {
+          // Não tem quantidade própria, mas tem lote - buscar da tabela lotes
+          console.log(`   ➡️ TEM LOTE! Buscando quantidade_total do lote ${ingresso.lote_id}...`);
           const lote = lotesData?.find(l => l.id === ingresso.lote_id);
           console.log(`   - Lote encontrado:`, lote);
           
-          if (lote) {
-            const quantidadeVendidaLote = parseInt(lote.quantidade_vendida) || 0;
-            const quantidadeTotalLote = parseInt(lote.quantidade_total) || 0;
-            quantidadeDisponivel = quantidadeTotalLote - quantidadeVendidaLote;
-            console.log(`   ✅ LOTE: total=${quantidadeTotalLote}, vendidos=${quantidadeVendidaLote}, disponíveis=${quantidadeDisponivel}`);
+          if (lote && lote.quantidade_total) {
+            quantidadeDisponivel = parseInt(lote.quantidade_total) || 0;
+            console.log(`   ✅ LOTE (quantidade_total): ${quantidadeDisponivel}`);
           } else {
-            console.log(`   ❌ LOTE NÃO ENCONTRADO!`);
+            console.log(`   ⚠️ LOTE sem quantidade_total definida - será por demanda`);
+            // Se lote não tem quantidade, buscar do setor
+            const setorEncontrado = setoresData?.find(s => 
+              s.nome === ingresso.setor && s.sessao_id === ingresso.sessao_id
+            );
+            if (setorEncontrado && setorEncontrado.capacidade_definida) {
+              quantidadeDisponivel = parseInt(setorEncontrado.capacidade_definida) || 0;
+              console.log(`   ✅ USANDO CAPACIDADE DO SETOR: ${quantidadeDisponivel}`);
+            }
           }
         } else {
-          console.log(`   ➡️ SEM LOTE! Buscando setor "${ingresso.setor}" na sessão ${ingresso.sessao_id}...`);
+          // Não tem quantidade própria nem lote - buscar do setor
+          console.log(`   ➡️ SEM LOTE! Buscando capacidade_definida do setor "${ingresso.setor}"...`);
           
-          // Se NÃO tem lote, pegar do setor
           const setorEncontrado = setoresData?.find(s => {
             const nomeMatch = s.nome === ingresso.setor;
             const sessaoMatch = s.sessao_id === ingresso.sessao_id;
@@ -118,23 +138,15 @@ export default function EventoPage() {
           
           console.log(`   - Setor encontrado:`, setorEncontrado);
           
-          if (setorEncontrado) {
-            if (setorEncontrado.capacidade_definida && setorEncontrado.capacidade_definida > 0) {
-              quantidadeDisponivel = parseInt(setorEncontrado.capacidade_definida) || 0;
-              console.log(`   ✅ SETOR (definida): ${quantidadeDisponivel}`);
-            } else if (setorEncontrado.capacidade_calculada && setorEncontrado.capacidade_calculada > 0) {
-              quantidadeDisponivel = parseInt(setorEncontrado.capacidade_calculada) || 0;
-              console.log(`   ✅ SETOR (calculada): ${quantidadeDisponivel}`);
-            } else {
-              console.log(`   ⚠️ SETOR encontrado mas SEM capacidade!`);
-            }
+          if (setorEncontrado && setorEncontrado.capacidade_definida) {
+            quantidadeDisponivel = parseInt(setorEncontrado.capacidade_definida) || 0;
+            console.log(`   ✅ SETOR (capacidade_definida): ${quantidadeDisponivel}`);
           } else {
-            console.log(`   ❌ SETOR NÃO ENCONTRADO!`);
-            console.log(`   📋 Setores disponíveis:`, setoresData?.map(s => ({nome: s.nome, sessao: s.sessao_id})));
+            console.log(`   ⚠️ SETOR sem capacidade_definida - quantidade será por demanda`);
           }
         }
 
-        console.log(`   🎯 RESULTADO FINAL: quantidade_calculada = ${quantidadeDisponivel}\n`);
+        console.log(`   🎯 RESULTADO FINAL: quantidade_calculada = ${quantidadeDisponivel}, vendidos = ${vendidos}\n`);
 
         return {
           ...ingresso,
@@ -676,7 +688,7 @@ export default function EventoPage() {
           <h3 style={{ color: '#856404', margin: '0 0 15px 0' }}>🔍 DEBUG - Dados do Banco</h3>
           <div style={{ fontSize: '13px', fontFamily: 'monospace', color: '#333' }}>
             <p><strong>Total de ingressos encontrados:</strong> {ingressosDaSessao.length}</p>
-            {ingressosDaSessao.slice(0, 3).map((ing, i) => (
+            {ingressosDaDaSessao.slice(0, 3).map((ing, i) => (
               <div key={i} style={{ backgroundColor: 'white', padding: '10px', marginBottom: '10px', borderRadius: '5px', border: '1px solid #ddd' }}>
                 <p style={{ margin: '3px 0' }}><strong>Ingresso {i + 1}:</strong> {ing.tipo}</p>
                 <p style={{ margin: '3px 0' }}>- ID: {ing.id}</p>
