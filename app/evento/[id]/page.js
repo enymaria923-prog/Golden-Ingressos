@@ -57,19 +57,17 @@ export default function EventoPage() {
         setSessaoSelecionada(sessoesData[0].id);
       }
 
-      // 🔧 BUSCAR INGRESSOS COM DADOS DE SETORES E LOTES
+      // 🔧 BUSCAR TODOS OS DADOS NECESSÁRIOS
       const { data: todosIngressos } = await supabase
         .from('ingressos')
         .select('*')
         .eq('evento_id', id);
 
-      // BUSCAR SETORES - usando eventos_id
       const { data: setoresData } = await supabase
         .from('setores')
         .select('*')
         .eq('eventos_id', id);
 
-      // BUSCAR LOTES - usando evento_id
       const { data: lotesData } = await supabase
         .from('lotes')
         .select('*')
@@ -81,95 +79,64 @@ export default function EventoPage() {
         lotes: lotesData
       });
 
-      // 🔧 PROCESSAR INGRESSOS COM QUANTIDADES CORRETAS
-    const ingressosProcessados = (todosIngressos || []).map(ingresso => {
-  let quantidadeDisponivel = 0;
-  const quantidadePropria = parseInt(ingresso.quantidade) || 0;
-  const vendidos = parseInt(ingresso.vendidos) || 0;
+      // 🔧 CORREÇÃO: CALCULAR QUANTIDADE DISPONÍVEL CORRETAMENTE
+      const ingressosProcessados = (todosIngressos || []).map(ingresso => {
+        let quantidadeDisponivel = 0;
 
-  if (quantidadePropria > 0) {
-    quantidadeDisponivel = quantidadePropria;
-  } else if (ingresso.lote_id) {
-    const lote = lotesData?.find(l => l.id === ingresso.lote_id);
-    if (lote && lote.quantidade_total) {
-      quantidadeDisponivel = parseInt(lote.quantidade_total) || 0;
-    } else {
-      const setorEncontrado = setoresData?.find(s => 
-        s.nome === ingresso.setor && s.sessao_id === ingresso.sessao_id
-      );
-      if (setorEncontrado && setorEncontrado.capacidade_definida) {
-        quantidadeDisponivel = parseInt(setorEncontrado.capacidade_definida) || 0;
-      }
-    }
-  } else {
-    const setorEncontrado = setoresData?.find(s => 
-      s.nome === ingresso.setor && s.sessao_id === ingresso.sessao_id
-    );
-    if (setorEncontrado && setorEncontrado.capacidade_definida) {
-      quantidadeDisponivel = parseInt(setorEncontrado.capacidade_definida) || 0;
-    }
-  }
+        console.log(`\n🔍 PROCESSANDO INGRESSO: ${ingresso.tipo}`);
+        console.log(`   - ID: ${ingresso.id}`);
+        console.log(`   - Setor: "${ingresso.setor}"`);
+        console.log(`   - Lote ID: ${ingresso.lote_id}`);
+        console.log(`   - Sessão ID: ${ingresso.sessao_id}`);
 
-  return {
-    ...ingresso,
-    quantidade_calculada: quantidadeDisponivel
-  };
-});
-
-        // LÓGICA CORRETA:
-        // 1. Se tem quantidade definida no próprio ingresso, usar ela
-        // 2. Se tem lote, buscar quantidade_total da tabela lotes
-        // 3. Se não tem lote, buscar capacidade_definida da tabela setores
-        // 4. Quantidade disponível = total - vendidos (sempre da tabela ingressos.vendidos)
-
-        const quantidadePropria = parseInt(ingresso.quantidade) || 0;
-        const vendidos = parseInt(ingresso.vendidos) || 0;
-
-        if (quantidadePropria > 0) {
-          // Tem quantidade específica definida para este tipo de ingresso
-          quantidadeDisponivel = quantidadePropria;
-          console.log(`   ✅ QUANTIDADE PRÓPRIA DO INGRESSO: ${quantidadeDisponivel}`);
-        } else if (ingresso.lote_id) {
-          // Não tem quantidade própria, mas tem lote - buscar da tabela lotes
-          console.log(`   ➡️ TEM LOTE! Buscando quantidade_total do lote ${ingresso.lote_id}...`);
+        // 🔧 CORREÇÃO: Buscar informações de quantidade das tabelas corretas
+        if (ingresso.lote_id) {
+          // Se tem lote, buscar quantidade do lote
+          console.log(`   ➡️ TEM LOTE! Buscando lote ${ingresso.lote_id}...`);
           const lote = lotesData?.find(l => l.id === ingresso.lote_id);
           console.log(`   - Lote encontrado:`, lote);
           
-          if (lote && lote.quantidade_total) {
-            quantidadeDisponivel = parseInt(lote.quantidade_total) || 0;
-            console.log(`   ✅ LOTE (quantidade_total): ${quantidadeDisponivel}`);
+          if (lote) {
+            // 🔧 CORREÇÃO: Usar quantidade_total da tabela lotes
+            const quantidadeTotalLote = parseInt(lote.quantidade_total) || 0;
+            const quantidadeVendidaLote = parseInt(lote.quantidade_vendida) || 0;
+            quantidadeDisponivel = Math.max(0, quantidadeTotalLote - quantidadeVendidaLote);
+            console.log(`   ✅ LOTE: total=${quantidadeTotalLote}, vendidos=${quantidadeVendidaLote}, disponíveis=${quantidadeDisponivel}`);
           } else {
-            console.log(`   ⚠️ LOTE sem quantidade_total definida - será por demanda`);
-            // Se lote não tem quantidade, buscar do setor
-            const setorEncontrado = setoresData?.find(s => 
-              s.nome === ingresso.setor && s.sessao_id === ingresso.sessao_id
-            );
-            if (setorEncontrado && setorEncontrado.capacidade_definida) {
-              quantidadeDisponivel = parseInt(setorEncontrado.capacidade_definida) || 0;
-              console.log(`   ✅ USANDO CAPACIDADE DO SETOR: ${quantidadeDisponivel}`);
-            }
+            console.log(`   ❌ LOTE NÃO ENCONTRADO!`);
           }
         } else {
-          // Não tem quantidade própria nem lote - buscar do setor
-          console.log(`   ➡️ SEM LOTE! Buscando capacidade_definida do setor "${ingresso.setor}"...`);
+          // 🔧 CORREÇÃO: Se não tem lote, buscar capacidade do setor
+          console.log(`   ➡️ SEM LOTE! Buscando setor "${ingresso.setor}" na sessão ${ingresso.sessao_id}...`);
           
           const setorEncontrado = setoresData?.find(s => {
             const nomeMatch = s.nome === ingresso.setor;
             const sessaoMatch = s.sessao_id === ingresso.sessao_id;
             console.log(`      Testando setor: nome="${s.nome}" (match=${nomeMatch}), sessao=${s.sessao_id} (match=${sessaoMatch})`);
-           return nomeMatch && sessaoMatch;
-      });
-      
-      if (setorEncontrado && setorEncontrado.capacidade_definida) {
-        quantidadeDisponivel = parseInt(setorEncontrado.capacidade_definida) || 0;
-      }
-    }
+            return nomeMatch && sessaoMatch;
+          });
+          
+          console.log(`   - Setor encontrado:`, setorEncontrado);
+          
+          if (setorEncontrado) {
+            // 🔧 CORREÇÃO: Usar capacidade_definida da tabela setores
+            const capacidadeSetor = parseInt(setorEncontrado.capacidade_definida) || 0;
+            const vendidosSetor = parseInt(setorEncontrado.vendidos) || 0;
+            quantidadeDisponivel = Math.max(0, capacidadeSetor - vendidosSetor);
+            console.log(`   ✅ SETOR: capacidade=${capacidadeSetor}, vendidos=${vendidosSetor}, disponíveis=${quantidadeDisponivel}`);
+          } else {
+            console.log(`   ❌ SETOR NÃO ENCONTRADO!`);
+            console.log(`   📋 Setores disponíveis:`, setoresData?.map(s => ({nome: s.nome, sessao: s.sessao_id})));
+          }
+        }
 
-    return {
-      ...ingresso,
-      quantidade_calculada: quantidadeDisponivel
-    };
-  });
+        console.log(`   🎯 RESULTADO FINAL: quantidade_calculada = ${quantidadeDisponivel}\n`);
+
+        return {
+          ...ingresso,
+          quantidade_calculada: quantidadeDisponivel
+        };
+      });
 
       // Organizar por sessão
       const ingressosPorSessaoTemp = {};
@@ -183,6 +150,40 @@ export default function EventoPage() {
         }
       });
 
+      console.log('📦 INGRESSOS PROCESSADOS:', ingressosPorSessaoTemp);
+      setIngressosPorSessao(ingressosPorSessaoTemp);
+
+      const { data: cuponsData } = await supabase
+        .from('cupons')
+        .select('*')
+        .eq('evento_id', id)
+        .eq('ativo', true);
+
+      setCupons(cuponsData || []);
+
+      const { data: produtosData } = await supabase
+        .from('produtos')
+        .select('*')
+        .eq('evento_id', id)
+        .eq('ativo', true)
+        .order('id', { ascending: true });
+
+      setProdutos(produtosData || []);
+
+      const { data: imagensData } = await supabase
+        .from('eventos_imagens_descricao')
+        .select('*')
+        .eq('evento_id', id)
+        .order('ordem', { ascending: true });
+
+      setImagensDescricao(imagensData || []);
+
+    } catch (error) {
+      console.error('Erro ao carregar dados:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
       console.log('📦 INGRESSOS PROCESSADOS:', ingressosPorSessaoTemp);
       setIngressosPorSessao(ingressosPorSessaoTemp);
 
