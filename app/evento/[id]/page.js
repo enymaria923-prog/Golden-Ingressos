@@ -184,40 +184,6 @@ export default function EventoPage() {
       setLoading(false);
     }
   };
-      console.log('📦 INGRESSOS PROCESSADOS:', ingressosPorSessaoTemp);
-      setIngressosPorSessao(ingressosPorSessaoTemp);
-
-      const { data: cuponsData } = await supabase
-        .from('cupons')
-        .select('*')
-        .eq('evento_id', id)
-        .eq('ativo', true);
-
-      setCupons(cuponsData || []);
-
-      const { data: produtosData } = await supabase
-        .from('produtos')
-        .select('*')
-        .eq('evento_id', id)
-        .eq('ativo', true)
-        .order('id', { ascending: true });
-
-      setProdutos(produtosData || []);
-
-      const { data: imagensData } = await supabase
-        .from('eventos_imagens_descricao')
-        .select('*')
-        .eq('evento_id', id)
-        .order('ordem', { ascending: true });
-
-      setImagensDescricao(imagensData || []);
-
-    } catch (error) {
-      console.error('Erro ao carregar dados:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const aplicarCupom = async () => {
     if (!codigoCupom.trim()) {
@@ -706,7 +672,7 @@ export default function EventoPage() {
           <h3 style={{ color: '#856404', margin: '0 0 15px 0' }}>🔍 DEBUG - Dados do Banco</h3>
           <div style={{ fontSize: '13px', fontFamily: 'monospace', color: '#333' }}>
             <p><strong>Total de ingressos encontrados:</strong> {ingressosDaSessao.length}</p>
-            {ingressosDaDaSessao.slice(0, 3).map((ing, i) => (
+            {ingressosDaSessao.slice(0, 3).map((ing, i) => (
               <div key={i} style={{ backgroundColor: 'white', padding: '10px', marginBottom: '10px', borderRadius: '5px', border: '1px solid #ddd' }}>
                 <p style={{ margin: '3px 0' }}><strong>Ingresso {i + 1}:</strong> {ing.tipo}</p>
                 <p style={{ margin: '3px 0' }}>- ID: {ing.id}</p>
