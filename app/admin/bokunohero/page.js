@@ -225,6 +225,15 @@ export default function AdminPage() {
         <button onClick={carregarEventos} className="btn-recargar">
           🔄 Recarregar
         </button>
+    // Adicione este botão na div "admin-action-bar", logo após o botão "Recarregar":
+
+<button 
+  onClick={() => router.push('/admin/bokunohero/cupons')}
+  className="btn-recargar"
+  style={{ backgroundColor: '#9b59b6' }}
+>
+  🎟️ Produtores e Cupons
+</button>
       </div>
 
       <div className="abas-container">
