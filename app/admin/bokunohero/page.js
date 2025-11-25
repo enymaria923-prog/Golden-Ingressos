@@ -42,18 +42,20 @@ export default function AdminPage() {
       setEventos(eventosData || []);
       
       // Buscar dados dos produtores
-      const userIds = [...new Set(eventosData.map(e => e.user_id))];
+      const userIds = [...new Set(eventosData.map(e => e.user_id).filter(Boolean))];
       const produtoresData = {};
       
       for (const userId of userIds) {
-        const { data: produtorData } = await supabase
+        const { data: produtorData, error: produtorError } = await supabase
           .from('produtores')
           .select('*')
-          .eq('user_id', userId)
+          .eq('id', userId)
           .single();
         
         if (produtorData) {
           produtoresData[userId] = produtorData;
+        } else {
+          console.log('Produtor não encontrado para id:', userId, produtorError);
         }
       }
       
@@ -361,7 +363,7 @@ export default function AdminPage() {
                           <>
                             <p><strong>Nome Completo:</strong> {produtor.nome_completo || 'Não informado'}</p>
                             <p><strong>Empresa:</strong> {produtor.nome_empresa || 'Não informado'}</p>
-                            <p><strong>Email:</strong> {produtor.email || 'Não informado'}</p>
+                            <p><strong>Email:</strong> {produtor.email || evento.produtor_email || 'Não informado'}</p>
                             
                             <h5 style={{ marginTop: '15px', marginBottom: '10px' }}>💸 Forma de Pagamento Preferida:</h5>
                             <p><strong>Preferência:</strong> {produtor.forma_pagamento === 'apenas_pix' ? 'Apenas PIX' : produtor.forma_pagamento === 'apenas_transferencia' ? 'Apenas Transferência' : produtor.forma_pagamento === 'ambos' ? 'Ambos (PIX e Transferência)' : 'Não informado'}</p>
@@ -377,7 +379,11 @@ export default function AdminPage() {
                             </div>
                           </>
                         ) : (
-                          <p>Dados do produtor não encontrados</p>
+                          <div style={{ padding: '15px', background: '#fff3cd', borderRadius: '5px' }}>
+                            <p style={{ margin: 0 }}><strong>⚠️ Dados do produtor não encontrados no sistema</strong></p>
+                            <p style={{ margin: '5px 0 0 0', fontSize: '14px' }}>User ID: {evento.user_id}</p>
+                            <p style={{ margin: '5px 0 0 0', fontSize: '14px' }}>Email: {evento.produtor_email || 'Não informado'}</p>
+                          </div>
                         )}
                       </div>
                       
