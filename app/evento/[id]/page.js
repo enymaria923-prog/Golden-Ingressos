@@ -1,3 +1,26 @@
+{produto.descricao && (
+                        <p style={{ fontSize: '14px', color: '#666', marginBottom: '12px', lineHeight: '1.5' }}>
+                          {produto.descricao}
+                        </p>
+                      )}
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                        <span style={{ fontSize: '22px', fontWeight: 'bold', color: '#27ae60' }}>
+                          R$ {parseFloat(produto.preco).toFixed(2)}
+                        </span>
+                        {produto.tamanho && (
+                          <span style={{ 
+                            backgroundColor: '#e8f4f8', 
+                            color: '#2980b9', 
+                            padding: '4px 12px', 
+                            borderRadius: '15px',
+                            fontSize: '13px',
+                            fontWeight: '600'
+                          }}>
+                            Tamanho: {produto.tamanho}
+                          </span>
+                        )}
+                      </div>
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -776,11 +799,6 @@ export default function EventoPage() {
                                   {ingresso.tipo}
                                   {temDesconto && <span style={{ color: '#28a745', marginLeft: '10px', fontSize: '14px' }}>🎟️ COM DESCONTO</span>}
                                 </h4>
-                                <p style={{ margin: 0, fontSize: '13px', color: ingressosDisponiveis > 0 ? '#999' : '#dc3545' }}>
-                                  {ingressosDisponiveis > 0 
-                                    ? `${ingressosDisponiveis} disponíveis` 
-                                    : '❌ Esgotado'}
-                                </p>
                               </div>
                               
                               <div style={{ textAlign: 'right', marginRight: '20px' }}>
@@ -869,11 +887,6 @@ export default function EventoPage() {
                                   {ingresso.tipo}
                                   {temDesconto && <span style={{ color: '#28a745', marginLeft: '10px', fontSize: '14px' }}>🎟️ COM DESCONTO</span>}
                                 </h4>
-                                <p style={{ margin: 0, fontSize: '13px', color: ingressosDisponiveis > 0 ? '#999' : '#dc3545' }}>
-                                  {ingressosDisponiveis > 0 
-                                    ? `${ingressosDisponiveis} disponíveis` 
-                                    : '❌ Esgotado'}
-                                </p>
                               </div>
                               
                               <div style={{ textAlign: 'right', marginRight: '20px' }}>
@@ -1098,38 +1111,6 @@ export default function EventoPage() {
                       <h3 style={{ margin: '0 0 10px 0', fontSize: '18px', color: '#2c3e50' }}>
                         {produto.nome}
                       </h3>
-                      
-                      {produto.descricao && (
-                        <p style={{ fontSize: '14px', color: '#666', marginBottom: '12px', lineHeight: '1.5' }}>
-                          {produto.descricao}
-                        </p>
-                      )}
-
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                        <span style={{ fontSize: '22px', fontWeight: 'bold', color: '#27ae60' }}>
-                          R$ {parseFloat(produto.preco).toFixed(2)}
-                        </span>
-                        {produto.tamanho && (
-                          <span style={{ 
-                            backgroundColor: '#e8f4f8', 
-                            color: '#2980b9', 
-                            padding: '4px 12px', 
-                            borderRadius: '15px',
-                            fontSize: '13px',
-                            fontWeight: '600'
-                          }}>
-                            Tamanho: {produto.tamanho}
-                          </span>
-                        )}
-                      </div>
-
-                      <p style={{ fontSize: '13px', color: '#999', marginBottom: '15px' }}>
-                        {esgotado 
-                          ? '❌ Esgotado' 
-                          : ultimos 
-                            ? `🔥 Últimos ${quantidadeDisponivel} disponíveis!`
-                            : `${quantidadeDisponivel} disponíveis`}
-                      </p>
 
                       {quantidadeDisponivel > 0 ? (
                         <Link href={`/checkout?evento_id=${evento.id}&produto_id=${produto.id}`}>
