@@ -79,69 +79,65 @@ export default function EventoPage() {
         lotes: lotesData
       });
 
-      // 🔧 CALCULAR QUANTIDADES POR LOTE E SETOR (NÃO POR INGRESSO INDIVIDUAL!)
-      const lotesComQuantidades = {};
-      const setoresComQuantidades = {};
-
-      // Mapear quantidades dos LOTES
-      (lotesData || []).forEach(lote => {
-        const qtdTotal = parseInt(lote.quantidade_total) || 0;
-        const qtdVendida = parseInt(lote.quantidade_vendida) || 0;
-        lotesComQuantidades[lote.id] = {
-          total: qtdTotal,
-          vendidos: qtdVendida,
-          disponiveis: qtdTotal - qtdVendida
-        };
-      });
-
-      // Mapear quantidades dos SETORES
-      (setoresData || []).forEach(setor => {
-        const chaveSetor = `${setor.sessao_id}_${setor.nome}`;
-        const qtdTotal = parseInt(setor.capacidade_definida) || parseInt(setor.capacidade_calculada) || 0;
-        
-        // Somar vendidos de TODOS os ingressos desse setor (SEM lote)
-        const ingressosDoSetor = (todosIngressos || []).filter(i => 
-          i.setor === setor.nome && 
-          i.sessao_id === setor.sessao_id &&
-          !i.lote_id
-        );
-        const qtdVendida = ingressosDoSetor.reduce((sum, ing) => sum + (parseInt(ing.vendidos) || 0), 0);
-        
-        setoresComQuantidades[chaveSetor] = {
-          total: qtdTotal,
-          vendidos: qtdVendida,
-          disponiveis: qtdTotal - qtdVendida
-        };
-      });
-
-      console.log('📊 QUANTIDADES CALCULADAS:');
-      console.log('   Lotes:', lotesComQuantidades);
-      console.log('   Setores:', setoresComQuantidades);
-
-      // Processar ingressos atribuindo as quantidades corretas
+      // 🔧 PROCESSAR CADA INGRESSO COM HIERARQUIA CORRETA
       const ingressosProcessados = (todosIngressos || []).map(ingresso => {
         let quantidadeDisponivel = 0;
+        let origem = '';
 
-        if (ingresso.lote_id) {
-          // TEM LOTE: usar quantidade do LOTE inteiro
-          const dadosLote = lotesComQuantidades[ingresso.lote_id];
-          if (dadosLote) {
-            quantidadeDisponivel = dadosLote.disponiveis;
-            console.log(`🎫 ${ingresso.tipo} (LOTE ${ingresso.lote_id}): ${quantidadeDisponivel} disponíveis`);
+        console.log(`\n🎫 ${ingresso.tipo} (Setor: ${ingresso.setor})`);
+
+        // PRIORIDADE 1: Ingresso tem quantidade própria?
+        if (ingresso.quantidade && parseInt(ingresso.quantidade) > 0) {
+          const qtdTotal = parseInt(ingresso.quantidade) || 0;
+          const qtdVendida = parseInt(ingresso.vendidos) || 0;
+          quantidadeDisponivel = qtdTotal - qtdVendida;
+          origem = 'INGRESSO';
+          console.log(`   ✅ ${origem}: total=${qtdTotal}, vendidos=${qtdVendida}, disponível=${quantidadeDisponivel}`);
+        }
+        // PRIORIDADE 2: Lote tem quantidade?
+        else if (ingresso.lote_id) {
+          const lote = lotesData?.find(l => l.id === ingresso.lote_id);
+          if (lote && lote.quantidade_total && parseInt(lote.quantidade_total) > 0) {
+            const qtdTotal = parseInt(lote.quantidade_total) || 0;
+            const qtdVendida = parseInt(lote.quantidade_vendida) || 0;
+            quantidadeDisponivel = qtdTotal - qtdVendida;
+            origem = `LOTE ${ingresso.lote_id}`;
+            console.log(`   ✅ ${origem}: total=${qtdTotal}, vendidos=${qtdVendida}, disponível=${quantidadeDisponivel}`);
           }
-        } else {
-          // SEM LOTE: usar quantidade do SETOR inteiro
-          const chaveSetor = `${ingresso.sessao_id}_${ingresso.setor}`;
-          const dadosSetor = setoresComQuantidades[chaveSetor];
-          if (dadosSetor) {
-            quantidadeDisponivel = dadosSetor.disponiveis;
-            console.log(`🎫 ${ingresso.tipo} (SETOR ${ingresso.setor}): ${quantidadeDisponivel} disponíveis`);
+        }
+        
+        // PRIORIDADE 3: Se ainda não tem quantidade, buscar do SETOR
+        if (quantidadeDisponivel === 0 || origem === '') {
+          const setor = setoresData?.find(s => 
+            s.nome === ingresso.setor && s.sessao_id === ingresso.sessao_id
+          );
+          
+          if (setor && (setor.capacidade_definida || setor.capacidade_calculada)) {
+            const qtdTotal = parseInt(setor.capacidade_definida) || parseInt(setor.capacidade_calculada) || 0;
+            
+            // Somar vendidos de TODOS os ingressos do setor que não têm quantidade própria nem lote
+            const ingressosDoSetor = (todosIngressos || []).filter(i => 
+              i.setor === ingresso.setor && 
+              i.sessao_id === ingresso.sessao_id &&
+              (!i.quantidade || parseInt(i.quantidade) === 0) && // Sem quantidade própria
+              (!i.lote_id || !lotesData?.find(l => l.id === i.lote_id && l.quantidade_total > 0)) // Sem lote com quantidade
+            );
+            const qtdVendida = ingressosDoSetor.reduce((sum, i) => sum + (parseInt(i.vendidos) || 0), 0);
+            
+            quantidadeDisponivel = qtdTotal - qtdVendida;
+            origem = `SETOR ${ingresso.setor}`;
+            console.log(`   ✅ ${origem}: capacidade=${qtdTotal}, vendidos_setor=${qtdVendida}, disponível=${quantidadeDisponivel}`);
           }
+        }
+
+        if (!origem) {
+          console.log(`   ❌ NENHUMA QUANTIDADE DEFINIDA!`);
         }
 
         return {
           ...ingresso,
-          quantidade_disponivel_calculada: Math.max(0, quantidadeDisponivel)
+          quantidade_disponivel_calculada: Math.max(0, quantidadeDisponivel),
+          origem_quantidade: origem
         };
       });
 
