@@ -35,7 +35,7 @@ export default function CuponsPage() {
     setCarregando(true);
     try {
       const { data, error } = await supabase
-        .from('cupons')
+        .from('cupons_recomendacao')
         .select('*')
         .order('created_at', { ascending: false });
 
@@ -55,7 +55,7 @@ export default function CuponsPage() {
       const { data, error } = await supabase
         .from('produtores')
         .select('*')
-        .eq('cupom_utilizado', codigoCupom)
+        .eq('cupom_recomendacao', codigoCupom)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -79,7 +79,7 @@ export default function CuponsPage() {
 
     try {
       const { data, error } = await supabase
-        .from('cupons')
+        .from('cupons_recomendacao')
         .insert([{
           codigo: novoCupom.codigo.trim().toUpperCase(),
           descricao: novoCupom.descricao.trim() || null
@@ -112,7 +112,7 @@ export default function CuponsPage() {
 
     try {
       const { error } = await supabase
-        .from('cupons')
+        .from('cupons_recomendacao')
         .delete()
         .eq('id', id);
 
@@ -148,7 +148,7 @@ export default function CuponsPage() {
   return (
     <div className="admin-container">
       <header className="admin-header">
-        <h1>🎟️ Gerenciamento de Cupons</h1>
+        <h1>🎟️ Gerenciamento de Cupons de Recomendação</h1>
         <Link href="/admin/bokunohero" className="btn-logout">
           ← Voltar para Moderação
         </Link>
