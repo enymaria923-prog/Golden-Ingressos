@@ -41,7 +41,7 @@ export default function AdminPage() {
       
       setEventos(eventosData || []);
       
-      // Buscar dados dos produtores
+      // Buscar dados dos produtores usando o id da tabela produtores
       const userIds = [...new Set(eventosData.map(e => e.user_id).filter(Boolean))];
       const produtoresData = {};
       
@@ -78,7 +78,6 @@ export default function AdminPage() {
   const filtrarEventos = () => {
     let resultado = [...eventos];
     
-    // Filtro por aba
     if (abaAtiva === 'pendentes') {
       resultado = resultado.filter(e => e.status === 'pendente' || !e.status);
     } else if (abaAtiva === 'aprovados') {
@@ -89,14 +88,12 @@ export default function AdminPage() {
       resultado = resultado.filter(e => e.status === 'rejeitado');
     }
     
-    // Filtro por nome
     if (buscaNome.trim()) {
       resultado = resultado.filter(e => 
         e.nome?.toLowerCase().includes(buscaNome.toLowerCase())
       );
     }
     
-    // Filtro por produtor
     if (buscaProdutor.trim()) {
       resultado = resultado.filter(e => {
         const produtor = produtores[e.user_id];
@@ -230,7 +227,6 @@ export default function AdminPage() {
         </button>
       </div>
 
-      {/* ABAS DE NAVEGAÇÃO */}
       <div className="abas-container">
         <button 
           className={`aba ${abaAtiva === 'pendentes' ? 'aba-ativa' : ''}`}
@@ -258,7 +254,6 @@ export default function AdminPage() {
         </button>
       </div>
 
-      {/* FILTROS */}
       <div className="filtros-container">
         <h2>🔍 Filtros de Busca</h2>
         
@@ -295,7 +290,6 @@ export default function AdminPage() {
         </p>
       </div>
 
-      {/* LISTA DE EVENTOS */}
       {carregando ? (
         <div className="admin-loading">Carregando eventos...</div>
       ) : (
@@ -366,7 +360,12 @@ export default function AdminPage() {
                             <p><strong>Email:</strong> {produtor.email || evento.produtor_email || 'Não informado'}</p>
                             
                             <h5 style={{ marginTop: '15px', marginBottom: '10px' }}>💸 Forma de Pagamento Preferida:</h5>
-                            <p><strong>Preferência:</strong> {produtor.forma_pagamento === 'apenas_pix' ? 'Apenas PIX' : produtor.forma_pagamento === 'apenas_transferencia' ? 'Apenas Transferência' : produtor.forma_pagamento === 'ambos' ? 'Ambos (PIX e Transferência)' : 'Não informado'}</p>
+                            <p><strong>Preferência:</strong> {
+                              produtor.forma_pagamento === 'apenas_pix' ? 'Apenas PIX' : 
+                              produtor.forma_pagamento === 'apenas_transferencia' ? 'Apenas Transferência' : 
+                              produtor.forma_pagamento === 'ambos' ? 'Ambos (PIX e Transferência)' : 
+                              'Não informado'
+                            }</p>
                             
                             <div style={{ background: '#e8f5e9', padding: '10px', borderRadius: '5px', marginTop: '10px' }}>
                               <p style={{ margin: 0 }}><strong>🔑 Chave PIX:</strong> {produtor.chave_pix || 'Não informado'}</p>
@@ -381,7 +380,7 @@ export default function AdminPage() {
                         ) : (
                           <div style={{ padding: '15px', background: '#fff3cd', borderRadius: '5px' }}>
                             <p style={{ margin: 0 }}><strong>⚠️ Dados do produtor não encontrados no sistema</strong></p>
-                            <p style={{ margin: '5px 0 0 0', fontSize: '14px' }}>User ID: {evento.user_id}</p>
+                            <p style={{ margin: '5px 0 0 0', fontSize: '14px' }}>User ID do evento: {evento.user_id}</p>
                             <p style={{ margin: '5px 0 0 0', fontSize: '14px' }}>Email: {evento.produtor_email || 'Não informado'}</p>
                           </div>
                         )}
