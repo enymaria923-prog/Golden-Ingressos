@@ -355,33 +355,31 @@ export default function AdminPage() {
                         </div>
                       </div>
                       
-                      {produtor && (
-                        <>
-                          <h4 style={{ marginTop: '20px', marginBottom: '10px' }}>💳 Dados do Produtor</h4>
-                          <div className="produtor-dados">
-                            <p><strong>Nome Completo:</strong> {produtor.nome_completo}</p>
-                            {produtor.nome_empresa && <p><strong>Empresa:</strong> {produtor.nome_empresa}</p>}
-                            <p><strong>Email:</strong> {produtor.email}</p>
+                      <h4 style={{ marginTop: '20px', marginBottom: '10px' }}>💳 Dados do Produtor</h4>
+                      <div className="produtor-dados">
+                        {produtor ? (
+                          <>
+                            <p><strong>Nome Completo:</strong> {produtor.nome_completo || 'Não informado'}</p>
+                            <p><strong>Empresa:</strong> {produtor.nome_empresa || 'Não informado'}</p>
+                            <p><strong>Email:</strong> {produtor.email || 'Não informado'}</p>
                             
                             <h5 style={{ marginTop: '15px', marginBottom: '10px' }}>💸 Forma de Pagamento Preferida:</h5>
-                            <p><strong>Preferência:</strong> {produtor.forma_pagamento === 'apenas_pix' ? 'Apenas PIX' : produtor.forma_pagamento === 'apenas_transferencia' ? 'Apenas Transferência' : 'Ambos (PIX e Transferência)'}</p>
+                            <p><strong>Preferência:</strong> {produtor.forma_pagamento === 'apenas_pix' ? 'Apenas PIX' : produtor.forma_pagamento === 'apenas_transferencia' ? 'Apenas Transferência' : produtor.forma_pagamento === 'ambos' ? 'Ambos (PIX e Transferência)' : 'Não informado'}</p>
                             
-                            {(produtor.forma_pagamento === 'apenas_pix' || produtor.forma_pagamento === 'ambos') && (
-                              <div style={{ background: '#e8f5e9', padding: '10px', borderRadius: '5px', marginTop: '10px' }}>
-                                <p style={{ margin: 0 }}><strong>🔑 Chave PIX:</strong> {produtor.chave_pix}</p>
-                                <p style={{ margin: '5px 0 0 0' }}><strong>Tipo:</strong> {produtor.tipo_chave_pix?.toUpperCase()}</p>
-                              </div>
-                            )}
+                            <div style={{ background: '#e8f5e9', padding: '10px', borderRadius: '5px', marginTop: '10px' }}>
+                              <p style={{ margin: 0 }}><strong>🔑 Chave PIX:</strong> {produtor.chave_pix || 'Não informado'}</p>
+                              <p style={{ margin: '5px 0 0 0' }}><strong>Tipo:</strong> {produtor.tipo_chave_pix ? produtor.tipo_chave_pix.toUpperCase() : 'Não informado'}</p>
+                            </div>
                             
-                            {(produtor.forma_pagamento === 'apenas_transferencia' || produtor.forma_pagamento === 'ambos') && produtor.dados_bancarios && (
-                              <div style={{ background: '#e3f2fd', padding: '10px', borderRadius: '5px', marginTop: '10px' }}>
-                                <p style={{ margin: 0 }}><strong>🏦 Dados Bancários:</strong></p>
-                                <p style={{ margin: '5px 0 0 0', whiteSpace: 'pre-wrap' }}>{produtor.dados_bancarios}</p>
-                              </div>
-                            )}
-                          </div>
-                        </>
-                      )}
+                            <div style={{ background: '#e3f2fd', padding: '10px', borderRadius: '5px', marginTop: '10px' }}>
+                              <p style={{ margin: 0 }}><strong>🏦 Dados Bancários:</strong></p>
+                              <p style={{ margin: '5px 0 0 0', whiteSpace: 'pre-wrap' }}>{produtor.dados_bancarios || 'Não informado'}</p>
+                            </div>
+                          </>
+                        ) : (
+                          <p>Dados do produtor não encontrados</p>
+                        )}
+                      </div>
                       
                       <p className="taxa-info">
                         <small>📋 Plano escolhido: Taxa Cliente {stats.taxaCliente}% | Taxa Produtor {stats.taxaProdutor}%</small>
