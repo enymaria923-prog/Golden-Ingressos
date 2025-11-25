@@ -1,8 +1,6 @@
 // app/actions-auth.js
 // O "Backend" do Login, Cadastro e Logout
-
 "use server";
-
 import { createClient } from '../utils/supabase/server';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
@@ -12,17 +10,14 @@ export async function login(formData) {
   const email = formData.get('email');
   const password = formData.get('password');
   const supabase = createClient();
-
   const { error } = await supabase.auth.signInWithPassword({
     email,
     password,
   });
-
   if (error) {
     console.error("Erro no login:", error);
     return redirect('/login?message=Erro ao tentar logar');
   }
-
   revalidatePath('/');
   return redirect('/');
 }
@@ -32,17 +27,14 @@ export async function signup(formData) {
   const email = formData.get('email');
   const password = formData.get('password');
   const supabase = createClient();
-
   const { error } = await supabase.auth.signUp({
     email,
     password,
   });
-
   if (error) {
     console.error("Erro no cadastro:", error);
     return redirect('/login?message=Erro ao tentar criar conta');
   }
-
   revalidatePath('/');
   return redirect('/');
 }
@@ -56,8 +48,8 @@ export async function logout() {
   revalidatePath('/');
   return redirect('/');
 }
-// Adicione esta função ao arquivo actions-auth.js existente
 
+// --- FUNÇÃO DE CADASTRO DE PRODUTOR ---
 export async function signupProdutor(formData) {
   const supabase = createClient();
   
@@ -93,12 +85,13 @@ export async function signupProdutor(formData) {
       throw authError;
     }
 
-    // Inserir dados na tabela 'produtores'
+    // Inserir dados na tabela 'produtores' COM user_id e email
     const { error: profileError } = await supabase
       .from('produtores')
       .insert([
         {
-          id: authData.user.id,
+          user_id: authData.user.id, // ADICIONADO: vincular com auth.users
+          email: email, // ADICIONADO: salvar o email
           nome_completo,
           nome_empresa,
           chave_pix,
