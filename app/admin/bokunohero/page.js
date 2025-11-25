@@ -389,6 +389,24 @@ export default function AdminPage() {
                       <p className="taxa-info">
                         <small>📋 Plano escolhido: Taxa Cliente {stats.taxaCliente}% | Taxa Produtor {stats.taxaProdutor}%</small>
                       </p>
+
+                      <button
+                        onClick={() => router.push(`/produtor/evento/${evento.id}`)}
+                        style={{
+                          width: '100%',
+                          marginTop: '15px',
+                          padding: '12px',
+                          backgroundColor: '#3498db',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '8px',
+                          fontSize: '15px',
+                          fontWeight: 'bold',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        📊 Ver Detalhes Completos do Evento
+                      </button>
                     </div>
                   )}
 
