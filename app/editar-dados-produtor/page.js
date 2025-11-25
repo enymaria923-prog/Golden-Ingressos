@@ -39,16 +39,18 @@ export default function EditarDadosProdutorPage() {
       
       setUser(user);
 
-      // Busca dados do produtor
+      // Busca dados do produtor usando id como chave primária
       const { data: produtorData, error: produtorError } = await supabase
         .from('produtores')
         .select('*')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
       if (produtorError) {
-        console.log('Produtor não encontrado, será criado ao salvar');
-      } else {
+        console.error('Erro ao buscar produtor:', produtorError);
+      }
+      
+      if (produtorData) {
         setProdutor(produtorData);
         setFormData({
           nome_completo: produtorData.nome_completo || '',
@@ -58,6 +60,8 @@ export default function EditarDadosProdutorPage() {
           dados_bancarios: produtorData.dados_bancarios || '',
           forma_pagamento: produtorData.forma_pagamento || ''
         });
+      } else {
+        console.log('Produtor não encontrado, será criado ao salvar');
       }
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
@@ -87,7 +91,6 @@ export default function EditarDadosProdutorPage() {
 
     try {
       const dadosAtualizar = {
-        id: user.id,
         nome_completo: formData.nome_completo,
         nome_empresa: formData.nome_empresa || null,
         chave_pix: formData.chave_pix,
@@ -97,25 +100,23 @@ export default function EditarDadosProdutorPage() {
         updated_at: new Date().toISOString()
       };
 
-      // Tenta atualizar primeiro
-      const { error: updateError } = await supabase
+      // Usa upsert para inserir ou atualizar
+      const { data, error } = await supabase
         .from('produtores')
-        .update(dadosAtualizar)
-        .eq('id', user.id);
+        .upsert([{
+          id: user.id,
+          ...dadosAtualizar
+        }], {
+          onConflict: 'id'
+        })
+        .select();
 
-      // Se não existe, cria
-      if (updateError && updateError.code === 'PGRST116') {
-        const { error: insertError } = await supabase
-          .from('produtores')
-          .insert([dadosAtualizar]);
-
-        if (insertError) {
-          throw insertError;
-        }
-      } else if (updateError) {
-        throw updateError;
+      if (error) {
+        console.error('Erro no upsert:', error);
+        throw error;
       }
 
+      console.log('Dados salvos com sucesso:', data);
       alert('✅ Dados atualizados com sucesso!');
       router.push('/produtor');
       
