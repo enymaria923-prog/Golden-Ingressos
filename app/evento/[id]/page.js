@@ -79,66 +79,69 @@ export default function EventoPage() {
         lotes: lotesData
       });
 
-      // 🔧 PROCESSAR CADA INGRESSO COM A LÓGICA CORRETA DE QUANTIDADES
+      // 🔧 CALCULAR QUANTIDADES POR LOTE E SETOR (NÃO POR INGRESSO INDIVIDUAL!)
+      const lotesComQuantidades = {};
+      const setoresComQuantidades = {};
+
+      // Mapear quantidades dos LOTES
+      (lotesData || []).forEach(lote => {
+        const qtdTotal = parseInt(lote.quantidade_total) || 0;
+        const qtdVendida = parseInt(lote.quantidade_vendida) || 0;
+        lotesComQuantidades[lote.id] = {
+          total: qtdTotal,
+          vendidos: qtdVendida,
+          disponiveis: qtdTotal - qtdVendida
+        };
+      });
+
+      // Mapear quantidades dos SETORES
+      (setoresData || []).forEach(setor => {
+        const chaveSetor = `${setor.sessao_id}_${setor.nome}`;
+        const qtdTotal = parseInt(setor.capacidade_definida) || parseInt(setor.capacidade_calculada) || 0;
+        
+        // Somar vendidos de TODOS os ingressos desse setor (SEM lote)
+        const ingressosDoSetor = (todosIngressos || []).filter(i => 
+          i.setor === setor.nome && 
+          i.sessao_id === setor.sessao_id &&
+          !i.lote_id
+        );
+        const qtdVendida = ingressosDoSetor.reduce((sum, ing) => sum + (parseInt(ing.vendidos) || 0), 0);
+        
+        setoresComQuantidades[chaveSetor] = {
+          total: qtdTotal,
+          vendidos: qtdVendida,
+          disponiveis: qtdTotal - qtdVendida
+        };
+      });
+
+      console.log('📊 QUANTIDADES CALCULADAS:');
+      console.log('   Lotes:', lotesComQuantidades);
+      console.log('   Setores:', setoresComQuantidades);
+
+      // Processar ingressos atribuindo as quantidades corretas
       const ingressosProcessados = (todosIngressos || []).map(ingresso => {
-        let quantidadeTotal = 0;
-        let quantidadeVendida = 0;
+        let quantidadeDisponivel = 0;
 
-        console.log(`\n🎫 PROCESSANDO: ${ingresso.tipo} (Setor: ${ingresso.setor})`);
-
-        // PRIORIDADE 1: Se tem LOTE_ID, buscar quantidade do LOTE
         if (ingresso.lote_id) {
-          const lote = lotesData?.find(l => l.id === ingresso.lote_id);
-          if (lote) {
-            quantidadeTotal = parseInt(lote.quantidade_total) || 0;
-            quantidadeVendida = parseInt(lote.quantidade_vendida) || 0;
-            console.log(`   ✅ LOTE encontrado: total=${quantidadeTotal}, vendida=${quantidadeVendida}`);
-          } else {
-            console.log(`   ⚠️ LOTE ${ingresso.lote_id} NÃO encontrado!`);
+          // TEM LOTE: usar quantidade do LOTE inteiro
+          const dadosLote = lotesComQuantidades[ingresso.lote_id];
+          if (dadosLote) {
+            quantidadeDisponivel = dadosLote.disponiveis;
+            console.log(`🎫 ${ingresso.tipo} (LOTE ${ingresso.lote_id}): ${quantidadeDisponivel} disponíveis`);
           }
-        } 
-        // PRIORIDADE 2: Se NÃO tem lote, verificar se o INGRESSO tem quantidade própria
-        else if (ingresso.quantidade && parseInt(ingresso.quantidade) > 0) {
-          quantidadeTotal = parseInt(ingresso.quantidade) || 0;
-          quantidadeVendida = parseInt(ingresso.vendidos) || 0;
-          console.log(`   ✅ INGRESSO tem quantidade própria: total=${quantidadeTotal}, vendida=${quantidadeVendida}`);
-        }
-        // PRIORIDADE 3: Se não tem nem lote nem quantidade própria, buscar do SETOR
-        else {
-          const setor = setoresData?.find(s => 
-            s.nome === ingresso.setor && s.sessao_id === ingresso.sessao_id
-          );
-          
-          if (setor) {
-            // Usar capacidade_definida ou capacidade_calculada
-            quantidadeTotal = parseInt(setor.capacidade_definida) || 
-                            parseInt(setor.capacidade_calculada) || 0;
-            
-            // Para setores, precisamos somar os vendidos de TODOS os ingressos do setor
-            const ingressosDoSetor = todosIngressos?.filter(i => 
-              i.setor === ingresso.setor && 
-              i.sessao_id === ingresso.sessao_id &&
-              !i.lote_id // Apenas ingressos sem lote
-            ) || [];
-            
-            quantidadeVendida = ingressosDoSetor.reduce((total, ing) => 
-              total + (parseInt(ing.vendidos) || 0), 0
-            );
-            
-            console.log(`   ✅ SETOR encontrado: capacidade=${quantidadeTotal}, total_vendido_no_setor=${quantidadeVendida}`);
-          } else {
-            console.log(`   ❌ SETOR "${ingresso.setor}" NÃO encontrado na sessão ${ingresso.sessao_id}`);
+        } else {
+          // SEM LOTE: usar quantidade do SETOR inteiro
+          const chaveSetor = `${ingresso.sessao_id}_${ingresso.setor}`;
+          const dadosSetor = setoresComQuantidades[chaveSetor];
+          if (dadosSetor) {
+            quantidadeDisponivel = dadosSetor.disponiveis;
+            console.log(`🎫 ${ingresso.tipo} (SETOR ${ingresso.setor}): ${quantidadeDisponivel} disponíveis`);
           }
         }
-
-        const disponivel = quantidadeTotal - quantidadeVendida;
-        console.log(`   🎯 RESULTADO: total=${quantidadeTotal}, vendidos=${quantidadeVendida}, disponível=${disponivel}`);
 
         return {
           ...ingresso,
-          quantidade_total_calculada: quantidadeTotal,
-          quantidade_vendida_calculada: quantidadeVendida,
-          quantidade_disponivel_calculada: Math.max(0, disponivel)
+          quantidade_disponivel_calculada: Math.max(0, quantidadeDisponivel)
         };
       });
 
@@ -691,14 +694,13 @@ export default function EventoPage() {
               let totalVendido = 0;
 
               [...setorData.semLote, ...Object.values(setorData.lotes).flatMap(l => l.ingressos)].forEach(ing => {
-                totalDisponibilizado += (ing.quantidade_total_calculada || 0);
-                totalVendido += (ing.quantidade_vendida_calculada || 0);
+                // Não soma mais aqui, pega direto do ingresso processado
+                totalDisponibilizado += (ing.quantidade_disponivel_calculada || 0);
               });
 
-              const disponiveis = totalDisponibilizado - totalVendido;
-              const percentualDisponivel = totalDisponibilizado > 0 ? (disponiveis / totalDisponibilizado) * 100 : 0;
-              const ultimos = percentualDisponivel <= 15 && percentualDisponivel > 0;
-              const esgotado = disponiveis === 0;
+              const disponiveis = totalDisponibilizado;
+              const ultimos = totalDisponibilizado <= 15 && totalDisponibilizado > 0;
+              const esgotado = totalDisponibilizado === 0;
 
               return (
                 <div key={setorNome} style={{ 
