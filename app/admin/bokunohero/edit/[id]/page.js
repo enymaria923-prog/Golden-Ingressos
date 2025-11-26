@@ -4,13 +4,15 @@ import { useRouter, useParams } from 'next/navigation';
 import { createClient } from '../../../../../utils/supabase/client';
 import CategoriaSelector from '../../../../publicar-evento/components/CategoriaSelector';
 import SetorManager from '../../../../publicar-evento/components/SetorManager';
-import CupomManager from '../../../../publicar-evento/components/CupomManager';
-import ProdutoManager from '../../../../publicar-evento/components/ProdutoManager';
 import '../../../../publicar-evento/PublicarEvento.css';
 import '../../admin.css';
 
 function SelecionarTaxa({ onTaxaSelecionada, taxaInicial }) {
   const [taxaSelecionada, setTaxaSelecionada] = useState(taxaInicial);
+
+  useEffect(() => {
+    setTaxaSelecionada(taxaInicial);
+  }, [taxaInicial]);
 
   const handleTaxaChange = (novasTaxas) => {
     setTaxaSelecionada(novasTaxas);
@@ -213,8 +215,8 @@ export default function EditarEventoPage() {
   const fileInputRef = useRef(null);
 
   const [setoresIngressos, setSetoresIngressos] = useState([]);
-  const [cupons, setCupons] = useState([]);
-  const [produtos, setProdutos] = useState([]);
+  const [imagensDescricao, setImagensDescricao] = useState([]);
+  const imagemDescricaoInputRef = useRef(null);
 
   useEffect(() => {
     if (eventoId) {
@@ -268,34 +270,74 @@ export default function EditarEventoPage() {
       });
       setImagemAtual(data.imagem_url || '');
 
-      // CARREGAR SESSÕES
-      const { data: sessoesData } = await supabase
+      // ✅ CARREGAR IMAGENS DA DESCRIÇÃO
+      const { data: imagensDescData } = await supabase
+        .from('eventos_imagens_descricao')
+        .select('*')
+        .eq('evento_id', eventoId)
+        .order('ordem', { ascending: true });
+
+      if (imagensDescData && imagensDescData.length > 0) {
+        const imagensCarregadas = imagensDescData.map(img => ({
+          id: img.id,
+          preview: img.imagem_url,
+          textoAntes: img.texto_antes || '',
+          textoDepois: img.texto_depois || '',
+          existente: true // Marca como imagem já existente no BD
+        }));
+        setImagensDescricao(imagensCarregadas);
+      }
+
+      // CARREGAR SETORES DA SESSÃO ORIGINAL
+      const { data: sessaoOriginal } = await supabase
         .from('sessoes')
         .select('*')
         .eq('evento_id', eventoId)
-        .order('numero', { ascending: true });
+        .eq('is_original', true)
+        .single();
 
-      // CARREGAR INGRESSOS
+      if (!sessaoOriginal) {
+        console.warn('⚠️ Sessão original não encontrada');
+        setCarregando(false);
+        return;
+      }
+
+      // CARREGAR SETORES
+      const { data: setoresData } = await supabase
+        .from('setores')
+        .select('*')
+        .eq('eventos_id', eventoId)
+        .eq('sessao_id', sessaoOriginal.id);
+
+      // CARREGAR INGRESSOS DA SESSÃO ORIGINAL
       const { data: ingressosData } = await supabase
         .from('ingressos')
         .select('*')
         .eq('evento_id', eventoId)
+        .eq('sessao_id', sessaoOriginal.id)
         .order('setor', { ascending: true });
 
-      // CARREGAR LOTES
+      // CARREGAR LOTES DA SESSÃO ORIGINAL
       const { data: lotesData } = await supabase
         .from('lotes')
         .select('*')
-        .eq('evento_id', eventoId);
+        .eq('evento_id', eventoId)
+        .eq('sessao_id', sessaoOriginal.id);
+
+      console.log('📊 Setores:', setoresData);
+      console.log('🎫 Ingressos:', ingressosData);
+      console.log('📦 Lotes:', lotesData);
 
       // PROCESSAR SETORES E INGRESSOS
       const setoresMap = new Map();
 
-      ingressosData?.forEach(ing => {
-        if (!setoresMap.has(ing.setor)) {
-          setoresMap.set(ing.setor, {
-            id: `setor-${ing.setor}`,
-            nome: ing.setor,
+      // Criar estrutura de setores
+      setoresData?.forEach(setor => {
+        if (!setoresMap.has(setor.nome)) {
+          setoresMap.set(setor.nome, {
+            id: `setor-${setor.nome}-${Date.now()}`,
+            nome: setor.nome,
+            capacidadeDefinida: setor.capacidade_definida || null,
             usaLotes: false,
             lotes: [],
             tiposIngresso: []
@@ -303,6 +345,7 @@ export default function EditarEventoPage() {
         }
       });
 
+      // Verificar se usa lotes
       if (lotesData && lotesData.length > 0) {
         lotesData.forEach(lote => {
           const setor = setoresMap.get(lote.setor);
@@ -310,20 +353,21 @@ export default function EditarEventoPage() {
             setor.usaLotes = true;
             
             const loteObj = {
-              id: lote.id,
+              id: `lote-${lote.id}`,
               nome: lote.nome,
-              dataInicio: lote.data_inicio,
-              dataFim: lote.data_fim,
+              dataInicio: lote.data_inicio || '',
+              dataFim: lote.data_fim || '',
               tiposIngresso: []
             };
 
+            // Adicionar ingressos do lote
             ingressosData?.forEach(ing => {
               if (ing.lote_id === lote.id && ing.setor === lote.setor) {
                 loteObj.tiposIngresso.push({
-                  id: ing.id,
+                  id: `tipo-${ing.id}`,
                   nome: ing.tipo,
-                  preco: ing.valor,
-                  quantidade: ing.quantidade
+                  preco: parseFloat(ing.valor),
+                  quantidade: parseInt(ing.quantidade)
                 });
               }
             });
@@ -333,69 +377,24 @@ export default function EditarEventoPage() {
         });
       }
 
+      // Adicionar ingressos sem lote
       ingressosData?.forEach(ing => {
         if (ing.lote_id === null) {
           const setor = setoresMap.get(ing.setor);
           if (setor) {
             setor.tiposIngresso.push({
-              id: ing.id,
+              id: `tipo-${ing.id}`,
               nome: ing.tipo,
-              preco: ing.valor,
-              quantidade: ing.quantidade
+              preco: parseFloat(ing.valor),
+              quantidade: parseInt(ing.quantidade)
             });
           }
         }
       });
 
-      setSetoresIngressos(Array.from(setoresMap.values()));
-
-      // CARREGAR CUPONS
-      const { data: cuponsData } = await supabase
-        .from('cupons')
-        .select('*, cupons_ingressos(*), cupons_produtos(*)')
-        .eq('evento_id', eventoId);
-
-      if (cuponsData) {
-        const cuponsProcessados = cuponsData.map(cupom => {
-          const precosPorIngresso = {};
-          cupom.cupons_ingressos.forEach(ci => {
-            precosPorIngresso[`ingresso-${ci.ingresso_id}`] = ci.preco_com_cupom;
-          });
-
-          return {
-            id: cupom.id,
-            codigo: cupom.codigo,
-            descricao: cupom.descricao,
-            quantidadeTotal: cupom.quantidade_total,
-            dataInicio: cupom.data_validade_inicio,
-            dataFim: cupom.data_validade_fim,
-            precosPorIngresso
-          };
-        });
-        setCupons(cuponsProcessados);
-      }
-
-      // CARREGAR PRODUTOS
-      const { data: produtosData } = await supabase
-        .from('produtos')
-        .select('*')
-        .eq('evento_id', eventoId);
-
-      if (produtosData) {
-        const produtosProcessados = produtosData.map(prod => ({
-          id: prod.id,
-          nome: prod.nome,
-          descricao: prod.descricao,
-          preco: prod.preco,
-          quantidade: prod.quantidade_disponivel,
-          tamanho: prod.tamanho,
-          tipoProduto: prod.tipo_produto,
-          imagemUrl: prod.imagem_url,
-          aceitaCupons: false,
-          precosPorCupom: {}
-        }));
-        setProdutos(produtosProcessados);
-      }
+      const setoresArray = Array.from(setoresMap.values());
+      console.log('✅ Setores processados:', setoresArray);
+      setSetoresIngressos(setoresArray);
       
     } catch (error) {
       console.error('❌ Erro ao carregar evento:', error);
@@ -430,6 +429,56 @@ export default function EditarEventoPage() {
         setImagemPreview(e.target.result);
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handleImagemDescricaoChange = (e) => {
+    const files = Array.from(e.target.files);
+    
+    files.forEach(file => {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Imagem muito grande. Máximo 5MB por imagem.');
+        return;
+      }
+      
+      if (!file.type.match('image/jpeg') && !file.type.match('image/png') && !file.type.match('image/gif')) {
+        alert('Apenas JPG, PNG ou GIF são aceitos.');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagensDescricao(prev => [...prev, {
+          file: file,
+          preview: e.target.result,
+          textoAntes: '',
+          textoDepois: '',
+          existente: false
+        }]);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    e.target.value = '';
+  };
+
+  const atualizarTextoImagem = (index, field, value) => {
+    const novasImagens = [...imagensDescricao];
+    novasImagens[index][field] = value;
+    setImagensDescricao(novasImagens);
+  };
+
+  const removerImagemDescricao = (index) => {
+    setImagensDescricao(imagensDescricao.filter((_, i) => i !== index));
+  };
+
+  const moverImagemDescricao = (index, direction) => {
+    const novasImagens = [...imagensDescricao];
+    const novoIndex = direction === 'up' ? index - 1 : index + 1;
+    
+    if (novoIndex >= 0 && novoIndex < novasImagens.length) {
+      [novasImagens[index], novasImagens[novoIndex]] = [novasImagens[novoIndex], novasImagens[index]];
+      setImagensDescricao(novasImagens);
     }
   };
 
@@ -638,9 +687,9 @@ export default function EditarEventoPage() {
             />
           </div>
 
-          {/* IMAGEM */}
+          {/* IMAGEM PRINCIPAL */}
           <div className="form-group">
-            <label>Imagem do Evento</label>
+            <label>Imagem Principal do Evento</label>
             
             {imagemAtual && !imagemPreview && (
               <div style={{ marginBottom: '15px' }}>
@@ -686,100 +735,234 @@ export default function EditarEventoPage() {
               Deixe em branco para manter a imagem atual
             </small>
           </div>
+{/* IMAGENS DA DESCRIÇÃO */}
+      <div className="form-group">
+        <label>Imagens Adicionais na Descrição (opcional)</label>
+        <p style={{ fontSize: '13px', color: '#666', marginBottom: '10px' }}>
+          Adicione imagens com textos opcionais antes e depois de cada uma
+        </p>
+        
+        <input 
+          type="file" 
+          ref={imagemDescricaoInputRef} 
+          accept="image/jpeg,image/png,image/gif" 
+          onChange={handleImagemDescricaoChange}
+          multiple
+          style={{ display: 'none' }}
+        />
+        
+        <button 
+          type="button" 
+          onClick={() => imagemDescricaoInputRef.current.click()}
+          style={{
+            backgroundColor: '#4CAF50',
+            color: 'white',
+            border: 'none',
+            padding: '10px 20px',
+            borderRadius: '5px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            marginBottom: '15px'
+          }}
+        >
+          📸 Adicionar Imagens
+        </button>
 
-          <CategoriaSelector 
-            onCategoriasChange={setCategorias}
-            categoriasIniciais={categorias}
-          />
+        {imagensDescricao.map((img, index) => (
+          <div key={index} style={{ 
+            border: '1px solid #ddd', 
+            borderRadius: '6px', 
+            padding: '15px', 
+            marginBottom: '15px',
+            backgroundColor: img.existente ? '#f0f8ff' : '#f9f9f9'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <strong>Imagem {index + 1} {img.existente && '(Existente)'}</strong>
+              <div style={{ display: 'flex', gap: '5px' }}>
+                {index > 0 && (
+                  <button 
+                    type="button" 
+                    onClick={() => moverImagemDescricao(index, 'up')}
+                    style={{ padding: '5px 10px', fontSize: '12px', cursor: 'pointer' }}
+                  >
+                    ⬆️
+                  </button>
+                )}
+                {index < imagensDescricao.length - 1 && (
+                  <button 
+                    type="button" 
+                    onClick={() => moverImagemDescricao(index, 'down')}
+                    style={{ padding: '5px 10px', fontSize: '12px', cursor: 'pointer' }}
+                  >
+                    ⬇️
+                  </button>
+                )}
+                <button 
+                  type="button" 
+                  onClick={() => removerImagemDescricao(index)}
+                  style={{ 
+                    padding: '5px 10px', 
+                    fontSize: '12px', 
+                    backgroundColor: '#dc3545', 
+                    color: 'white', 
+                    border: 'none', 
+                    borderRadius: '4px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  🗑️
+                </button>
+              </div>
+            </div>
 
-          <div className="form-group">
-            <label>Nome do Local *</label>
-            <input
-              type="text"
-              name="localNome"
-              value={formData.localNome}
-              onChange={handleFormChange}
-              placeholder="Ex: Teatro Maria Della Costa"
-              required
+            <div style={{ marginBottom: '10px' }}>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>
+                Texto antes da imagem:
+              </label>
+              <textarea
+                value={img.textoAntes}
+                onChange={(e) => atualizarTextoImagem(index, 'textoAntes', e.target.value)}
+                placeholder="Texto que aparece antes da imagem (opcional)"
+                rows="2"
+                style={{ 
+                  width: '100%', 
+                  padding: '8px', 
+                  borderRadius: '4px', 
+                  border: '1px solid #ddd',
+                  fontSize: '14px'
+                }}
+              />
+            </div>
+
+            <img 
+              src={img.preview} 
+              alt={`Preview ${index + 1}`} 
+              style={{ 
+                width: '100%', 
+                maxHeight: '300px', 
+                objectFit: 'contain',
+                marginBottom: '10px',
+                borderRadius: '4px',
+                border: '1px solid #ddd'
+              }} 
             />
-          </div>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label>Cidade *</label>
-              <input
-                type="text"
-                name="cidade"
-                value={formData.cidade}
-                onChange={handleFormChange}
-                placeholder="Ex: São Paulo"
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Endereço do Local</label>
-              <input
-                type="text"
-                name="localEndereco"
-                value={formData.localEndereco}
-                onChange={handleFormChange}
-                placeholder="Ex: Rua Exemplo, 123"
+            <div>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>
+                Texto depois da imagem:
+              </label>
+              <textarea
+                value={img.textoDepois}
+                onChange={(e) => atualizarTextoImagem(index, 'textoDepois', e.target.value)}
+                placeholder="Texto que aparece depois da imagem (opcional)"
+                rows="2"
+                style={{ 
+                  width: '100%', 
+                  padding: '8px', 
+                  borderRadius: '4px', 
+                  border: '1px solid #ddd',
+                  fontSize: '14px'
+                }}
               />
             </div>
           </div>
+        ))}
+      </div>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label>Data do Evento *</label>
-              <input
-                type="date"
-                name="data"
-                value={formData.data}
-                onChange={handleFormChange}
-                required
-              />
-            </div>
+      <CategoriaSelector 
+        onCategoriasChange={setCategorias}
+        categoriasIniciais={categorias}
+      />
 
-            <div className="form-group">
-              <label>Horário *</label>
-              <input
-                type="time"
-                name="hora"
-                value={formData.hora}
-                onChange={handleFormChange}
-                required
-              />
-            </div>
-          </div>
+      <div className="form-group">
+        <label>Nome do Local *</label>
+        <input
+          type="text"
+          name="localNome"
+          value={formData.localNome}
+          onChange={handleFormChange}
+          placeholder="Ex: Teatro Maria Della Costa"
+          required
+        />
+      </div>
+
+      <div className="form-row">
+        <div className="form-group">
+          <label>Cidade *</label>
+          <input
+            type="text"
+            name="cidade"
+            value={formData.cidade}
+            onChange={handleFormChange}
+            placeholder="Ex: São Paulo"
+            required
+          />
         </div>
 
-        {/* CONFIGURAÇÕES */}
-        <div className="form-section">
-          <h2>Configurações</h2>
-          
-          <div className="form-group">
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={temLugarMarcado}
-                onChange={(e) => setTemLugarMarcado(e.target.checked)}
-              />
-              Evento com lugar marcado
-            </label>
-          </div>
+        <div className="form-group">
+          <label>Endereço do Local</label>
+          <input
+            type="text"
+            name="localEndereco"
+            value={formData.localEndereco}
+            onChange={handleFormChange}
+            placeholder="Ex: Rua Exemplo, 123"
+          />
+        </div>
+      </div>
 
-          <div className="form-group">
-            <label className="checkbox-label ">
-<input
-type="checkbox"
-checked={aparecerComoProdutor}
-onChange={(e) => setAparecerComoProdutor(e.target.checked)}
-/>
-Aparecer como produtor
-</label>
-</div>
-<SelecionarTaxa 
+      <div className="form-row">
+        <div className="form-group">
+          <label>Data do Evento *</label>
+          <input
+            type="date"
+            name="data"
+            value={formData.data}
+            onChange={handleFormChange}
+            required
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Horário *</label>
+          <input
+            type="time"
+            name="hora"
+            value={formData.hora}
+            onChange={handleFormChange}
+            required
+          />
+        </div>
+      </div>
+    </div>
+
+    {/* CONFIGURAÇÕES */}
+    <div className="form-section">
+      <h2>Configurações</h2>
+      
+      <div className="form-group">
+        <label className="checkbox-label">
+          <input
+            type="checkbox"
+            checked={temLugarMarcado}
+            onChange={(e) => setTemLugarMarcado(e.target.checked)}
+          />
+          <span style={{ marginLeft: '10px' }}>Evento com lugar marcado</span>
+        </label>
+      </div>
+
+      <div className="form-group" style={{ marginTop: '15px' }}>
+        <label className="checkbox-label">
+          <input
+            type="checkbox"
+            checked={aparecerComoProdutor}
+            onChange={(e) => setAparecerComoProdutor(e.target.checked)}
+          />
+          <span style={{ marginLeft: '10px' }}>Aparecer como produtor</span>
+        </label>
+      </div>
+
+      <SelecionarTaxa 
         onTaxaSelecionada={setTaxa}
         taxaInicial={taxa}
       />
@@ -788,34 +971,12 @@ Aparecer como produtor
     {/* SETORES E INGRESSOS */}
     <div className="form-section">
       <h2>Setores e Ingressos</h2>
-      <p style={{ color: '#666', fontSize: '14px', marginBottom: '15px' }}>
-        ⚠️ Alterações nos ingressos devem ser feitas com cuidado pois podem afetar vendas já realizadas
+      <p style={{ color: '#e74c3c', fontSize: '14px', marginBottom: '15px', padding: '10px', background: '#ffebee', borderRadius: '5px' }}>
+        ⚠️ <strong>ATENÇÃO:</strong> Alterações nos ingressos podem afetar vendas já realizadas. Edite com cuidado!
       </p>
       <SetorManager 
         onSetoresChange={setSetoresIngressos}
         setoresIniciais={setoresIngressos}
-      />
-    </div>
-
-    {/* CUPONS */}
-    {setoresIngressos.length > 0 && (
-      <div className="form-section">
-        <h2>Cupons de Desconto</h2>
-        <CupomManager 
-          setoresIngressos={setoresIngressos}
-          onCuponsChange={setCupons}
-          cuponsIniciais={cupons}
-        />
-      </div>
-    )}
-
-    {/* PRODUTOS */}
-    <div className="form-section">
-      <h2>Produtos Adicionais</h2>
-      <ProdutoManager 
-        onProdutosChange={setProdutos}
-        cupons={cupons}
-        produtosIniciais={produtos}
       />
     </div>
 
