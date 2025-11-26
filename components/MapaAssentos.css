@@ -1,0 +1,337 @@
+.mapa-assentos-container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: sans-serif;
+}
+
+/* Palco */
+.palco-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 40px;
+}
+
+.palco-visual {
+  background: linear-gradient(135deg, #8b4789 0%, #5d34a4 100%);
+  padding: 20px 80px;
+  border-radius: 0 0 100px 100px;
+  box-shadow: 0 4px 15px rgba(93, 52, 164, 0.3);
+  text-align: center;
+}
+
+.palco-icon {
+  font-size: 36px;
+  margin-bottom: 5px;
+}
+
+.palco-texto {
+  color: white;
+  font-size: 20px;
+  font-weight: bold;
+  letter-spacing: 2px;
+}
+
+/* Legenda */
+.legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: center;
+  margin-bottom: 30px;
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-radius: 10px;
+}
+
+.legenda-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.legenda-cor {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  border: 2px solid #ddd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.legenda-cor.disponivel {
+  background-color: #28a745;
+}
+
+.legenda-cor.ocupado {
+  background-color: #999;
+}
+
+.legenda-cor.selecionado {
+  background-color: #007bff;
+}
+
+.legenda-cor.pcd {
+  background-color: #00bcd4;
+  color: white;
+}
+
+.legenda-cor.acompanhante-pcd {
+  background-color: #0066cc;
+  color: white;
+}
+
+.legenda-cor.obeso {
+  background-color: #ff1493;
+}
+
+.legenda-cor.pmr {
+  background-color: #ffd700;
+}
+
+/* Layout do teatro */
+.teatr-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.setor {
+  background-color: white;
+  padding: 25px;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.setor-titulo {
+  text-align: center;
+  color: #5d34a4;
+  margin-bottom: 20px;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+/* Grade de assentos */
+.grade-assentos {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.fileira-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.label-fileira {
+  min-width: 30px;
+  text-align: center;
+  font-weight: bold;
+  font-size: 16px;
+  color: #333;
+}
+
+.assentos-wrapper {
+  display: flex;
+  gap: 5px;
+}
+
+/* Botões de assento */
+.assento {
+  width: 35px;
+  height: 35px;
+  border-radius: 6px;
+  border: 2px solid #ddd;
+  background-color: #e0e0e0;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: bold;
+  color: #333;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.assento:hover:not(:disabled) {
+  transform: scale(1.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 10;
+}
+
+/* Estados dos assentos */
+.assento.disponivel {
+  background-color: #28a745;
+  border-color: #1e7e34;
+  color: white;
+  cursor: pointer;
+}
+
+.assento.disponivel:hover {
+  background-color: #218838;
+}
+
+.assento.ocupado {
+  background-color: #999;
+  border-color: #777;
+  color: #555;
+  cursor: not-allowed;
+}
+
+.assento.selecionado {
+  background-color: #007bff;
+  border-color: #0056b3;
+  color: white;
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(0, 123, 255, 0.5);
+}
+
+/* Assentos especiais */
+.assento.pcd {
+  background-color: #00bcd4;
+  border-color: #0097a7;
+  color: white;
+  font-size: 16px;
+}
+
+.assento.acompanhante-pcd {
+  background-color: #0066cc;
+  border-color: #004d99;
+  color: white;
+  font-size: 16px;
+}
+
+.assento.obeso {
+  background-color: #ff1493;
+  border-color: #c71067;
+  color: white;
+}
+
+.assento.pmr {
+  background-color: #ffd700;
+  border-color: #ccac00;
+  color: #333;
+}
+
+/* Tooltip */
+.tooltip-assento {
+  background-color: rgba(0, 0, 0, 0.85);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+  z-index: 1000;
+  white-space: nowrap;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* Numeração inferior */
+.numeracao-inferior {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 2px dashed #ddd;
+}
+
+.numeros-wrapper {
+  display: flex;
+  gap: 5px;
+}
+
+.numero-coluna {
+  width: 35px;
+  text-align: center;
+  font-size: 11px;
+  font-weight: bold;
+  color: #666;
+}
+
+/* Resumo da seleção */
+.resumo-selecao {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background-color: white;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  max-width: 300px;
+  z-index: 100;
+}
+
+.resumo-selecao h3 {
+  margin-top: 0;
+  color: #5d34a4;
+  font-size: 18px;
+}
+
+.lista-selecionados {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.badge-assento {
+  background-color: #007bff;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 5px;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+/* Loading */
+.loading-mapa {
+  text-align: center;
+  padding: 50px;
+  font-size: 18px;
+  color: #666;
+}
+
+/* Responsivo */
+@media (max-width: 768px) {
+  .mapa-assentos-container {
+    padding: 10px;
+  }
+
+  .palco-visual {
+    padding: 15px 50px;
+  }
+
+  .palco-texto {
+    font-size: 16px;
+  }
+
+  .legenda {
+    gap: 10px;
+    padding: 15px;
+  }
+
+  .assento {
+    width: 28px;
+    height: 28px;
+    font-size: 9px;
+  }
+
+  .numero-coluna {
+    width: 28px;
+    font-size: 9px;
+  }
+
+  .resumo-selecao {
+    bottom: 10px;
+    right: 10px;
+    left: 10px;
+    max-width: none;
+  }
+}
