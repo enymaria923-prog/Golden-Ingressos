@@ -283,7 +283,7 @@ export default function EditarEventoPage() {
           preview: img.imagem_url,
           textoAntes: img.texto_antes || '',
           textoDepois: img.texto_depois || '',
-          existente: true // Marca como imagem já existente no BD
+          existente: true
         }));
         setImagensDescricao(imagensCarregadas);
       }
@@ -509,7 +509,7 @@ export default function EditarEventoPage() {
     let uploadedFilePath = null;
 
     try {
-      // UPLOAD DE NOVA IMAGEM (SE HOUVER)
+      // ====== UPLOAD DE NOVA IMAGEM PRINCIPAL ======
       if (novaImagem) {
         console.log('📤 Fazendo upload da nova imagem...');
         
@@ -527,7 +527,6 @@ export default function EditarEventoPage() {
           });
 
         if (uploadError) {
-          console.error('❌ Erro no upload:', uploadError);
           throw new Error(`Erro ao fazer upload da imagem: ${uploadError.message}`);
         }
 
@@ -538,17 +537,16 @@ export default function EditarEventoPage() {
         publicUrl = publicUrlData.publicUrl;
         console.log('✅ Nova imagem uploaded:', publicUrl);
         
-        // Remove a imagem antiga se houver
+        // Remove a imagem antiga
         if (imagemAtual && imagemAtual.includes('imagens_eventos')) {
           const oldPath = imagemAtual.split('/imagens_eventos/')[1];
           if (oldPath) {
             await supabase.storage.from('imagens_eventos').remove([oldPath]);
-            console.log('🗑️ Imagem antiga removida');
           }
         }
       }
 
-      // ATUALIZAR EVENTO
+      // ====== ATUALIZAR EVENTO ======
       const eventData = {
         nome: formData.titulo,
         descricao: formData.descricao,
@@ -574,168 +572,420 @@ export default function EditarEventoPage() {
         .eq('id', eventoId);
 
       if (updateError) {
-        console.error('❌ Erro na atualização:', updateError);
-        
-        if (uploadedFilePath) {
-          await supabase.storage.from('imagens_eventos').remove([uploadedFilePath]);
-        }
-        
         throw new Error(`Erro ao atualizar evento: ${updateError.message}`);
       }
-      
-      console.log('✅ Evento atualizado com sucesso!');
-      alert('✅ Evento atualizado com sucesso!');
-      router.push('/admin/bokunohero');
 
-    } catch (error) {
-      console.error('💥 Erro ao salvar:', error);
-      alert(`❌ Erro ao atualizar evento: ${error.message}`);
-    } finally {
-      setSalvando(false);
+      // ====== ATUALIZAR IMAGENS DA DESCRIÇÃO ======
+      console.log('🖼️ Atualizando imagens da descrição...');
+
+      // 1. DELETAR todas as imagens antigas do BD
+      await supabase
+        .from('eventos_imagens_descricao')
+        .delete()
+        .eq('evento_id', eventoId);
+
+      // 2. INSERIR novas imagens
+      if (imagensDescricao.length > 0) {
+        const imagensParaSalvar = [];
+
+        for (let i = 0; i < imagensDescricao.length; i++) {
+          const img = imagensDescricao[i];
+          let imagemUrl = img.preview;
+
+          // Se é uma imagem NOVA (tem file), fazer upload
+          if (img.file && !img.existente) {
+            const fileExtension = img.file.name.split('.').pop();
+            const timestamp = Date.now();
+            const randomStr = Math.random().toString(36).substring(7);
+            const filePath = `eventos/${evento.user_id}/descricao/${timestamp}-${i}-${randomStr}.${fileExtension}`;
+
+            const { error: uploadDescError } = await supabase.storage
+              .from('imagens_eventos')
+              .upload(filePath, img.file, { 
+                cacheControl: '3600', 
+                upsert: false 
+              });
+
+            if (uploadDescError) {
+              console.error('Erro ao fazer upload da imagem descrição:', uploadDescError);
+              continue;
+            }
+
+            const { data: publicDescUrlData } = supabase.storage
+              .from('imagens_eventos')
+              .getPublicUrl(filePath);
+            
+            imagemUrl = publicDescUrlData.publicUrl;
+          }
+
+          imagensParaSalvar.push({
+            evento_id: eventoId,
+            imagem_url: imagemUrl,
+            texto_antes: img.textoAntes || null,
+            texto_depois: img.textoDepois || null,
+            ordem: i
+          });
+        }
+
+        if (imagensParaSalvar.length > 0) {
+          const { error: imagensError } = await supabase
+            .from('eventos_imagens_descricao')
+            .insert(imagensParaSalvar);
+
+          if (imagensError) {
+            console.error('Erro ao salvar imagens da descrição:', imagensError);
+          } else {
+            console.log(`✅ ${imagensParaSalvar.length} imagens da descrição salvas`);
+          }
+        }
+      }
+
+      // ====== ATUALIZAR SETORES E INGRESSOS ======
+      console.log('🎫 Atualizando setores e ingressos...');
+
+      // BUSCAR SESSÃO ORIGINAL
+      const { data: sessaoOriginal } = await supabase
+        .from('sessoes')
+        .select('*')
+        .eq('evento_id', eventoId)
+        .eq('is_original', true)
+        .single();
+
+      if (!sessaoOriginal) {
+        throw new Error('Sessão original não encontrada');
+      }
+
+      // 1. DELETAR todos os ingressos antigos da sessão original
+      await supabase
+        .from('ingressos')
+        .delete()
+        .eq('evento_id', eventoId)
+        .eq('sessao_id', sessaoOriginal.id);
+
+      // 2. DELETAR todos os lotes antigos da sessão original
+      await supabase
+        .from('lotes')
+        .delete()
+        .eq('evento_id', eventoId)
+        .eq('sessao_id', sessaoOriginal.id);
+
+      // 3. DELETAR todos os setores antigos da sessão original
+      await supabase
+        .from('setores')
+        .delete()
+        .eq('eventos_id', eventoId)
+        .eq('sessao_id', sessaoOriginal.id);
+
+      // 4. INSERIR NOVOS SETORES E INGRESSOS
+      const lotesMap = new Map();
+
+      for (const setor of setoresIngressos) {
+        // Calcular capacidade
+        let capacidadeCalculada = 0;
+        
+        if (setor.usaLotes) {
+          setor.lotes?.forEach(lote => {
+            lote.tiposIngresso?.forEach(tipo => {
+              const temNome = tipo.nome && tipo.nome.trim() !== '';
+              const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
+              if (temNome && temPreco) {
+                capacidadeCalculada += tipo.quantidade ? parseInt(tipo.quantidade) : 0;
+              }
+            });
+          });
+        } else {
+          setor.tiposIngresso?.forEach(tipo => {
+            const temNome = tipo.nome && tipo.nome.trim() !== '';
+            const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
+            if (temNome && temPreco) {
+              capacidadeCalculada += tipo.quantidade ? parseInt(tipo.quantidade) : 0;
+            }
+          });
+        }
+
+        // INSERIR SETOR
+        const { error: setorError } = await supabase
+          .from('setores')
+          .insert([{
+            eventos_id: eventoId,
+            sessao_id: sessaoOriginal.id,
+            nome: setor.nome,
+            capacidade_calculada: capacidadeCalculada,
+            capacidade_definida: setor.capacidadeDefinida || null
+          }]);
+
+        if (setorError) {
+          console.error('Erro ao inserir setor:', setorError);
+          continue;
+        }
+
+        // INSERIR LOTES (se usar lotes)
+        if (setor.usaLotes && setor.lotes && setor.lotes.length > 0) {
+          for (const lote of setor.lotes) {
+            let quantidadeTotalLote = 0;
+            
+            lote.tiposIngresso?.forEach(tipo => {
+              const temNome = tipo.nome && tipo.nome.trim() !== '';
+              const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
+              if (temNome && temPreco) {
+            quantidadeTotalLote += tipo.quantidade ? parseInt(tipo.quantidade) : 0;
+          }
+        });
+
+        const loteData = {
+          evento_id: eventoId,
+          sessao_id: sessaoOriginal.id,
+          setor: setor.nome,
+          nome: lote.nome,
+          quantidade_total: quantidadeTotalLote,
+          quantidade_vendida: 0,
+          data_inicio: lote.dataInicio || null,
+          data_fim: lote.dataFim || null,
+          ativo: true,
+          user_id: evento.user_id
+        };
+
+        const { data: loteInserido, error: loteError } = await supabase
+          .from('lotes')
+          .insert([loteData])
+          .select();
+
+        if (loteError) {
+          console.error('Erro ao inserir lote:', loteError);
+          continue;
+        }
+
+        lotesMap.set(lote.id, loteInserido[0].id);
+      }
     }
-  };
-
-  const cancelar = () => {
-    if (confirm('Deseja realmente cancelar? As alterações não salvas serão perdidas.')) {
-      router.push('/admin/bokunohero');
-    }
-  };
-
-  if (carregando) {
-    return (
-      <div className="admin-container" style={{ textAlign: 'center', padding: '50px' }}>
-        <h2>Carregando evento...</h2>
-      </div>
-    );
   }
 
-  if (!evento) {
-    return (
-      <div className="admin-container" style={{ textAlign: 'center', padding: '50px' }}>
-        <h2>Evento não encontrado</h2>
-        <button onClick={() => router.push('/admin/bokunohero')} className="btn-submit">
-          Voltar ao Admin
-        </button>
-      </div>
-    );
-  }
+  // INSERIR INGRESSOS
+  const ingressosParaSalvar = [];
+  let contadorIngresso = 0;
 
-  return (
-    <div className="publicar-evento-container">
-      <div className="edit-header" style={{ 
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        padding: '20px',
-        borderRadius: '10px',
-        marginBottom: '20px',
-        color: 'white'
-      }}>
-        <h1>✏️ Editar Evento - Admin</h1>
-        <p style={{ margin: '10px 0 0 0', opacity: 0.9 }}>
-          ID: {eventoId} | Produtor: {evento.user_id}
-        </p>
+  setoresIngressos.forEach((setor) => {
+    if (setor.usaLotes) {
+      setor.lotes?.forEach((lote) => {
+        lote.tiposIngresso?.forEach((tipo) => {
+          const temNome = tipo.nome && tipo.nome.trim() !== '';
+          const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
+          
+          if (temNome && temPreco) {
+            const quantidade = tipo.quantidade ? parseInt(tipo.quantidade) : 0;
+            const preco = parseFloat(tipo.preco);
+            const loteIdReal = lotesMap.get(lote.id);
+            const codigo = Date.now() + contadorIngresso;
+            
+            ingressosParaSalvar.push({
+              evento_id: eventoId,
+              sessao_id: sessaoOriginal.id,
+              setor: setor.nome,
+              lote_id: loteIdReal,
+              tipo: tipo.nome,
+              valor: preco.toString(),
+              quantidade: quantidade,
+              vendidos: 0,
+              status_ingresso: 'disponivel',
+              user_id: evento.user_id,
+              codigo: codigo
+            });
+            
+            contadorIngresso++;
+          }
+        });
+      });
+    } else {
+      setor.tiposIngresso?.forEach((tipo) => {
+        const temNome = tipo.nome && tipo.nome.trim() !== '';
+        const temPreco = tipo.preco && parseFloat(tipo.preco) > 0;
+        
+        if (temNome && temPreco) {
+          const quantidade = tipo.quantidade ? parseInt(tipo.quantidade) : 0;
+          const preco = parseFloat(tipo.preco);
+          const codigo = Date.now() + contadorIngresso;
+          
+          ingressosParaSalvar.push({
+            evento_id: eventoId,
+            sessao_id: sessaoOriginal.id,
+            setor: setor.nome,
+            lote_id: null,
+            tipo: tipo.nome,
+            valor: preco.toString(),
+            quantidade: quantidade,
+            vendidos: 0,
+            status_ingresso: 'disponivel',
+            user_id: evento.user_id,
+            codigo: codigo
+          });
+          
+          contadorIngresso++;
+        }
+      });
+    }
+  });
+
+  if (ingressosParaSalvar.length > 0) {
+    const { error: ingressosError } = await supabase
+      .from('ingressos')
+      .insert(ingressosParaSalvar);
+
+    if (ingressosError) {
+      console.error('Erro ao salvar ingressos:', ingressosError);
+    } else {
+      console.log(`✅ ${ingressosParaSalvar.length} ingressos salvos!`);
+    }
+  }
+  
+  console.log('✅ Evento atualizado com sucesso!');
+  alert('✅ Evento atualizado com sucesso!');
+  router.push('/admin/bokunohero');
+
+} catch (error) {
+  console.error('💥 Erro ao salvar:', error);
+  alert(`❌ Erro ao atualizar evento: ${error.message}`);
+} finally {
+  setSalvando(false);
+}
+    };
+const cancelar = () => {
+if (confirm('Deseja realmente cancelar? As alterações não salvas serão perdidas.')) {
+router.push('/admin/bokunohero');
+}
+};
+if (carregando) {
+return (
+<div className="admin-container" style={{ textAlign: 'center', padding: '50px' }}>
+<h2>Carregando evento...</h2>
+</div>
+);
+}
+if (!evento) {
+return (
+<div className="admin-container" style={{ textAlign: 'center', padding: '50px' }}>
+<h2>Evento não encontrado</h2>
+<button onClick={() => router.push('/admin/bokunohero')} className="btn-submit">
+Voltar ao Admin
+</button>
+</div>
+);
+}
+return (
+<div className="publicar-evento-container">
+<div className="edit-header" style={{
+background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+padding: '20px',
+borderRadius: '10px',
+marginBottom: '20px',
+color: 'white'
+}}>
+<h1>✏️ Editar Evento - Admin</h1>
+<p style={{ margin: '10px 0 0 0', opacity: 0.9 }}>
+ID: {eventoId} | Produtor: {evento.user_id}
+</p>
+</div>
+<form onSubmit={handleSubmit}>
+    {/* STATUS DO EVENTO */}
+    <div className="form-section">
+      <h2>Status do Evento</h2>
+      <div className="form-group">
+        <label>Status Atual:</label>
+        <select 
+          name="status" 
+          value={formData.status}
+          onChange={handleFormChange}
+          style={{ 
+            padding: '12px',
+            fontSize: '16px',
+            borderRadius: '8px',
+            border: '2px solid #ddd'
+          }}
+        >
+          <option value="pendente">⏳ Pendente</option>
+          <option value="aprovado">✅ Aprovado</option>
+          <option value="rejeitado">❌ Rejeitado</option>
+        </select>
       </div>
+    </div>
+
+    {/* INFORMAÇÕES BÁSICAS */}
+    <div className="form-section">
+      <h2>Informações Básicas</h2>
       
-      <form onSubmit={handleSubmit}>
-        {/* STATUS DO EVENTO */}
-        <div className="form-section">
-          <h2>Status do Evento</h2>
-          <div className="form-group">
-            <label>Status Atual:</label>
-            <select 
-              name="status" 
-              value={formData.status}
-              onChange={handleFormChange}
+      <div className="form-group">
+        <label>Título do Evento *</label>
+        <input
+          type="text"
+          name="titulo"
+          value={formData.titulo}
+          onChange={handleFormChange}
+          placeholder="Ex: Show da Banda X"
+          required
+        />
+      </div>
+
+      <div className="form-group">
+        <label>Descrição do Evento *</label>
+        <textarea
+          name="descricao"
+          value={formData.descricao}
+          onChange={handleFormChange}
+          placeholder="Descreva o evento..."
+          rows="5"
+          required
+        />
+      </div>
+
+      {/* IMAGEM PRINCIPAL */}
+      <div className="form-group">
+        <label>Imagem Principal do Evento</label>
+        
+        {imagemAtual && !imagemPreview && (
+          <div style={{ marginBottom: '15px' }}>
+            <p style={{ fontWeight: 'bold', marginBottom: '10px' }}>Imagem Atual:</p>
+            <img 
+              src={imagemAtual} 
+              alt="Imagem atual" 
               style={{ 
-                padding: '12px',
-                fontSize: '16px',
+                maxWidth: '300px', 
                 borderRadius: '8px',
                 border: '2px solid #ddd'
-              }}
-            >
-              <option value="pendente">⏳ Pendente</option>
-              <option value="aprovado">✅ Aprovado</option>
-              <option value="rejeitado">❌ Rejeitado</option>
-            </select>
-          </div>
-        </div>
-
-        {/* INFORMAÇÕES BÁSICAS */}
-        <div className="form-section">
-          <h2>Informações Básicas</h2>
-          
-          <div className="form-group">
-            <label>Título do Evento *</label>
-            <input
-              type="text"
-              name="titulo"
-              value={formData.titulo}
-              onChange={handleFormChange}
-              placeholder="Ex: Show da Banda X"
-              required
+              }} 
             />
           </div>
+        )}
 
-          <div className="form-group">
-            <label>Descrição do Evento *</label>
-            <textarea
-              name="descricao"
-              value={formData.descricao}
-              onChange={handleFormChange}
-              placeholder="Descreva o evento..."
-              rows="5"
-              required
-            />
-          </div>
-
-          {/* IMAGEM PRINCIPAL */}
-          <div className="form-group">
-            <label>Imagem Principal do Evento</label>
-            
-            {imagemAtual && !imagemPreview && (
-              <div style={{ marginBottom: '15px' }}>
-                <p style={{ fontWeight: 'bold', marginBottom: '10px' }}>Imagem Atual:</p>
-                <img 
-                  src={imagemAtual} 
-                  alt="Imagem atual" 
-                  style={{ 
-                    maxWidth: '300px', 
-                    borderRadius: '8px',
-                    border: '2px solid #ddd'
-                  }} 
-                />
-              </div>
-            )}
-
-            {imagemPreview && (
-              <div className="image-preview-container" style={{ marginBottom: '15px' }}>
-                <p style={{ fontWeight: 'bold', color: '#4caf50' }}>✨ Nova Imagem:</p>
-                <img src={imagemPreview} alt="Preview" className="image-preview" />
-                <button type="button" onClick={removerNovaImagem} className="btn-remove-image">
-                  Cancelar Nova Imagem
-                </button>
-              </div>
-            )}
-
-            <input
-              type="file"
-              ref={fileInputRef}
-              accept="image/jpeg,image/png,image/gif"
-              onChange={handleImageChange}
-              style={{ display: 'none' }}
-            />
-            <button 
-              type="button" 
-              onClick={handleClickUpload}
-              className="btn-submit"
-              style={{ background: '#2196F3', marginTop: '10px' }}
-            >
-              📷 {imagemPreview ? 'Escolher Outra Imagem' : 'Alterar Imagem'}
+        {imagemPreview && (
+          <div className="image-preview-container" style={{ marginBottom: '15px' }}>
+            <p style={{ fontWeight: 'bold', color: '#4caf50' }}>✨ Nova Imagem:</p>
+            <img src={imagemPreview} alt="Preview" className="image-preview" />
+            <button type="button" onClick={removerNovaImagem} className="btn-remove-image">
+              Cancelar Nova Imagem
             </button>
-            <small style={{ display: 'block', marginTop: '5px' }}>
-              Deixe em branco para manter a imagem atual
-            </small>
           </div>
-{/* IMAGENS DA DESCRIÇÃO */}
+        )}
+
+        <input
+          type="file"
+          ref={fileInputRef}
+          accept="image/jpeg,image/png,image/gif"
+          onChange={handleImageChange}
+          style={{ display: 'none' }}
+        />
+        <button 
+          type="button" 
+          onClick={handleClickUpload}
+          className="btn-submit"
+          style={{ background: '#2196F3', marginTop: '10px' }}
+        >
+          📷 {imagemPreview ? 'Escolher Outra Imagem' : 'Alterar Imagem'}
+        </button>
+        <small style={{ display: 'block', marginTop: '5px' }}>
+          Deixe em branco para manter a imagem atual
+        </small>
+      </div>
+
+      {/* IMAGENS DA DESCRIÇÃO */}
       <div className="form-group">
         <label>Imagens Adicionais na Descrição (opcional)</label>
         <p style={{ fontSize: '13px', color: '#666', marginBottom: '10px' }}>
@@ -971,8 +1221,8 @@ export default function EditarEventoPage() {
     {/* SETORES E INGRESSOS */}
     <div className="form-section">
       <h2>Setores e Ingressos</h2>
-      <p style={{ color: '#e74c3c', fontSize: '14px', marginBottom: '15px', padding: '10px', background: '#ffebee', borderRadius: '5px' }}>
-        ⚠️ <strong>ATENÇÃO:</strong> Alterações nos ingressos podem afetar vendas já realizadas. Edite com cuidado!
+      <p style={{ color: '#ff9800', fontSize: '14px', marginBottom: '15px', padding: '10px', background: '#fff3e0', borderRadius: '5px' }}>
+        ℹ️ <strong>Informação:</strong> Alterações na quantidade de ingressos afetam apenas os ingressos disponíveis para novas vendas. Os ingressos já vendidos não são afetados.
       </p>
       <SetorManager 
         onSetoresChange={setSetoresIngressos}
