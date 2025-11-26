@@ -325,6 +325,36 @@ export default function AdminPage() {
                     <p><strong>📍 Local:</strong> {evento.local}</p>
                     <p><strong>👤 Produtor:</strong> {produtor?.nome_completo || evento.produtor_nome || evento.user_id}</p>
                     <p><strong>🆔 ID do Evento:</strong> {evento.id}</p>
+            <div className="card-info">
+                    <p><strong>📅 Data:</strong> {evento.data} às {evento.hora}</p>
+                    <p><strong>📍 Local:</strong> {evento.local}</p>
+                    <p><strong>👤 Produtor:</strong> {produtor?.nome_completo || evento.produtor_nome || evento.user_id}</p>
+                    <p><strong>🆔 ID do Evento:</strong> {evento.id}</p>
+                    
+                    {/* Aviso de lugar marcado */}
+                    {evento.tem_lugar_marcado && (
+                      <div style={{ 
+                        marginTop: '10px', 
+                        padding: '12px', 
+                        backgroundColor: evento.teatro_id ? '#e8f5e9' : '#fff3cd', 
+                        border: `2px solid ${evento.teatro_id ? '#4caf50' : '#ffc107'}`,
+                        borderRadius: '6px' 
+                      }}>
+                        <p style={{ margin: 0, fontWeight: 'bold', color: '#333' }}>
+                          🎫 Evento com Lugar Marcado
+                        </p>
+                        {evento.teatro_id ? (
+                          <p style={{ margin: '5px 0 0 0', fontSize: '13px', color: '#666' }}>
+                            ✅ Mapa pronto: {evento.teatro_id}
+                          </p>
+                        ) : (
+                          <p style={{ margin: '5px 0 0 0', fontSize: '13px', color: '#856404' }}>
+                            ⚠️ Teatro: <strong>{evento.nome_teatro_personalizado || 'Não especificado'}</strong> - Mapa pendente de criação
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
                   </div>
 
                   <button 
