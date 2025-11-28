@@ -710,7 +710,7 @@ export default function EventoPage() {
         )}
 
         {evento.tem_lugar_marcado && teatroConfig ? (
-          <div style={{ backgroundColor: 'white', padding: '40px', borderRadius ': '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', marginBottom: '40px' }}>
+          <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', marginBottom: '40px' }}>
             <h2 style={{ color: '#5d34a4', marginTop: 0, fontSize: '32px', marginBottom: '10px', textAlign: 'center' }}>
               🪑 Ingressos
             </h2>
