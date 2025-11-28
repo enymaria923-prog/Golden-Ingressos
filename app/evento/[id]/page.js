@@ -705,16 +705,15 @@ export default function EventoPage() {
 
         {/* AVISO SE TEM LUGAR MARCADO MAS SEM MAPA */}
         {temLugarMarcadoSemMapa && (
-          <div style={{ 
+        <div style={{ 
             backgroundColor: '#fff3cd', 
             padding: '30px', 
             borderRadius: '12px', 
-            boxShadow: '0 2px
-              10px rgba(0,0,0,0.1)',
-marginBottom: '40px',
-border: '2px solid #ffc107',
-textAlign: 'center'
-}}>
+            boxShadow: '0 2px 10px rgba(0,0,0,0.1)', 
+            marginBottom: '40px',
+            border: '2px solid #ffc107',
+            textAlign: 'center'
+          }}>
 <h3 style={{ color: '#856404', marginTop: 0, fontSize: '24px', marginBottom: '15px' }}>
 ⚠️ Mapa de Assentos em Preparação
 </h3>
