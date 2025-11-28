@@ -1328,8 +1328,8 @@ gap: '15px'
 </h4>
 <p style={{ margin: 0, fontSize: '13px', color: ingressosDisponiveis > 0 ? '#999' : '#dc3545' }}>
 {ingressosDisponiveis > 0
-? ${ingressosDisponiveis} disponíveis`
-: '❌ Esgotado'}
+  ? `${ingressosDisponiveis} disponíveis`
+  : '❌ Esgotado'}
 </p>
 </div>
 <div style={{ textAlign: 'right', marginRight: '20px' }}>
