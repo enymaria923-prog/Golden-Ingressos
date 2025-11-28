@@ -1294,8 +1294,9 @@ O mapa interativo de assentos estará disponível em breve. Por enquanto, você 
                                     fontWeight: 'bold',
                                     cursor: 'pointer',
                                     backgroundColor: 'white'
-                                  }}
-                                <option value="0">0</option>
+                                 }}
+                                >
+                                  <option value="0">0</option>
                                   {[...Array(Math.min(10, ingressosDisponiveis))].map((_, i) => (
                                     <option key={i + 1} value={i + 1}>{i + 1}</option>
                                   ))}
