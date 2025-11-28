@@ -1285,6 +1285,7 @@ export default function EventoPage() {
                                   )}
                                   <div style={{ fontSize: '14px', color: '#666', marginBottom: '3px' }}>
                                     R$ {precoComCupom.toFixed(2)} + R$ {valorTaxa.toFixed(2)} (taxa)
+                                      </div>
                                   <div style={{ fontSize: '22px', fontWeight: 'bold', color: temDesconto ? '#28a745' : '#27ae60' }}>
 R$ {valorTotal.toFixed(2)}
                               </div>
