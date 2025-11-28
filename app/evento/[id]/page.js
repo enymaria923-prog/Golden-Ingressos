@@ -710,9 +710,9 @@ export default function EventoPage() {
         )}
 
         {evento.tem_lugar_marcado && teatroConfig ? (
-          <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', marginBottom: '40px' }}>
-            <h2 style={{ color: '#5d34a4', marginTop: 0, fontSize: '32px', marginBottom: '10px', textAlign: 'center' }}>
-              🪑 Ingressos
+<div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', marginBottom: '40px' }}>
+<h2 style={{ color: '#5d34a4', marginTop: 0, fontSize: '32px', marginBottom: '10px', textAlign: 'center' }}>
+🪑 Ingressos
 </h2>
 <p style={{ textAlign: 'center', color: '#666', fontSize: '16px', marginBottom: '30px' }}>
 A partir de <span style={{ fontSize: '24px', fontWeight: 'bold', color: '#27ae60' }}>
@@ -1306,9 +1306,8 @@ R$ {precoMaisBaixo.toFixed(2)}
                         const taxaCliente = evento.TaxaCliente || 15;
                         const valorTaxa = precoComCupom * (taxaCliente / 100);
                         const valorTotal = precoComCupom + valorTaxa;
-                        const quantidadeNoCarrinho = carrinho[ingresso.id] || 0;
-
-                        return (
+                        const quantidadeNoCarrinho = carrinho[ingresso.id] || 0; 
+return (
                           <div key={ingresso.id} style={{ 
                             display: 'flex', 
                             justifyContent: 'space-between', 
@@ -1317,22 +1316,23 @@ R$ {precoMaisBaixo.toFixed(2)}
                             backgroundColor: temDesconto ? '#d4edda' : '#fafafa',
                             borderRadius: '8px',
                             marginBottom: '12px',
-                            border: temDesconto? '2px solid #28a745' : '1px solid #e0e0e0',
-flexWrap: 'wrap',
-gap: '15px'
-}}>
-<div style={{ flex: 1, minWidth: '200px' }}>
-<h4 style={{ margin: 0, fontSize: '18px', color: '#2c3e50', marginBottom: '5px' }}>
-{ingresso.tipo}
-{temDesconto && <span style={{ color: '#28a745', marginLeft: '10px', fontSize: '14px' }}>🎟️ COM DESCONTO</span>}
-</h4>
-<p style={{ margin: 0, fontSize: '13px', color: ingressosDisponiveis > 0 ? '#999' : '#dc3545' }}>
-{ingressosDisponiveis > 0
-  ? `${ingressosDisponiveis} disponíveis`
-  : '❌ Esgotado'}
-</p>
-</div>
-<div style={{ textAlign: 'right', marginRight: '20px' }}>
+                            border: temDesconto ? '2px solid #28a745' : '1px solid #e0e0e0',
+                            flexWrap: 'wrap',
+                            gap: '15px'
+                          }}>
+                            <div style={{ flex: 1, minWidth: '200px' }}>
+                              <h4 style={{ margin: 0, fontSize: '18px', color: '#2c3e50', marginBottom: '5px' }}>
+                                {ingresso.tipo}
+                                {temDesconto && <span style={{ color: '#28a745', marginLeft: '10px', fontSize: '14px' }}>🎟️ COM DESCONTO</span>}
+                              </h4>
+                              <p style={{ margin: 0, fontSize: '13px', color: ingressosDisponiveis > 0 ? '#999' : '#dc3545' }}>
+                                {ingressosDisponiveis > 0
+                                  ? `${ingressosDisponiveis} disponíveis`
+                                  : '❌ Esgotado'}
+                              </p>
+                            </div>
+
+                            <div style={{ textAlign: 'right', marginRight: '20px' }}>
                               {temDesconto && (
                                 <div style={{ fontSize: '13px', color: '#999', textDecoration: 'line-through', marginBottom: '3px' }}>
                                   R$ {precoBase.toFixed(2)}
