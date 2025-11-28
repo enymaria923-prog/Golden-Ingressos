@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { createClient } from '../../../utils/supabase/client';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import MapaAssentos from '../../../components/MapaAssentos';
+import { getTeatroConfig } from '../../../utils/teatros-config';
 
 export default function EventoPage() {
   const supabase = createClient();
@@ -23,6 +25,12 @@ export default function EventoPage() {
   const [cupomAplicado, setCupomAplicado] = useState(null);
   const [mensagemCupom, setMensagemCupom] = useState('');
   const [carrinho, setCarrinho] = useState({});
+
+  // Estados específicos para lugar marcado
+  const [assentosSelecionados, setAssentosSelecionados] = useState([]);
+  const [setorSelecionadoMapa, setSetorSelecionadoMapa] = useState(null);
+  const [etapaAtual, setEtapaAtual] = useState('escolher_setor'); // 'escolher_setor', 'selecionar_assentos', 'escolher_ingressos'
+  const [tiposIngressoPorAssento, setTiposIngressoPorAssento] = useState({});
 
   useEffect(() => {
     carregarDados();
@@ -57,7 +65,7 @@ export default function EventoPage() {
         setSessaoSelecionada(sessoesData[0].id);
       }
 
-      // 🔧 BUSCAR TODOS OS DADOS NECESSÁRIOS
+      // Buscar todos os dados necessários
       const { data: todosIngressos } = await supabase
         .from('ingressos')
         .select('*')
@@ -73,18 +81,10 @@ export default function EventoPage() {
         .select('*')
         .eq('evento_id', id);
 
-      console.log('📊 DADOS RECEBIDOS DO BANCO:', {
-        ingressos: todosIngressos,
-        setores: setoresData,
-        lotes: lotesData
-      });
-
-      // 🔧 PROCESSAR CADA INGRESSO COM HIERARQUIA CORRETA
+      // Processar ingressos com hierarquia correta
       const ingressosProcessados = (todosIngressos || []).map(ingresso => {
         let quantidadeDisponivel = 0;
         let origem = '';
-
-        console.log(`\n🎫 ${ingresso.tipo} (Setor: ${ingresso.setor})`);
 
         // PRIORIDADE 1: Ingresso tem quantidade própria?
         if (ingresso.quantidade && parseInt(ingresso.quantidade) > 0) {
@@ -92,7 +92,6 @@ export default function EventoPage() {
           const qtdVendida = parseInt(ingresso.vendidos) || 0;
           quantidadeDisponivel = qtdTotal - qtdVendida;
           origem = 'INGRESSO';
-          console.log(`   ✅ ${origem}: total=${qtdTotal}, vendidos=${qtdVendida}, disponível=${quantidadeDisponivel}`);
         }
         // PRIORIDADE 2: Lote tem quantidade?
         else if (ingresso.lote_id) {
@@ -102,11 +101,10 @@ export default function EventoPage() {
             const qtdVendida = parseInt(lote.quantidade_vendida) || 0;
             quantidadeDisponivel = qtdTotal - qtdVendida;
             origem = `LOTE ${ingresso.lote_id}`;
-            console.log(`   ✅ ${origem}: total=${qtdTotal}, vendidos=${qtdVendida}, disponível=${quantidadeDisponivel}`);
           }
         }
         
-        // PRIORIDADE 3: Se ainda não tem quantidade, buscar do SETOR
+        // PRIORIDADE 3: Setor tem capacidade?
         if (quantidadeDisponivel === 0 || origem === '') {
           const setor = setoresData?.find(s => 
             s.nome === ingresso.setor && s.sessao_id === ingresso.sessao_id
@@ -114,24 +112,17 @@ export default function EventoPage() {
           
           if (setor && (setor.capacidade_definida || setor.capacidade_calculada)) {
             const qtdTotal = parseInt(setor.capacidade_definida) || parseInt(setor.capacidade_calculada) || 0;
-            
-            // Somar vendidos de TODOS os ingressos do setor que não têm quantidade própria nem lote
             const ingressosDoSetor = (todosIngressos || []).filter(i => 
               i.setor === ingresso.setor && 
               i.sessao_id === ingresso.sessao_id &&
-              (!i.quantidade || parseInt(i.quantidade) === 0) && // Sem quantidade própria
-              (!i.lote_id || !lotesData?.find(l => l.id === i.lote_id && l.quantidade_total > 0)) // Sem lote com quantidade
+              (!i.quantidade || parseInt(i.quantidade) === 0) &&
+              (!i.lote_id || !lotesData?.find(l => l.id === i.lote_id && l.quantidade_total > 0))
             );
             const qtdVendida = ingressosDoSetor.reduce((sum, i) => sum + (parseInt(i.vendidos) || 0), 0);
             
             quantidadeDisponivel = qtdTotal - qtdVendida;
             origem = `SETOR ${ingresso.setor}`;
-            console.log(`   ✅ ${origem}: capacidade=${qtdTotal}, vendidos_setor=${qtdVendida}, disponível=${quantidadeDisponivel}`);
           }
-        }
-
-        if (!origem) {
-          console.log(`   ❌ NENHUMA QUANTIDADE DEFINIDA!`);
         }
 
         return {
@@ -153,7 +144,6 @@ export default function EventoPage() {
         }
       });
 
-      console.log('✅ INGRESSOS PROCESSADOS:', ingressosPorSessaoTemp);
       setIngressosPorSessao(ingressosPorSessaoTemp);
 
       const { data: cuponsData } = await supabase
@@ -182,7 +172,7 @@ export default function EventoPage() {
       setImagensDescricao(imagensData || []);
 
     } catch (error) {
-      console.error('❌ Erro ao carregar dados:', error);
+      console.error('Erro ao carregar dados:', error);
     } finally {
       setLoading(false);
     }
@@ -299,6 +289,64 @@ export default function EventoPage() {
     router.push(`/checkout?${params.toString()}`);
   };
 
+  // Funções específicas para lugar marcado
+  const escolherSetorMapa = (setor) => {
+    setSetorSelecionadoMapa(setor);
+    setEtapaAtual('selecionar_assentos');
+    setAssentosSelecionados([]);
+    setTiposIngressoPorAssento({});
+  };
+
+  const toggleAssentoSelecionado = (assento) => {
+    setAssentosSelecionados(prev => {
+      const jaExiste = prev.find(a => 
+        a.setor === assento.setor && a.fileira === assento.fileira && a.numero === assento.numero
+      );
+      
+      if (jaExiste) {
+        // Remove
+        return prev.filter(a => 
+          !(a.setor === assento.setor && a.fileira === assento.fileira && a.numero === assento.numero)
+        );
+      } else {
+        // Adiciona
+        return [...prev, assento];
+      }
+    });
+  };
+
+  const definirTipoIngressoAssento = (assento, tipoIngressoId) => {
+    const key = `${assento.setor}-${assento.fileira}-${assento.numero}`;
+    setTiposIngressoPorAssento(prev => ({
+      ...prev,
+      [key]: tipoIngressoId
+    }));
+  };
+
+  const finalizarCompraLugarMarcado = () => {
+    const itens = assentosSelecionados.map(assento => {
+      const key = `${assento.setor}-${assento.fileira}-${assento.numero}`;
+      return {
+        assento: `${assento.fileira}${assento.numero}`,
+        setor: assento.setor,
+        ingressoId: tiposIngressoPorAssento[key]
+      };
+    });
+
+    const params = new URLSearchParams({
+      evento_id: evento.id,
+      sessao_id: sessaoSelecionada,
+      lugar_marcado: 'true',
+      itens: JSON.stringify(itens)
+    });
+
+    if (cupomAplicado) {
+      params.append('cupom_id', cupomAplicado.id);
+    }
+
+    router.push(`/checkout?${params.toString()}`);
+  };
+
   if (loading) {
     return (
       <div style={{ fontFamily: 'sans-serif', padding: '50px', textAlign: 'center' }}>
@@ -321,8 +369,12 @@ export default function EventoPage() {
   }
 
   const ingressosDaSessao = ingressosPorSessao[sessaoSelecionada] || [];
+  const teatroConfig = evento.tem_lugar_marcado && evento.teatro_id ? getTeatroConfig(evento.teatro_id) : null;
 
-  // Organizar ingressos por setor e lote
+  // Se tem lugar marcado MAS o teatro ainda não tem mapa
+  const temLugarMarcadoSemMapa = evento.tem_lugar_marcado && !evento.teatro_id;
+
+  // Organizar ingressos por setor e lote (mantém código original)
   const setoresOrganizados = {};
   ingressosDaSessao.forEach(ingresso => {
     const setorNome = ingresso.setor || 'Sem Setor';
@@ -359,6 +411,9 @@ export default function EventoPage() {
     : 0;
 
   const totalItensCarrinho = Object.values(carrinho).reduce((sum, qtd) => sum + qtd, 0);
+
+  // Identificar setores únicos para escolha
+  const setoresDisponiveis = [...new Set(ingressosDaSessao.map(i => i.setor))].filter(Boolean);
 
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', paddingBottom: '40px' }}>
@@ -537,6 +592,10 @@ export default function EventoPage() {
                   onClick={() => {
                     setSessaoSelecionada(sessao.id);
                     setCarrinho({});
+                    setAssentosSelecionados([]);
+                    setSetorSelecionadoMapa(null);
+                    setEtapaAtual('escolher_setor');
+                    setTiposIngressoPorAssento({});
                   }}
                   style={{
                     padding: '15px',
@@ -668,509 +727,851 @@ export default function EventoPage() {
           </div>
         )}
 
-        {/* INGRESSOS */}
-        <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', marginBottom: '40px' }}>
-          <h2 style={{ color: '#5d34a4', marginTop: 0, fontSize: '32px', marginBottom: '10px', textAlign: 'center' }}>
-            🎫 Ingressos
-          </h2>
-          <p style={{ textAlign: 'center', color: '#666', fontSize: '16px', marginBottom: '30px' }}>
-            A partir de <span style={{ fontSize: '24px', fontWeight: 'bold', color: '#27ae60' }}>
-              R$ {precoMaisBaixo.toFixed(2)}
-            </span>
-            {cupomAplicado && <span style={{ color: '#28a745', marginLeft: '10px' }}>✅ Com desconto aplicado!</span>}
-          </p>
+        {/* AVISO SE TEM LUGAR MARCADO MAS SEM MAPA */}
+        {temLugarMarcadoSemMapa && (
+          <div style={{ 
+            backgroundColor: '#fff3cd', 
+            padding: '30px', 
+            borderRadius: '12px', 
+            boxShadow: '0 2px 10px rgba(0,0,0,0.1)', 
+            marginBottom: '40px',
+            border: '2px solid #ffc107',
+            textAlign: 'center'
+          }}>
+            <h3 style={{ color: '#856404', marginTop: 0, fontSize: '24px', marginBottom: '15px' }}>
+              ⚠️ Mapa de Assentos em Preparação
+            </h3>
+            <p style={{ fontSize: '16px', color: '#856404', marginBottom: '10px' }}>
+              Este evento terá lugares marcados no <strong>{evento.nome_teatro_personalizado || evento.local}</strong>.
+            </p>
+            <p style={{ fontSize: '14px', color: '#856404' }}>
+              O mapa interativo de assentos estará disponível em breve. Por enquanto, você pode comprar ingressos por quantidade abaixo.
+            </p>
+          </div>
+        )}
 
-          {Object.keys(setoresOrganizados).length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-              <p style={{ fontSize: '18px' }}>⚠️ Nenhum ingresso disponível no momento</p>
-            </div>
-          ) : (
-            Object.entries(setoresOrganizados).map(([setorNome, setorData]) => {
-              let totalDisponibilizado = 0;
-              let totalVendido = 0;
+        {/* SE TEM LUGAR MARCADO E TEM MAPA - SISTEMA DE ESCOLHA DE ASSENTOS */}
+        {evento.tem_lugar_marcado && teatroConfig ? (
+          <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', marginBottom: '40px' }}>
+            <h2 style={{ color: '#5d34a4', marginTop: 0, fontSize: '32px', marginBottom: '10px', textAlign: 'center' }}>
+              🪑 Escolha seus Assentos
+            </h2>
+            <p style={{ textAlign: 'center', color: '#666', fontSize: '16px', marginBottom: '30px' }}>
+              A partir de <span style={{ fontSize: '24px', fontWeight: 'bold', color: '#27ae60' }}>
+                R$ {precoMaisBaixo.toFixed(2)}
+              </span>
+              {cupomAplicado && <span style={{ color: '#28a745', marginLeft: '10px' }}>✅ Com desconto aplicado!</span>}
+            </p>
 
-              [...setorData.semLote, ...Object.values(setorData.lotes).flatMap(l => l.ingressos)].forEach(ing => {
-                // Não soma mais aqui, pega direto do ingresso processado
-                totalDisponibilizado += (ing.quantidade_disponivel_calculada || 0);
-              });
-
-              const disponiveis = totalDisponibilizado;
-              const ultimos = totalDisponibilizado <= 15 && totalDisponibilizado > 0;
-              const esgotado = totalDisponibilizado === 0;
-
-              return (
-                <div key={setorNome} style={{ 
-                  marginBottom: '35px', 
-                  border: '2px solid #e0e0e0', 
-                  borderRadius: '10px',
-                  overflow: 'hidden'
-                }}>
-                  <div style={{ 
-                    backgroundColor: '#5d34a4', 
-                    color: 'white', 
-                    padding: '15px 25px',
-                    fontSize: '20px',
-                    fontWeight: 'bold',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    flexWrap: 'wrap'
-                  }}>
-                    <span>🎪 {setorNome}</span>
-                    <span style={{ fontSize: '14px', fontWeight: 'normal' }}>
-                      {esgotado ? (
-                        <span style={{ backgroundColor: '#dc3545', padding: '5px 12px', borderRadius: '15px' }}>
-                          ❌ Esgotado
-                        </span>
-                      ) : ultimos ? (
-                        <span style={{ backgroundColor: '#ffc107', color: '#000', padding: '5px 12px', borderRadius: '15px' }}>
-                          🔥 Últimos {disponiveis} ingressos!
-                        </span>
-                      ) : (
-                        <span>{disponiveis} disponíveis</span>
-                      )}
-                    </span>
-                  </div>
-
-                  <div style={{ padding: '25px' }}>
-                    {/* Lotes */}
-                    {Object.entries(setorData.lotes).map(([loteKey, loteData]) => (
-                      <div key={loteKey} style={{ marginBottom: '20px' }}>
-                        <div style={{ 
-                          backgroundColor: '#f8f9fa', 
-                          padding: '12px 20px', 
-                          borderRadius: '8px',
-                          marginBottom: '15px',
-                          borderLeft: '4px solid #9b59b6'
-                        }}>
-                          <span style={{ fontWeight: 'bold', color: '#8e44ad', fontSize: '16px' }}>
-                            📦 Lote {loteData.id}
-                          </span>
-                        </div>
-
-                        {loteData.ingressos.map(ingresso => {
-                          const ingressosDisponiveis = ingresso.quantidade_disponivel_calculada || 0;
-                          const precoBase = parseFloat(ingresso.valor);
-                          const precoComCupom = calcularPrecoComCupom(precoBase);
-                          const temDesconto = precoComCupom < precoBase;
-                          const taxaCliente = evento.TaxaCliente || 15;
-                          const valorTaxa = precoComCupom * (taxaCliente / 100);
-                          const valorTotal = precoComCupom + valorTaxa;
-                          const quantidadeNoCarrinho = carrinho[ingresso.id] || 0;
-
-                          return (
-                            <div key={ingresso.id} style={{ 
-                              display: 'flex', 
-                              justifyContent: 'space-between', 
-                              alignItems: 'center',
-                              padding: '20px',
-                              backgroundColor: temDesconto ? '#d4edda' : '#fafafa',
-                              borderRadius: '8px',
-                              marginBottom: '12px',
-                              border: temDesconto ? '2px solid #28a745' : '1px solid #e0e0e0',
-                              flexWrap: 'wrap',
-                              gap: '15px'
-                            }}>
-                              <div style={{ flex: 1, minWidth: '200px' }}>
-                                <h4 style={{ margin: 0, fontSize: '18px', color: '#2c3e50', marginBottom: '5px' }}>
-                                  {ingresso.tipo}
-                                  {temDesconto && <span style={{ color: '#28a745', marginLeft: '10px', fontSize: '14px' }}>🎟️ COM DESCONTO</span>}
-                                </h4>
-                                <p style={{ margin: 0, fontSize: '13px', color: ingressosDisponiveis > 0 ? '#999' : '#dc3545' }}>
-                                  {ingressosDisponiveis > 0 
-                                    ? `${ingressosDisponiveis} disponíveis` 
-                                    : '❌ Esgotado'}
-                                </p>
-                              </div>
-                              
-                              <div style={{ textAlign: 'right', marginRight: '20px' }}>
-                                {temDesconto && (
-                                  <div style={{ fontSize: '13px', color: '#999', textDecoration: 'line-through', marginBottom: '3px' }}>
-                                    R$ {precoBase.toFixed(2)}
-                                  </div>
-                                )}
-                                <div style={{ fontSize: '14px', color: '#666', marginBottom: '3px' }}>
-                                  R$ {precoComCupom.toFixed(2)} + R$ {valorTaxa.toFixed(2)} (taxa)
-                                </div>
-                                <div style={{ fontSize: '22px', fontWeight: 'bold', color: temDesconto ? '#28a745' : '#27ae60' }}>
-                                  R$ {valorTotal.toFixed(2)}
-                                </div>
-                              </div>
-
-                              {ingressosDisponiveis > 0 ? (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                  <select
-                                    value={quantidadeNoCarrinho}
-                                    onChange={(e) => atualizarCarrinho(ingresso.id, parseInt(e.target.value))}
-                                    style={{
-                                      padding: '10px 15px',
-                                      border: '2px solid #5d34a4',
-                                      borderRadius: '8px',
-                                      fontSize: '16px',
-                                      fontWeight: 'bold',
-                                      cursor: 'pointer',
-                                      backgroundColor: 'white'
-                                    }}
-                                  >
-                                    <option value="0">0</option>
-                                    {[...Array(Math.min(10, ingressosDisponiveis))].map((_, i) => (
-                                      <option key={i + 1} value={i + 1}>{i + 1}</option>
-                                    ))}
-                                  </select>
-                                </div>
-                              ) : (
-                                <button disabled style={{
-                                  backgroundColor: '#ccc',
-                                  color: '#666',
-                                  border: 'none',
-                                  padding: '12px 30px',
-                                  borderRadius: '8px',
-                                  fontSize: '16px',
-                                  fontWeight: 'bold',
-                                  cursor: 'not-allowed'
-                                }}>
-                                  Esgotado
-                                </button>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ))}
-
-                    {/* Ingressos sem lote */}
-                    {setorData.semLote.length > 0 && (
-                      <div>
-                        {setorData.semLote.map(ingresso => {
-                          const ingressosDisponiveis = ingresso.quantidade_disponivel_calculada || 0;
-                          const precoBase = parseFloat(ingresso.valor);
-                          const precoComCupom = calcularPrecoComCupom(precoBase);
-                          const temDesconto = precoComCupom < precoBase;
-                          const taxaCliente = evento.TaxaCliente || 15;
-                          const valorTaxa = precoComCupom * (taxaCliente / 100);
-                          const valorTotal = precoComCupom + valorTaxa;
-                          const quantidadeNoCarrinho = carrinho[ingresso.id] || 0;
-
-                          return (
-                            <div key={ingresso.id} style={{ 
-                              display: 'flex', 
-                              justifyContent: 'space-between', 
-                              alignItems: 'center',
-                              padding: '20px',
-                              backgroundColor: temDesconto ? '#d4edda' : '#fafafa',
-                              borderRadius: '8px',
-                              marginBottom: '12px',
-                              border: temDesconto ? '2px solid #28a745' : '1px solid #e0e0e0',
-                              flexWrap: 'wrap',
-                              gap: '15px'
-                            }}>
-                              <div style={{ flex: 1, minWidth: '200px' }}>
-                                <h4 style={{ margin: 0, fontSize: '18px', color: '#2c3e50', marginBottom: '5px' }}>
-                                  {ingresso.tipo}
-                                  {temDesconto && <span style={{ color: '#28a745', marginLeft: '10px', fontSize: '14px' }}>🎟️ COM DESCONTO</span>}
-                                </h4>
-                                <p style={{ margin: 0, fontSize: '13px', color: ingressosDisponiveis > 0 ? '#999' : '#dc3545' }}>
-                                  {ingressosDisponiveis > 0 
-                                    ? `${ingressosDisponiveis} disponíveis` 
-                                    : '❌ Esgotado'}
-                                </p>
-                              </div>
-                              
-                              <div style={{ textAlign: 'right', marginRight: '20px' }}>
-                                {temDesconto && (
-                                  <div style={{ fontSize: '13px', color: '#999', textDecoration: 'line-through', marginBottom: '3px' }}>
-                                    R$ {precoBase.toFixed(2)}
-                                  </div>
-                                )}
-                                <div style={{ fontSize: '14px', color: '#666', marginBottom: '3px' }}>
-                                  R$ {precoComCupom.toFixed(2)} + R$ {valorTaxa.toFixed(2)} (taxa)
-                                </div>
-                                <div style={{ fontSize: '22px', fontWeight: 'bold', color: temDesconto ? '#28a745' : '#27ae60' }}>
-                                  R$ {valorTotal.toFixed(2)}
-                                </div>
-                              </div>
-
-                              {ingressosDisponiveis > 0 ? (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                  <select
-                                    value={quantidadeNoCarrinho}
-                                    onChange={(e) => atualizarCarrinho(ingresso.id, parseInt(e.target.value))}
-                                    style={{
-                                      padding: '10px 15px',
-                                      border: '2px solid #5d34a4',
-                                      borderRadius: '8px',
-                                      fontSize: '16px',
-                                      fontWeight: 'bold',
-                                      cursor: 'pointer',
-                                      backgroundColor: 'white'
-                                    }}
-                                  >
-                                    <option value="0">0</option>
-                                    {[...Array(Math.min(10, ingressosDisponiveis))].map((_, i) => (
-                                      <option key={i + 1} value={i + 1}>{i + 1}</option>
-                                    ))}
-                                  </select>
-                                </div>
-                              ) : (
-                                <button disabled style={{
-                                  backgroundColor: '#ccc',
-                                  color: '#666',
-                                  border: 'none',
-                                  padding: '12px 30px',
-                                  borderRadius: '8px',
-                                  fontSize: '16px',
-                                  fontWeight: 'bold',
-                                  cursor: 'not-allowed'
-                                }}>
-                                  Esgotado
-                                </button>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
+            {/* ETAPA 1: ESCOLHER SETOR (se tiver mais de um) */}
+            {etapaAtual === 'escolher_setor' && setoresDisponiveis.length > 1 && (
+              <div>
+                <h3 style={{ color: '#5d34a4', fontSize: '24px', marginBottom: '20px', textAlign: 'center' }}>
+                  Passo 1: Escolha o Setor
+                </h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px' }}>
+                  {setoresDisponiveis.map(setor => (
+                    <button
+                      key={setor}
+                      onClick={() => escolherSetorMapa(setor)}
+                      style={{
+                        padding: '30px',
+                        border: '2px solid #5d34a4',
+                        borderRadius: '12px',
+                        backgroundColor: 'white',
+                        cursor: 'pointer',
+                        fontSize: '20px',
+                        fontWeight: 'bold',
+                        color: '#5d34a4',
+                        transition: 'all 0.3s'
+                      }}
+                      onMouseOver={(e) => e.target.style.backgroundColor = '#f0e6ff'}
+                      onMouseOut={(e) => e.target.style.backgroundColor = 'white'}
+                    >
+                      🎪 {setor}
+                    </button>
+                  ))}
                 </div>
-              );
-            })
-          )}
+              </div>
+            )}
 
-          {/* Resumo do Carrinho */}
-          {totalItensCarrinho > 0 && (
+            {/* ETAPA 1: Se tem apenas 1 setor, já seleciona automaticamente */}
+            {etapaAtual === 'escolher_setor' && setoresDisponiveis.length === 1 && (
+              <div style={{ textAlign: 'center' }}>
+                <button
+                  onClick={() => escolherSetorMapa(setoresDisponiveis[0])}
+                  style={{
+                    padding: '30px 60px',
+                    border: '2px solid #5d34a4',
+                    borderRadius: '12px',
+                    backgroundColor: '#5d34a4',
+                    cursor: 'pointer',
+                    fontSize: '24px',
+                    fontWeight: 'bold',
+                    color: 'white',
+                    transition: 'all 0.3s'
+                  }}
+                >
+                  🪑 Escolher Assentos
+                </button>
+              </div>
+            )}
+
+            {/* ETAPA 2: SELECIONAR ASSENTOS NO MAPA */}
+            {etapaAtual === 'selecionar_assentos' && (
+              <div>
+                <div style={{ marginBottom: '30px', textAlign: 'center' }}>
+                  <h3 style={{ color: '#5d34a4', fontSize: '24px', marginBottom: '10px' }}>
+                    Passo 2: Selecione os Assentos no Mapa
+                  </h3>
+                  <p style={{ color: '#666', fontSize: '16px' }}>
+                    Setor: <strong>{setorSelecionadoMapa}</strong> | 
+                    Assentos selecionados: <strong>{assentosSelecionados.length}</strong>
+                  </p>
+                  {setoresDisponiveis.length > 1 && (
+                    <button
+                      onClick={() => {
+                        setEtapaAtual('escolher_setor');
+                        setSetorSelecionadoMapa(null);
+                        setAssentosSelecionados([]);
+                      }}
+                      style={{
+                        marginTop: '10px',
+                        padding: '10px 20px',
+                        backgroundColor: '#95a5a6',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontSize: '14px'
+                      }}
+                    >
+                      ← Voltar aos Setores
+                    </button>
+                  )}
+                </div>
+
+                <MapaAssentos 
+                  eventoId={evento.id}
+                  teatroConfig={teatroConfig}
+                  sessaoId={sessaoSelecionada}
+                  setorFiltro={setorSelecionadoMapa}
+                  assentosSelecionados={assentosSelecionados}
+                  onToggleAssento={toggleAssentoSelecionado}
+                />
+
+                {assentosSelecionados.length > 0 && (
+                  <div style={{ marginTop: '30px', textAlign: 'center' }}>
+                    <button
+                      onClick={() => setEtapaAtual('escolher_ingressos')}
+                      style={{
+                        padding: '18px 60px',
+                        backgroundColor: '#f1c40f',
+                        color: '#000',
+                        border: 'none',
+                        borderRadius: '10px',
+                        fontSize: '20px',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 10px rgba(241, 196, 15, 0.3)'
+                      }}
+                    >
+                      Continuar com {assentosSelecionados.length} {assentosSelecionados.length === 1 ? 'assento' : 'assentos'} →
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ETAPA 3: ESCOLHER TIPO DE INGRESSO PARA CADA ASSENTO */}
+            {etapaAtual === 'escolher_ingressos' && (
+              <div>
+                <div style={{ marginBottom: '30px', textAlign: 'center' }}>
+                  <h3 style={{ color: '#5d34a4', fontSize: '24px', marginBottom: '10px' }}>
+                    Passo 3: Escolha o Tipo de Ingresso para Cada Assento
+                  </h3>
+                  <button
+                    onClick={() => setEtapaAtual('selecionar_assentos')}
+                    style={{
+                      marginTop: '10px',
+                      padding: '10px 20px',
+                      backgroundColor: '#95a5a6',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '14px'
+                    }}
+                  >
+                    ← Voltar ao Mapa
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  {assentosSelecionados.map((assento, idx) => {
+                    const key = `${assento.setor}-${assento.fileira}-${assento.numero}`;
+                    const tipoSelecionado = tiposIngressoPorAssento[key];
+                    const ingressosDoSetor = ingressosDaSessao.filter(i => i.setor === assento.setor);
+
+                    return (
+                      <div key={key} style={{ 
+                        padding: '25px', 
+                        backgroundColor: '#f8f9fa', 
+                        borderRadius: '10px',
+                        border: tipoSelecionado ? '2px solid #27ae60' : '2px solid #ddd'
+                      }}>
+                        <h4 style={{ margin: '0 0 15px 0', fontSize: '20px', color: '#2c3e50' }}>
+                          🪑 Assento {assento.fileira}{assento.numero} - {assento.setor}
+                        </h4>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '15px' }}>
+                          {ingressosDoSetor.map(ingresso => {
+                            const precoBase = parseFloat(ingresso.valor);
+                            const precoComCupom = calcularPrecoComCupom(precoBase);
+                            const temDesconto = precoComCupom < precoBase;
+                            const taxaCliente = evento.TaxaCliente || 15;
+                            const valorTaxa = precoComCupom * (taxaCliente / 100);
+                            const valorTotal = precoComCupom + valorTaxa;
+                            const estaSelecionado = tipoSelecionado === ingresso.id;
+
+                            return (
+                              <button
+                                key={ingresso.id}
+                                onClick={() => definirTipoIngressoAssento(assento, ingresso.id)}
+                                style={{
+                                  padding: '20px',
+                                  border: estaSelecionado ? '3px solid #27ae60' : '2px solid #ddd',
+                                  borderRadius: '10px',
+                                  backgroundColor: estaSelecionado ? '#d4edda' : 'white',
+                                  cursor: 'pointer',
+                                  textAlign: 'left',
+                                  transition: 'all 0.3s'
+                                }}
+                              >
+                                <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#2c3e50', marginBottom: '8px' }}>
+                                  {ingresso.tipo}
+                                  {temDesconto && <span style={{ color: '#28a745', fontSize: '12px', marginLeft: '8px' }}>🎟️ DESCONTO</span>}
+                                </div>
+                                {temDesconto && (
+                                  <div style={{ fontSize: '13px', color: '#999', textDecoration: 'line-through', marginBottom: '5px' }}>
+                                    R$ {precoBase.toFixed(2)}
+                                  </div>
+                                )}
+                                <div style={{ fontSize: '14px', color: '#666', marginBottom: '5px' }}>
+                                  R$ {precoComCupom.toFixed(2)} + R$ {valorTaxa.toFixed(2)} (taxa)
+                                </div>
+                                <div style={{ fontSize: '20px', fontWeight: 'bold', color: temDesconto ? '#28a745' : '#27ae60' }}>
+                                  R$ {valorTotal.toFixed(2)}
+                                </div>
+                                {estaSelecionado && (
+                                  <div style={{ marginTop: '10px', color: '#27ae60', fontSize: '14px', fontWeight: 'bold' }}>
+                                    ✅ Selecionado
+                                  </div>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Verificar se todos os assentos têm tipo selecionado */}
+                {assentosSelecionados.length > 0 && 
+                 assentosSelecionados.every(a => {
+                   const key = `${a.setor}-${a.fileira}-${a.numero}`;
+                   return tiposIngressoPorAssento[key];
+                 }) && (
+                  <div style={{ 
+                    marginTop: '30px', 
+                    padding: '25px', 
+                    backgroundColor: '#f8f9fa', 
+                    borderRadius: '12px',
+                    border: '3px solid #5d34a4'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                      <div>
+                        <h3 style={{ margin: 0, color: '#5d34a4', fontSize: '24px' }}>
+                          🛒 Resumo da Compra
+                        </h3>
+                        <p style={{ margin: '5px 0 0 0', color: '#666', fontSize: '14px' }}>
+                          {assentosSelecionados.length} {assentosSelecionados.length === 1 ? 'assento selecionado' : 'assentos selecionados'}
+                        </p>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '16px', color: '#666', marginBottom: '5px' }}>
+                          Total:
+                        </div>
+                        <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#27ae60' }}>
+                          R$ {assentosSelecionados.reduce((total, assento) => {
+                            const key = `${assento.setor}-${assento.fileira}-${assento.numero}`;
+                            const ingressoId = tiposIngressoPorAssento[key];
+                            if (!ingressoId) return total;
+                            
+                            const ingresso = ingressosDaSessao.find(i => i.id === ingressoId);
+                            if (!ingresso) return total;
+                            
+                            const precoBase = parseFloat(ingresso.valor);
+                            const precoComCupom = calcularPrecoComCupom(precoBase);
+                            const taxaCliente = evento.TaxaCliente || 15;
+                            const valorTotal = precoComCupom * (1 + taxaCliente / 100);
+                            return total + valorTotal;
+                          }, 0).toFixed(2)}
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={finalizarCompraLugarMarcado}
+                      style={{
+                        width: '100%',
+                        backgroundColor: '#f1c40f',
+                        color: '#000',
+                        border: 'none',
+                        padding: '18px',
+                        borderRadius: '10px',
+                        fontSize: '20px',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        transition: 'all 0.3s',
+                        boxShadow: '0 4px 10px rgba(241, 196, 15, 0.3)'
+                      }}
+                      onMouseOver={(e) => e.target.style.transform = 'scale(1.02)'}
+                      onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
+                    >
+                      🎫 Finalizar Compra
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div style={{ 
               marginTop: '30px', 
-              padding: '25px', 
-              backgroundColor: '#f8f9fa', 
-              borderRadius: '12px',
-              border: '3px solid #5d34a4'
+              padding: '20px', 
+              backgroundColor: '#e8f8f5', 
+              borderRadius: '8px',
+              border: '1px solid #27ae60'
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', textAlign: 'center' }}>
                 <div>
-                  <h3 style={{ margin: 0, color: '#5d34a4', fontSize: '24px' }}>
-                    🛒 Seu Carrinho
-                  </h3>
-                  <p style={{ margin: '5px 0 0 0', color: '#666', fontSize: '14px' }}>
-                    {totalItensCarrinho} {totalItensCarrinho === 1 ? 'ingresso selecionado' : 'ingressos selecionados'}
-                  </p>
+                  <div style={{ fontSize: '28px', marginBottom: '8px' }}>✅</div>
+                  <div style={{ fontSize: '14px', color: '#27ae60', fontWeight: '600' }}>Entrada garantida</div>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '16px', color: '#666', marginBottom: '5px' }}>
-                    Total:
-                  </div>
-                  <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#27ae60' }}>
-                    R$ {calcularTotalCarrinho().toFixed(2)}
-                  </div>
+                <div>
+                  <div style={{ fontSize: '28px', marginBottom: '8px' }}>🔒</div>
+                  <div style={{ fontSize: '14px', color: '#27ae60', fontWeight: '600' }}>Pagamento seguro</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '28px', marginBottom: '8px' }}>💬</div>
+                  <div style={{ fontSize: '14px', color: '#27ae60', fontWeight: '600' }}>Suporte 24h</div>
                 </div>
               </div>
-
-              <button
-                onClick={finalizarCompra}
-                style={{
-                  width: '100%',
-                  backgroundColor: '#f1c40f',
-                  color: '#000',
-                  border: 'none',
-                  padding: '18px',
-                  borderRadius: '10px',
-                  fontSize: '20px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s',
-                  boxShadow: '0 4px 10px rgba(241, 196, 15, 0.3)'
-                }}
-                onMouseOver={(e) => e.target.style.transform = 'scale(1.02)'}
-                onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
-              >
-                🎫 Finalizar Compra
-              </button>
             </div>
-          )}
+          </div>
+        ) : !evento.tem_lugar_marcado || temLugarMarcadoSemMapa ? (
+          // CÓDIGO ORIGINAL DE INGRESSOS SEM LUGAR MARCADO
+          <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', marginBottom: '40px' }}>
+            <h2 style={{ color: '#5d34a4', marginTop: 0, fontSize: '32px', marginBottom: '10px', textAlign: 'center' }}>
+              🎫 Ingressos
+            </h2>
+            <p style={{ textAlign: 'center', color: '#666', fontSize: '16px', marginBottom: '30px' }}>
+              A partir de <span style={{ fontSize: '24px', fontWeight: 'bold', color: '#27ae60' }}>
+                R$ {precoMaisBaixo.toFixed(2)}
+              </span>
+              {cupomAplicado && <span style={{ color: '#28a745', marginLeft: '10px' }}>✅ Com desconto aplicado!</span>}
+            </p>
 
+            {Object.keys(setoresOrganizados).length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+                <p style={{ fontSize: '18px' }}>⚠️ Nenhum ingresso disponível no momento</p>
+              </div>
+            ) : (
+              Object.entries(setoresOrganizados).map(([setorNome, setorData]) => {
+                let totalDisponibilizado = 0;
+
+                [...setorData.semLote, ...Object.values(setorData.lotes).flatMap(l => l.ingressos)].forEach(ing => {
+                  totalDisponibilizado += (ing.quantidade_disponivel_calculada || 0);
+                });
+
+                const disponiveis = totalDisponibilizado;
+                const ultimos = totalDisponibilizado <= 15 && totalDisponibilizado > 0;
+                const esgotado = totalDisponibilizado === 0;
+
+                return (
+                  <div key={setorNome} style={{ 
+                    marginBottom: '35px', 
+                    border: '2px solid #e0e0e0', 
+                    borderRadius: '10px',
+                    overflow: 'hidden'
+                  }}>
+                    <div style={{ 
+                      backgroundColor: '#5d34a4', 
+                      color: 'white', 
+                      padding: '15px 25px',
+                      fontSize: '20px',
+                      fontWeight: 'bold',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      flexWrap: 'wrap'
+                    }}>
+                      <span>🎪 {setorNome}</span>
+                      <span style={{ fontSize: '14px', fontWeight: 'normal' }}>
+                        {esgotado ? (
+                          <span style={{ backgroundColor: '#dc3545', padding: '5px 12px', borderRadius: '15px' }}>
+                            ❌ Esgotado
+                          </span>
+                        ) : ultimos ? (
+                          <span style={{ backgroundColor: '#ffc107', color: '#000', padding: '5px 12px', borderRadius: '15px' }}>
+                            🔥 Últimos {disponiveis} ingressos!
+                          </span>
+                        ) : (
+                          <span>{disponiveis} disponíveis</span>
+                        )}
+                      </span>
+                    </div>
+
+                    <div style={{ padding: '25px' }}>
+                      {/* Lotes */}
+                      {Object.entries(setorData.lotes).map(([loteKey, loteData]) => (
+                        <div key={loteKey} style={{ marginBottom: '20px' }}>
+                          <div style={{ 
+                            backgroundColor: '#f8f9fa', 
+                            padding: '12px 20px', 
+                            borderRadius: '8px',
+                            marginBottom: '15px',
+                            borderLeft: '4px solid #9b59b6'
+                          }}>
+                            <span style={{ fontWeight: 'bold', color: '#8e44ad', fontSize: '16px' }}>
+                              📦 Lote {loteData.id}
+                            </span>
+                          </div>
+
+                          {loteData.ingressos.map(ingresso => {
+                            const ingressosDisponiveis = ingresso.quantidade_disponivel_calculada || 0;
+                            const precoBase = parseFloat(ingresso.valor);
+                            const precoComCupom = calcularPrecoComCupom(precoBase);
+                            const temDesconto = precoComCupom < precoBase;
+                            const taxaCliente = evento.TaxaCliente || 15;
+                            const valorTaxa = precoComCupom * (taxaCliente / 100);
+                            const valorTotal = precoComCupom + valorTaxa;
+                            const quantidadeNoCarrinho = carrinho[ingresso.id] || 0;
+
+                            return (
+                              <div key={ingresso.id} style={{ 
+                                display: 'flex', 
+                                justifyContent: 'space-between', 
+                                alignItems: 'center',
+                                padding: '20px',
+                                backgroundColor: temDesconto ? '#d4edda' : '#fafafa',
+                                borderRadius: '8px',
+                                marginBottom: '12px',
+                                border: temDesconto ? '2px solid #28a745' : '1px solid #e0e0e0',
+                                flexWrap: 'wrap',
+                                gap: '15px'
+                              }}>
+                                <div style={{ flex: 1, minWidth: '200px' }}>
+                                  <h4 style={{ margin: 0, fontSize: '18px', color: '#2c3e50', marginBottom: '5px' }}>
+                                    {ingresso.tipo}
+                                    {temDesconto && <span style={{ color: '#28a745', marginLeft: '10px', fontSize: '14px' }}>🎟️ COM DESCONTO</span>}
+                                  </h4>
+                                  <p style={{ margin: 0, fontSize: '13px', color: ingressosDisponiveis > 0 ? '#999' : '#dc3545' }}>
+                                    {ingressosDisponiveis > 0 
+                                      ? `${ingressosDisponiveis} disponíveis` 
+                                      : '❌ Esgotado'}
+                                  </p>
+                                </div>
+                                
+                                <div style={{ textAlign: 'right', marginRight: '20px' }}>
+                                  {temDesconto && (
+                                    <div style={{ fontSize: '13px', color: '#999', textDecoration: 'line-through', marginBottom: '3px' }}>
+                                      R$ {precoBase.toFixed(2)}
+                                    </div>
+                                  )}
+                                  <div style={{ fontSize: '14px', color: '#666', marginBottom: '3px' }}>
+                                    R$ {precoComCupom.toFixed(2)} + R$ {valorTaxa.toFixed(2)} (taxa)
+                                  </div>
+                                  <div style={{ fontSize: '22px', fontWeight: 'bold', color: temDesconto ? '#28a745' : '#27ae60' }}>
+                                    R$ {valorTotal.toFixed(2)}
+                                  </div>
+                                </div>
+
+                                {ingressosDisponiveis > 0 ? (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <select
+                                      value={quantidadeNoCarrinho}
+                                      onChange={(e) => atualizarCarrinho(ingresso.id, parseInt(e.target.value))}
+                                      style={{
+                                        padding: '10px 15px',
+                                        border: '2px solid #5d34a4',
+                                        borderRadius: '8px',
+                                        fontSize: '16px',
+                                        fontWeight: 'bold',
+                                        cursor: 'pointer',
+                                        backgroundColor: 'white'
+                                      }}
+                                    >
+                                      <option value="0">0</option>
+                                      {[...Array(Math.min(10, ingressosDisponiveis))].map((_, i) => (
+                                        <option key={i + 1} value={i + 1}>{i + 1}</option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                ) : (
+                                  <button disabled style={{
+                                    backgroundColor: '#ccc',
+                                    color: '#666',
+                                    border: 'none',
+                                    padding: '12px 30px',
+                                    borderRadius: '8px',
+                                    fontSize: '16px',
+                                    fontWeight: 'bold',
+                                    cursor: 'not-allowed'
+                                  }}>
+                                    Esgotado
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ))}
+
+                      {/* Ingressos sem lote */}
+                      {setorData.semLote.length > 0 && (
+                        <div>
+                          {setorData.semLote.map(ingresso => {
+                            const ingressosDisponiveis = ingresso.quantidade_disponivel_calculada || 0;
+                            const precoBase = parseFloat(ingresso.valor);
+                            const precoComCupom = calcularPrecoComCupom(precoBase);
+                            const temDesconto = precoComCupom < precoBase;
+                            const taxaCliente = evento.TaxaCliente || 15;
+                            const valorTaxa = precoComCupom * (taxaCliente / 100);
+                            const valorTotal = precoComCupom + valorTaxa;
+                            const quantidadeNoCarrinho = carrinho[ingresso.id] || 0;
+
+                            return (
+                              <div key={ingresso.id} style={{ 
+                                display: 'flex', 
+                                justifyContent: 'space-between', 
+                                alignItems: 'center',
+                                padding: '20px',
+                                backgroundColor: temDesconto ? '#d4edda' : '#fafafa',
+                                borderRadius: '8px',
+                                marginBottom: '12px',
+                                border: temDesconto ? '2px solid #28a745' : '1px solid #e0e0e0',
+                                flexWrap: 'wrap',
+                                gap: '15px'
+                              }}>
+                                <div style={{ flex: 1, minWidth: '200px' }}>
+                                  <h4 style={{ margin: 0, fontSize: '18px', color: '#2c3e50', marginBottom: '5px' }}>
+                                    {ingresso.tipo}
+                                    {temDesconto && <span style={{ color: '#28a745', marginLeft: '10px', fontSize: '14px' }}>🎟️ COM DESCONTO</span>}
+                                  </h4>
+                                  <p style={{ margin: 0, fontSize: '13px', color: ingressosDisponiveis > 0 ? '#999' : '#dc3545' }}>
+                                    {ingressosDisponiveis > 0 
+                                      ? `${ingressosDisponiveis} disponíveis` 
+                                      : '❌ Esgotado'}
+                                  </p>
+                                </div>
+                                
+                                <div style={{ textAlign: 'right', marginRight: '20px' }}>
+                                  {temDesconto && (
+                                    <div style={{ fontSize: '13px', color: '#999', textDecoration: 'line-through', marginBottom: '3px' }}>
+                                      R$ {precoBase.toFixed(2)}
+                                    </div>
+                                  )}
+                                  <div style={{ fontSize: '14px', color: '#666', marginBottom: '3px' }}>
+                                    R$ {precoComCupom.toFixed(2)} + R$ {valorTaxa.toFixed(2)} (taxa)
+                                  <div style={{ fontSize: '22px', fontWeight: 'bold', color: temDesconto ? '#28a745' : '#27ae60' }}>
+R$ {valorTotal.toFixed(2)}
+                              </div>
+                            </div>
+
+                            {ingressosDisponiveis > 0 ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <select
+                                  value={quantidadeNoCarrinho}
+                                  onChange={(e) => atualizarCarrinho(ingresso.id, parseInt(e.target.value))}
+                                  style={{
+                                    padding: '10px 15px',
+                                    border: '2px solid #5d34a4',
+                                    borderRadius: '8px',
+                                    fontSize: '16px',
+                                    fontWeight: 'bold',
+                                    cursor: 'pointer',
+                                    backgroundColor: 'white'
+                                  }}
+                                >
+                                  <option value="0">0</option>
+                                  {[...Array(Math.min(10, ingressosDisponiveis))].map((_, i) => (
+                                    <option key={i + 1} value={i + 1}>{i + 1}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            ) : (
+                              <button disabled style={{
+                                backgroundColor: '#ccc',
+                                color: '#666',
+                                border: 'none',
+                                padding: '12px 30px',
+                                borderRadius: '8px',
+                                fontSize: '16px',
+                                fontWeight: 'bold',
+                                cursor: 'not-allowed'
+                              }}>
+                                Esgotado
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })
+        )}
+
+        {/* Resumo do Carrinho */}
+        {totalItensCarrinho > 0 && (
           <div style={{ 
             marginTop: '30px', 
-            padding: '20px', 
-            backgroundColor: '#e8f8f5', 
-            borderRadius: '8px',
-            border: '1px solid #27ae60'
+            padding: '25px', 
+            backgroundColor: '#f8f9fa', 
+            borderRadius: '12px',
+            border: '3px solid #5d34a4'
           }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', textAlign: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <div>
-                <div style={{ fontSize: '28px', marginBottom: '8px' }}>✅</div>
-                <div style={{ fontSize: '14px', color: '#27ae60', fontWeight: '600' }}>Entrada garantida</div>
+                <h3 style={{ margin: 0, color: '#5d34a4', fontSize: '24px' }}>
+                  🛒 Seu Carrinho
+                </h3>
+                <p style={{ margin: '5px 0 0 0', color: '#666', fontSize: '14px' }}>
+                  {totalItensCarrinho} {totalItensCarrinho === 1 ? 'ingresso selecionado' : 'ingressos selecionados'}
+                </p>
               </div>
-              <div>
-                <div style={{ fontSize: '28px', marginBottom: '8px' }}>🔒</div>
-                <div style={{ fontSize: '14px', color: '#27ae60', fontWeight: '600' }}>Pagamento seguro</div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '16px', color: '#666', marginBottom: '5px' }}>
+                  Total:
+                </div>
+                <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#27ae60' }}>
+                  R$ {calcularTotalCarrinho().toFixed(2)}
+                </div>
               </div>
-              <div>
-                <div style={{ fontSize: '28px', marginBottom: '8px' }}>💬</div>
-                <div style={{ fontSize: '14px', color: '#27ae60', fontWeight: '600' }}>Suporte 24h</div>
-              </div>
+            </div>
+
+            <button
+              onClick={finalizarCompra}
+              style={{
+                width: '100%',
+                backgroundColor: '#f1c40f',
+                color: '#000',
+                border: 'none',
+                padding: '18px',
+                borderRadius: '10px',
+                fontSize: '20px',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                transition: 'all 0.3s',
+                boxShadow: '0 4px 10px rgba(241, 196, 15, 0.3)'
+              }}
+              onMouseOver={(e) => e.target.style.transform = 'scale(1.02)'}
+              onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
+            >
+              🎫 Finalizar Compra
+            </button>
+          </div>
+        )}
+
+        <div style={{ 
+          marginTop: '30px', 
+          padding: '20px', 
+          backgroundColor: '#e8f8f5', 
+          borderRadius: '8px',
+          border: '1px solid #27ae60'
+        }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', textAlign: 'center' }}>
+            <div>
+              <div style={{ fontSize: '28px', marginBottom: '8px' }}>✅</div>
+              <div style={{ fontSize: '14px', color: '#27ae60', fontWeight: '600' }}>Entrada garantida</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '28px', marginBottom: '8px' }}>🔒</div>
+              <div style={{ fontSize: '14px', color: '#27ae60', fontWeight: '600' }}>Pagamento seguro</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '28px', marginBottom: '8px' }}>💬</div>
+              <div style={{ fontSize: '14px', color: '#27ae60', fontWeight: '600' }}>Suporte 24h</div>
             </div>
           </div>
         </div>
-
-        {/* PRODUTOS */}
-        {produtos && produtos.length > 0 && (
-          <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
-            <h2 style={{ color: '#5d34a4', marginTop: 0, fontSize: '32px', marginBottom: '30px', textAlign: 'center' }}>
-              🛍️ Produtos do Evento
-            </h2>
-
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', 
-              gap: '25px' 
-            }}>
-              {produtos.map(produto => {
-                const quantidadeTotal = (produto.quantidade_disponivel || 0) + (produto.quantidade_vendida || 0);
-                const quantidadeDisponivel = produto.quantidade_disponivel || 0;
-                const percentualDisponivel = quantidadeTotal > 0 ? (quantidadeDisponivel / quantidadeTotal) * 100 : 0;
-                const ultimos = percentualDisponivel <= 15 && percentualDisponivel > 0;
-                const esgotado = quantidadeDisponivel === 0;
-
-                return (
-                  <div key={produto.id} style={{ 
-                    border: '1px solid #e0e0e0', 
-                    borderRadius: '10px', 
-                    overflow: 'hidden',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                    transition: 'transform 0.3s',
-                    backgroundColor: 'white',
-                    position: 'relative'
-                  }}>
-                    {ultimos && !esgotado && (
-                      <div style={{
-                        position: 'absolute',
-                        top: '10px',
-                        right: '10px',
-                        backgroundColor: '#ffc107',
-                        color: '#000',
-                        padding: '5px 10px',
-                        borderRadius: '15px',
-                        fontSize: '12px',
-                        fontWeight: 'bold',
-                        zIndex: 1
-                      }}>
-                        🔥 Últimos!
-                      </div>
-                    )}
-
-                    {esgotado && (
-                      <div style={{
-                        position: 'absolute',
-                        top: '10px',
-                        right: '10px',
-                        backgroundColor: '#dc3545',
-                        color: 'white',
-                        padding: '5px 10px',
-                        borderRadius: '15px',
-                        fontSize: '12px',
-                        fontWeight: 'bold',
-                        zIndex: 1
-                      }}>
-                        ❌ Esgotado
-                      </div>
-                    )}
-
-                    <div style={{ 
-                      width: '100%', 
-                      height: '200px', 
-                      backgroundColor: '#f0f0f0',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      overflow: 'hidden'
-                    }}>
-                      {produto.imagem_url ? (
-                        <img 
-                          src={produto.imagem_url} 
-                          alt={produto.nome}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        />
-                      ) : (
-                        <span style={{ fontSize: '48px' }}>📦</span>
-                      )}
-                    </div>
-
-                    <div style={{ padding: '20px' }}>
-                      <h3 style={{ margin: '0 0 10px 0', fontSize: '18px', color: '#2c3e50' }}>
-                        {produto.nome}
-                      </h3>
-                      
-                      {produto.descricao && (
-                        <p style={{ fontSize: '14px', color: '#666', marginBottom: '12px', lineHeight: '1.5' }}>
-                          {produto.descricao}
-                        </p>
-                      )}
-
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                        <span style={{ fontSize: '22px', fontWeight: 'bold', color: '#27ae60' }}>
-                          R$ {parseFloat(produto.preco).toFixed(2)}
-                        </span>
-                        {produto.tamanho && (
-                          <span style={{ 
-                            backgroundColor: '#e8f4f8', 
-                            color: '#2980b9', 
-                            padding: '4px 12px', 
-                            borderRadius: '15px',
-                            fontSize: '13px',
-                            fontWeight: '600'
-                          }}>
-                            Tamanho: {produto.tamanho}
-                          </span>
-                        )}
-                      </div>
-
-                      <p style={{ fontSize: '13px', color: '#999', marginBottom: '15px' }}>
-                        {esgotado 
-                          ? '❌ Esgotado' 
-                          : ultimos 
-                            ? `🔥 Últimos ${quantidadeDisponivel} disponíveis!`
-                            : `${quantidadeDisponivel} disponíveis`}
-                      </p>
-
-                      {quantidadeDisponivel > 0 ? (
-                        <Link href={`/checkout?evento_id=${evento.id}&produto_id=${produto.id}`}>
-                          <button style={{
-                            backgroundColor: '#3498db',
-                            color: 'white',
-                            border: 'none',
-                            padding: '12px',
-                            borderRadius: '8px',
-                            width: '100%',
-                            fontSize: '15px',
-                            fontWeight: 'bold',
-                            cursor: 'pointer',
-                            transition: 'all 0.3s'
-                          }}>
-                            Adicionar ao Carrinho
-                          </button>
-                        </Link>
-                      ) : (
-                        <button disabled style={{
-                          backgroundColor: '#ccc',
-                          color: '#666',
-                          border: 'none',
-                          padding: '12px',
-                          borderRadius: '8px',
-                          width: '100%',
-                          fontSize: '15px',
-                          fontWeight: 'bold',
-                          cursor: 'not-allowed'
-                        }}>
-                          Esgotado
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
       </div>
-    </div>
-  );
+    ) : null}
+
+    {/* PRODUTOS */}
+    {produtos && produtos.length > 0 && (
+      <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
+        <h2 style={{ color: '#5d34a4', marginTop: 0, fontSize: '32px', marginBottom: '30px', textAlign: 'center' }}>
+          🛍️ Produtos do Evento
+        </h2>
+
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', 
+          gap: '25px' 
+        }}>
+          {produtos.map(produto => {
+            const quantidadeTotal = (produto.quantidade_disponivel || 0) + (produto.quantidade_vendida || 0);
+            const quantidadeDisponivel = produto.quantidade_disponivel || 0;
+            const percentualDisponivel = quantidadeTotal > 0 ? (quantidadeDisponivel / quantidadeTotal) * 100 : 0;
+            const ultimos = percentualDisponivel <= 15 && percentualDisponivel > 0;
+            const esgotado = quantidadeDisponivel === 0;
+
+            return (
+              <div key={produto.id} style={{ 
+                border: '1px solid #e0e0e0', 
+                borderRadius: '10px', 
+                overflow: 'hidden',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                transition: 'transform 0.3s',
+                backgroundColor: 'white',
+                position: 'relative'
+              }}>
+                {ultimos && !esgotado && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '10px',
+                    right: '10px',
+                    backgroundColor: '#ffc107',
+                    color: '#000',
+                    padding: '5px 10px',
+                    borderRadius: '15px',
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                    zIndex: 1
+                  }}>
+                    🔥 Últimos!
+                  </div>
+                )}
+
+                {esgotado && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '10px',
+                    right: '10px',
+                    backgroundColor: '#dc3545',
+                    color: 'white',
+                    padding: '5px 10px',
+                    borderRadius: '15px',
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                    zIndex: 1
+                  }}>
+                    ❌ Esgotado
+                  </div>
+                )}
+
+                <div style={{ 
+                  width: '100%', 
+                  height: '200px', 
+                  backgroundColor: '#f0f0f0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden'
+                }}>
+                  {produto.imagem_url ? (
+                    <img 
+                      src={produto.imagem_url} 
+                      alt={produto.nome}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  ) : (
+                    <span style={{ fontSize: '48px' }}>📦</span>
+                  )}
+                </div>
+
+                <div style={{ padding: '20px' }}>
+                  <h3 style={{ margin: '0 0 10px 0', fontSize: '18px', color: '#2c3e50' }}>
+                    {produto.nome}
+                  </h3>
+                  
+                  {produto.descricao && (
+                    <p style={{ fontSize: '14px', color: '#666', marginBottom: '12px', lineHeight: '1.5' }}>
+                      {produto.descricao}
+                    </p>
+                  )}
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                    <span style={{ fontSize: '22px', fontWeight: 'bold', color: '#27ae60' }}>
+                      R$ {parseFloat(produto.preco).toFixed(2)}
+                    </span>
+                    {produto.tamanho && (
+                      <span style={{ 
+                        backgroundColor: '#e8f4f8', 
+                        color: '#2980b9', 
+                        padding: '4px 12px', 
+                        borderRadius: '15px',
+                        fontSize: '13px',
+                        fontWeight: '600'
+                      }}>
+                        Tamanho: {produto.tamanho}
+                      </span>
+                    )}
+                  </div>
+
+                  <p style={{ fontSize: '13px', color: '#999', marginBottom: '15px' }}>
+                    {esgotado 
+                      ? '❌ Esgotado' 
+                      : ultimos 
+                        ? `🔥 Últimos ${quantidadeDisponivel} disponíveis!`
+                        : `${quantidadeDisponivel} disponíveis`}
+                  </p>
+
+                  {quantidadeDisponivel > 0 ? (
+                    <Link href={`/checkout?evento_id=${evento.id}&produto_id=${produto.id}`}>
+                      <button style={{
+                        backgroundColor: '#3498db',
+                        color: 'white',
+                        border: 'none',
+                        padding: '12px',
+                        borderRadius: '8px',
+                        width: '100%',
+                        fontSize: '15px',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        transition: 'all 0.3s'
+                      }}>
+                        Adicionar ao Carrinho
+                      </button>
+                    </Link>
+                  ) : (
+                    <button disabled style={{
+                      backgroundColor: '#ccc',
+                      color: '#666',
+                      border: 'none',
+                      padding: '12px',
+                      borderRadius: '8px',
+                      width: '100%',
+                      fontSize: '15px',
+                      fontWeight: 'bold',
+                      cursor: 'not-allowed'
+                    }}>
+                      Esgotado
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    )}
+  </div>
+</div>
+);
 }
