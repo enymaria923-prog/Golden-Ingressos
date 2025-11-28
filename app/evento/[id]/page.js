@@ -29,7 +29,7 @@ export default function EventoPage() {
   // Estados específicos para lugar marcado
   const [assentosSelecionados, setAssentosSelecionados] = useState([]);
   const [setorSelecionadoMapa, setSetorSelecionadoMapa] = useState(null);
-  const [etapaAtual, setEtapaAtual] = useState('inicial'); // 'inicial', 'escolher_sessao', 'escolher_setor', 'selecionar_assentos', 'escolher_ingressos'
+  const [etapaAtual, setEtapaAtual] = useState('inicial');
   const [tiposIngressoPorAssento, setTiposIngressoPorAssento] = useState({});
 
   useEffect(() => {
@@ -65,7 +65,6 @@ export default function EventoPage() {
         setSessaoSelecionada(sessoesData[0].id);
       }
 
-      // Buscar todos os dados necessários
       const { data: todosIngressos } = await supabase
         .from('ingressos')
         .select('*')
@@ -81,19 +80,16 @@ export default function EventoPage() {
         .select('*')
         .eq('evento_id', id);
 
-      // Processar ingressos com hierarquia correta
       const ingressosProcessados = (todosIngressos || []).map(ingresso => {
         let quantidadeDisponivel = 0;
         let origem = '';
 
-        // PRIORIDADE 1: Ingresso tem quantidade própria?
         if (ingresso.quantidade && parseInt(ingresso.quantidade) > 0) {
           const qtdTotal = parseInt(ingresso.quantidade) || 0;
           const qtdVendida = parseInt(ingresso.vendidos) || 0;
           quantidadeDisponivel = qtdTotal - qtdVendida;
           origem = 'INGRESSO';
         }
-        // PRIORIDADE 2: Lote tem quantidade?
         else if (ingresso.lote_id) {
           const lote = lotesData?.find(l => l.id === ingresso.lote_id);
           if (lote && lote.quantidade_total && parseInt(lote.quantidade_total) > 0) {
@@ -104,7 +100,6 @@ export default function EventoPage() {
           }
         }
         
-        // PRIORIDADE 3: Setor tem capacidade?
         if (quantidadeDisponivel === 0 || origem === '') {
           const setor = setoresData?.find(s => 
             s.nome === ingresso.setor && s.sessao_id === ingresso.sessao_id
@@ -132,7 +127,6 @@ export default function EventoPage() {
         };
       });
 
-      // Organizar por sessão
       const ingressosPorSessaoTemp = {};
       (sessoesData || []).forEach(sessao => {
         ingressosPorSessaoTemp[sessao.id] = [];
@@ -289,7 +283,6 @@ export default function EventoPage() {
     router.push(`/checkout?${params.toString()}`);
   };
 
-  // Funções específicas para lugar marcado
   const iniciarFluxoLugarMarcado = () => {
     if (sessoes.length > 1) {
       setEtapaAtual('escolher_sessao');
@@ -320,11 +313,9 @@ export default function EventoPage() {
       );
       
       if (jaExiste) {
-        // Remove
         const novosAssentos = prev.filter(a => 
           !(a.setor === assento.setor && a.fileira === assento.fileira && a.numero === assento.numero)
         );
-        // Remove também o tipo de ingresso
         const key = `${assento.setor}-${assento.fileira}-${assento.numero}`;
         setTiposIngressoPorAssento(tipos => {
           const novos = { ...tipos };
@@ -333,7 +324,6 @@ export default function EventoPage() {
         });
         return novosAssentos;
       } else {
-        // Adiciona
         return [...prev, assento];
       }
     });
@@ -393,12 +383,9 @@ export default function EventoPage() {
   }
 
   const ingressosDaSessao = ingressosPorSessao[sessaoSelecionada] || [];
-  const teatroConfig = evento.tem_lugar_marcado && evento.teatro_id ? getTeatroConfig(evento.teatro_id) : null;
+  const teatroConfig = evento.tem_lugar_marcado && evento.id_evento ? getTeatroConfig(evento.id_evento) : null;
+  const temLugarMarcadoSemMapa = evento.tem_lugar_marcado && !evento.id_evento;
 
-  // Se tem lugar marcado MAS o teatro ainda não tem mapa
-  const temLugarMarcadoSemMapa = evento.tem_lugar_marcado && !evento.teatro_id;
-
-  // Organizar ingressos por setor e lote (mantém código original)
   const setoresOrganizados = {};
   ingressosDaSessao.forEach(ingresso => {
     const setorNome = ingresso.setor || 'Sem Setor';
@@ -424,7 +411,6 @@ export default function EventoPage() {
     }
   });
 
-  // Calcular menor preço
   const precoMaisBaixo = ingressosDaSessao.length > 0
     ? Math.min(...ingressosDaSessao.map(i => {
         const precoBase = parseFloat(i.valor);
@@ -435,8 +421,6 @@ export default function EventoPage() {
     : 0;
 
   const totalItensCarrinho = Object.values(carrinho).reduce((sum, qtd) => sum + qtd, 0);
-
-  // Identificar setores únicos para escolha
   const setoresDisponiveis = [...new Set(ingressosDaSessao.map(i => i.setor))].filter(Boolean);
 
   return (
@@ -703,9 +687,8 @@ export default function EventoPage() {
           </div>
         )}
 
-        {/* AVISO SE TEM LUGAR MARCADO MAS SEM MAPA */}
         {temLugarMarcadoSemMapa && (
-        <div style={{ 
+          <div style={{ 
             backgroundColor: '#fff3cd', 
             padding: '30px', 
             borderRadius: '12px', 
@@ -714,32 +697,30 @@ export default function EventoPage() {
             border: '2px solid #ffc107',
             textAlign: 'center'
           }}>
-<h3 style={{ color: '#856404', marginTop: 0, fontSize: '24px', marginBottom: '15px' }}>
-⚠️ Mapa de Assentos em Preparação
-</h3>
-<p style={{ fontSize: '16px', color: '#856404', marginBottom: '10px' }}>
-Este evento terá lugares marcados no <strong>{evento.nome_teatro_personalizado || evento.local}</strong>.
-</p>
-<p style={{ fontSize: '14px', color: '#856404' }}>
-O mapa interativo de assentos estará disponível em breve. Por enquanto, você pode comprar ingressos por quantidade abaixo.
-</p>
-</div>
-)}
-{/* SE TEM LUGAR MARCADO E TEM MAPA - SISTEMA DE ESCOLHA DE ASSENTOS */}
-    {evento.tem_lugar_marcado && teatroConfig ? (
-      <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', marginBottom: '40px' }}>
-        <h2 style={{ color: '#5d34a4', marginTop: 0, fontSize: '32px', marginBottom: '10px', textAlign: 'center' }}>
-          🪑 Ingressos
-        </h2>
-        <p style={{ textAlign: 'center', color: '#666', fontSize: '16px', marginBottom: '30px' }}>
-          A partir de <span style={{ fontSize: '24px', fontWeight: 'bold', color: '#27ae60' }}>
-            R$ {precoMaisBaixo.toFixed(2)}
-          </span>
-          {cupomAplicado && <span style={{ color: '#28a745', marginLeft: '10px' }}>✅ Com desconto aplicado!</span>}
-        </p>
+            <h3 style={{ color: '#856404', marginTop: 0, fontSize: '24px', marginBottom: '15px' }}>
+              ⚠️ Mapa de Assentos em Preparação
+            </h3>
+            <p style={{ fontSize: '16px', color: '#856404', marginBottom: '10px' }}>
+              Este evento terá lugares marcados no <strong>{evento.nome_teatro_personalizado || evento.local}</strong>.
+            </p>
+            <p style={{ fontSize: '14px', color: '#856404' }}>
+              O mapa interativo de assentos estará disponível em breve. Por enquanto, você pode comprar ingressos por quantidade abaixo.
+            </p>
+          </div>
+        )}
 
-        {/* ETAPA INICIAL: BOTÃO COMPRAR INGRESSOS */}
-        {etapaAtual === 'inicial' && (
+        {evento.tem_lugar_marcado && teatroConfig ? (
+          <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', marginBottom: '40px' }}>
+            <h2 style={{ color: '#5d34a4', marginTop: 0, fontSize: '32px', marginBottom: '10px', textAlign: 'center' }}>
+              🪑 Ingressos
+</h2>
+<p style={{ textAlign: 'center', color: '#666', fontSize: '16px', marginBottom: '30px' }}>
+A partir de <span style={{ fontSize: '24px', fontWeight: 'bold', color: '#27ae60' }}>
+R$ {precoMaisBaixo.toFixed(2)}
+</span>
+{cupomAplicado && <span style={{ color: '#28a745', marginLeft: '10px' }}>✅ Com desconto aplicado!</span>}
+</p>
+{etapaAtual === 'inicial' && (
           <div style={{ textAlign: 'center' }}>
             <button
               onClick={iniciarFluxoLugarMarcado}
@@ -769,7 +750,6 @@ O mapa interativo de assentos estará disponível em breve. Por enquanto, você 
           </div>
         )}
 
-        {/* ETAPA 1: ESCOLHER SESSÃO (se tiver mais de uma) */}
         {etapaAtual === 'escolher_sessao' && sessoes.length > 1 && (
           <div>
             <h3 style={{ color: '#5d34a4', fontSize: '24px', marginBottom: '20px', textAlign: 'center' }}>
@@ -809,7 +789,6 @@ O mapa interativo de assentos estará disponível em breve. Por enquanto, você 
           </div>
         )}
 
-        {/* ETAPA 2: ESCOLHER SETOR */}
         {etapaAtual === 'escolher_setor' && (
           <div>
             <h3 style={{ color: '#5d34a4', fontSize: '24px', marginBottom: '20px', textAlign: 'center' }}>
@@ -859,7 +838,6 @@ O mapa interativo de assentos estará disponível em breve. Por enquanto, você 
           </div>
         )}
 
-        {/* ETAPA 3: SELECIONAR ASSENTOS NO MAPA */}
         {etapaAtual === 'selecionar_assentos' && (
           <div>
             <div style={{ marginBottom: '30px', textAlign: 'center' }}>
@@ -923,7 +901,6 @@ O mapa interativo de assentos estará disponível em breve. Por enquanto, você 
           </div>
         )}
 
-        {/* ETAPA 4: ESCOLHER TIPO DE INGRESSO PARA CADA ASSENTO */}
         {etapaAtual === 'escolher_ingressos' && (
           <div>
             <div style={{ marginBottom: '30px', textAlign: 'center' }}>
@@ -948,7 +925,7 @@ O mapa interativo de assentos estará disponível em breve. Por enquanto, você 
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {assentosSelecionados.map((assento, idx) => {
+              {assentosSelecionados.map((assento) => {
                 const key = `${assento.setor}-${assento.fileira}-${assento.numero}`;
                 const tipoSelecionado = tiposIngressoPorAssento[key];
                 const ingressosDoSetor = ingressosDaSessao.filter(i => i.setor === assento.setor);
@@ -1017,7 +994,6 @@ O mapa interativo de assentos estará disponível em breve. Por enquanto, você 
               })}
             </div>
 
-            {/* Verificar se todos os assentos têm tipo selecionado */}
             {assentosSelecionados.length > 0 && 
              assentosSelecionados.every(a => {
                const key = `${a.setor}-${a.fileira}-${a.numero}`;
@@ -1111,7 +1087,6 @@ O mapa interativo de assentos estará disponível em breve. Por enquanto, você 
         </div>
       </div>
     ) : !evento.tem_lugar_marcado || temLugarMarcadoSemMapa ? (
-      // CÓDIGO ORIGINAL DE INGRESSOS SEM LUGAR MARCADO
       <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', marginBottom: '40px' }}>
         <h2 style={{ color: '#5d34a4', marginTop: 0, fontSize: '32px', marginBottom: '10px', textAlign: 'center' }}>
           🎫 Ingressos
@@ -1133,7 +1108,7 @@ O mapa interativo de assentos estará disponível em breve. Por enquanto, você 
             <h3 style={{ color: '#5d34a4', marginTop: 0, fontSize: '22px', marginBottom: '20px', textAlign: 'center' }}>
               🎬 Escolha a Sessão
             </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(200px, 1fr))`, gap: '15px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
               {sessoes.map(sessao => (
                 <button
                   key={sessao.id}
@@ -1217,7 +1192,6 @@ O mapa interativo de assentos estará disponível em breve. Por enquanto, você 
                 </div>
 
                 <div style={{ padding: '25px' }}>
-                  {/* Lotes */}
                   {Object.entries(setorData.lotes).map(([loteKey, loteData]) => (
                     <div key={loteKey} style={{ marginBottom: '20px' }}>
                       <div style={{ 
@@ -1233,99 +1207,6 @@ O mapa interativo de assentos estará disponível em breve. Por enquanto, você 
                       </div>
 
                       {loteData.ingressos.map(ingresso => {
-                        const ingressosDisponiveis = ingresso.quantidade_disponivel_calculada || 0;
-                        const precoBase = parseFloat(ingresso.valor);
-                        const precoComCupom = calcularPrecoComCupom(precoBase);
-                        const temDesconto = precoComCupom < precoBase;
-                        const taxaCliente = evento.TaxaCliente || 15;
-                        const valorTaxa = precoComCupom * (taxaCliente / 100);
-                        const valorTotal = precoComCupom + valorTaxa;
-                        const quantidadeNoCarrinho = carrinho[ingresso.id] || 0;
-
-                        return (
-                          <div key={ingresso.id} style={{ 
-                            display: 'flex', 
-                            justifyContent: 'space-between', 
-                            alignItems: 'center',
-                            padding: '20px',
-                            backgroundColor: temDesconto ? '#d4edda' : '#fafafa',
-                            borderRadius: '8px',
-                            marginBottom: '12px',
-                            border: temDesconto ? '2px solid #28a745' : '1px solid #e0e0e0',
-                            flexWrap: 'wrap',
-                            gap: '15px'
-                          }}>
-                            <div style={{ flex: 1, minWidth: '200px' }}>
-                              <h4 style={{ margin: 0, fontSize: '18px', color: '#2c3e50', marginBottom: '5px' }}>
-                                {ingresso.tipo}
-                                {temDesconto && <span style={{ color: '#28a745', marginLeft: '10px', fontSize: '14px' }}>🎟️ COM DESCONTO</span>}
-                              </h4>
-                              <p style={{ margin: 0, fontSize: '13px', color: ingressosDisponiveis > 0 ? '#999' : '#dc3545' }}>
-                                {ingressosDisponiveis > 0 
-                                  ? `${ingressosDisponiveis} disponíveis` 
-                                  : '❌ Esgotado'}
-                              </p>
-                            </div>
-                            
-                            <div style={{ textAlign: 'right', marginRight: '20px' }}>
-                              {temDesconto && (
-                                <div style={{ fontSize: '13px', color: '#999', textDecoration: 'line-through', marginBottom: '3px' }}>
-                                  R$ {precoBase.toFixed(2)}
-                                </div>
-                              )}
-                              <div style={{ fontSize: '14px', color: '#666', marginBottom: '3px' }}>
-                                R$ {precoComCupom.toFixed(2)} + R$ {valorTaxa.toFixed(2)} (taxa)
-                              </div>
-                              <div style={{ fontSize: '22px', fontWeight: 'bold', color: temDesconto ? '#28a745' : '#27ae60' }}>
-                                R$ {valorTotal.toFixed(2)}
-                              </div>
-                            </div>
-
-                            {ingressosDisponiveis > 0 ? (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                <select
-                                  value={quantidadeNoCarrinho}
-                                  onChange={(e) => atualizarCarrinho(ingresso.id, parseInt(e.target.value))}
-                                  style={{
-                                    padding: '10px 15px',
-                                    border: '2px solid #5d34a4',
-                                    borderRadius: '8px',
-                                    fontSize: '16px',
-                                    fontWeight: 'bold',
-                                    cursor: 'pointer',
-                                    backgroundColor: 'white'
-                                 }}
-                                >
-                                  <option value="0">0</option>
-                                  {[...Array(Math.min(10, ingressosDisponiveis))].map((_, i) => (
-                                    <option key={i + 1} value={i + 1}>{i + 1}</option>
-                                  ))}
-                                </select>
-                              </div>
-                            ) : (
-                              <button disabled style={{
-                                backgroundColor: '#ccc',
-                                color: '#666',
-                                border: 'none',
-                                padding: '12px 30px',
-                                borderRadius: '8px',
-                                fontSize: '16px',
-                                fontWeight: 'bold',
-                                cursor: 'not-allowed'
-                              }}>
-                                Esgotado
-                              </button>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ))}
-
-                  {/* Ingressos sem lote */}
-                  {setorData.semLote.length > 0 && (
-                    <div>
-                      {setorData.semLote.map(ingresso => {
                         const ingressosDisponiveis = ingresso.quantidade_disponivel_calculada || 0;
                         const precoBase = parseFloat(ingresso.valor);
                         const precoComCupom = calcularPrecoComCupom(precoBase);
@@ -1413,6 +1294,97 @@ O mapa interativo de assentos estará disponível em breve. Por enquanto, você 
                         );
                       })}
                     </div>
+                  ))}
+
+                  {setorData.semLote.length > 0 && (
+                    <div>
+                      {setorData.semLote.map(ingresso => {
+                        const ingressosDisponiveis = ingresso.quantidade_disponivel_calculada || 0;
+                        const precoBase = parseFloat(ingresso.valor);
+                        const precoComCupom = calcularPrecoComCupom(precoBase);
+                        const temDesconto = precoComCupom < precoBase;
+                        const taxaCliente = evento.TaxaCliente || 15;
+                        const valorTaxa = precoComCupom * (taxaCliente / 100);
+                        const valorTotal = precoComCupom + valorTaxa;
+                        const quantidadeNoCarrinho = carrinho[ingresso.id] || 0;
+
+                        return (
+                          <div key={ingresso.id} style={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center',
+                            padding: '20px',
+                            backgroundColor: temDesconto ? '#d4edda' : '#fafafa',
+                            borderRadius: '8px',
+                            marginBottom: '12px',
+                            border: temDesconto? '2px solid #28a745' : '1px solid #e0e0e0',
+flexWrap: 'wrap',
+gap: '15px'
+}}>
+<div style={{ flex: 1, minWidth: '200px' }}>
+<h4 style={{ margin: 0, fontSize: '18px', color: '#2c3e50', marginBottom: '5px' }}>
+{ingresso.tipo}
+{temDesconto && <span style={{ color: '#28a745', marginLeft: '10px', fontSize: '14px' }}>🎟️ COM DESCONTO</span>}
+</h4>
+<p style={{ margin: 0, fontSize: '13px', color: ingressosDisponiveis > 0 ? '#999' : '#dc3545' }}>
+{ingressosDisponiveis > 0
+? ${ingressosDisponiveis} disponíveis
+: '❌ Esgotado'}
+</p>
+</div>
+<div style={{ textAlign: 'right', marginRight: '20px' }}>
+                              {temDesconto && (
+                                <div style={{ fontSize: '13px', color: '#999', textDecoration: 'line-through', marginBottom: '3px' }}>
+                                  R$ {precoBase.toFixed(2)}
+                                </div>
+                              )}
+                              <div style={{ fontSize: '14px', color: '#666', marginBottom: '3px' }}>
+                                R$ {precoComCupom.toFixed(2)} + R$ {valorTaxa.toFixed(2)} (taxa)
+                              </div>
+                              <div style={{ fontSize: '22px', fontWeight: 'bold', color: temDesconto ? '#28a745' : '#27ae60' }}>
+                                R$ {valorTotal.toFixed(2)}
+                              </div>
+                            </div>
+
+                            {ingressosDisponiveis > 0 ? (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <select
+                                  value={quantidadeNoCarrinho}
+                                  onChange={(e) => atualizarCarrinho(ingresso.id, parseInt(e.target.value))}
+                                  style={{
+                                    padding: '10px 15px',
+                                    border: '2px solid #5d34a4',
+                                    borderRadius: '8px',
+                                    fontSize: '16px',
+                                    fontWeight: 'bold',
+                                    cursor: 'pointer',
+                                    backgroundColor: 'white'
+                                  }}
+                                >
+                                  <option value="0">0</option>
+                                  {[...Array(Math.min(10, ingressosDisponiveis))].map((_, i) => (
+                                    <option key={i + 1} value={i + 1}>{i + 1}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            ) : (
+                              <button disabled style={{
+                                backgroundColor: '#ccc',
+                                color: '#666',
+                                border: 'none',
+                                padding: '12px 30px',
+                                borderRadius: '8px',
+                                fontSize: '16px',
+                                fontWeight: 'bold',
+                                cursor: 'not-allowed'
+                              }}>
+                                Esgotado
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
               </div>
@@ -1420,7 +1392,6 @@ O mapa interativo de assentos estará disponível em breve. Por enquanto, você 
           })
         )}
 
-        {/* Resumo do Carrinho */}
         {totalItensCarrinho > 0 && (
           <div style={{ 
             marginTop: '30px', 
@@ -1496,7 +1467,6 @@ O mapa interativo de assentos estará disponível em breve. Por enquanto, você 
       </div>
     ) : null}
 
-    {/* PRODUTOS */}
     {produtos && produtos.length > 0 && (
       <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
         <h2 style={{ color: '#5d34a4', marginTop: 0, fontSize: '32px', marginBottom: '30px', textAlign: 'center' }}>
