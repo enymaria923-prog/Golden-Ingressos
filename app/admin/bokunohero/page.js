@@ -86,6 +86,8 @@ export default function AdminPage() {
       resultado = resultado.filter(e => e.status === 'aprovado' && eventoJaAconteceu(e));
     } else if (abaAtiva === 'rejeitados') {
       resultado = resultado.filter(e => e.status === 'rejeitado');
+    } else if (abaAtiva === 'finalizados') {
+      resultado = resultado.filter(e => e.status === 'finalizado');
     }
     
     if (buscaNome.trim()) {
@@ -169,6 +171,28 @@ export default function AdminPage() {
     }
   };
 
+  const confirmarPagamento = async (id) => {
+    if (!confirm('Confirmar que o pagamento ao produtor foi realizado?')) {
+      return;
+    }
+    
+    try {
+      const { error } = await supabase
+        .from('eventos')
+        .update({ 
+          status: 'finalizado',
+          data_finalizacao: new Date().toISOString()
+        })
+        .eq('id', id);
+      
+      if (error) throw error;
+      alert('✅ Pagamento confirmado! Evento finalizado.');
+      carregarEventos();
+    } catch (error) {
+      alert('❌ Erro ao confirmar pagamento: ' + error.message);
+    }
+  };
+
   const handleLogout = () => {
     sessionStorage.removeItem('admin_logged_in');
     setIsAuthenticated(false);
@@ -184,6 +208,7 @@ export default function AdminPage() {
   const aprovadosCount = eventos.filter(e => e.status === 'aprovado' && !eventoJaAconteceu(e)).length;
   const passadosCount = eventos.filter(e => e.status === 'aprovado' && eventoJaAconteceu(e)).length;
   const rejeitadosCount = eventos.filter(e => e.status === 'rejeitado').length;
+  const finalizadosCount = eventos.filter(e => e.status === 'finalizado').length;
 
   if (!isAuthenticated) {
     return (
@@ -217,6 +242,7 @@ export default function AdminPage() {
           <span className="stat-aprovado">Aprovados: {aprovadosCount}</span>
           <span className="stat-passado">Passados: {passadosCount}</span>
           <span className="stat-rejeitado">Rejeitados: {rejeitadosCount}</span>
+          <span className="stat-finalizado">Finalizados: {finalizadosCount}</span>
         </div>
         <button onClick={handleLogout} className="btn-logout">Sair</button>
       </header>
@@ -225,15 +251,14 @@ export default function AdminPage() {
         <button onClick={carregarEventos} className="btn-recargar">
           🔄 Recarregar
         </button>
-    // Adicione este botão na div "admin-action-bar", logo após o botão "Recarregar":
 
-<button 
-  onClick={() => router.push('/admin/bokunohero/cupons')}
-  className="btn-recargar"
-  style={{ backgroundColor: '#9b59b6' }}
->
-  🎟️ Produtores e Cupons
-</button>
+        <button 
+          onClick={() => router.push('/admin/bokunohero/cupons')}
+          className="btn-recargar"
+          style={{ backgroundColor: '#9b59b6' }}
+        >
+          🎟️ Produtores e Cupons
+        </button>
       </div>
 
       <div className="abas-container">
@@ -254,6 +279,12 @@ export default function AdminPage() {
           onClick={() => setAbaAtiva('passados')}
         >
           📅 Aprovados Passados ({passadosCount})
+        </button>
+        <button 
+          className={`aba ${abaAtiva === 'finalizados' ? 'aba-ativa' : ''}`}
+          onClick={() => setAbaAtiva('finalizados')}
+        >
+          💰 Finalizados ({finalizadosCount})
         </button>
         <button 
           className={`aba ${abaAtiva === 'rejeitados' ? 'aba-ativa' : ''}`}
@@ -325,11 +356,6 @@ export default function AdminPage() {
                     <p><strong>📍 Local:</strong> {evento.local}</p>
                     <p><strong>👤 Produtor:</strong> {produtor?.nome_completo || evento.produtor_nome || evento.user_id}</p>
                     <p><strong>🆔 ID do Evento:</strong> {evento.id}</p>
-            <div className="card-info">
-                    <p><strong>📅 Data:</strong> {evento.data} às {evento.hora}</p>
-                    <p><strong>📍 Local:</strong> {evento.local}</p>
-                    <p><strong>👤 Produtor:</strong> {produtor?.nome_completo || evento.produtor_nome || evento.user_id}</p>
-                    <p><strong>🆔 ID do Evento:</strong> {evento.id}</p>
                     
                     {/* Aviso de lugar marcado */}
                     {evento.tem_lugar_marcado && (
@@ -354,7 +380,6 @@ export default function AdminPage() {
                         )}
                       </div>
                     )}
-                  </div>
                   </div>
 
                   <button 
@@ -457,20 +482,44 @@ export default function AdminPage() {
                     >
                       ✏️ Editar
                     </button>
-                    <button 
-                      onClick={() => aprovarEvento(evento.id)} 
-                      className="btn-aprovar"
-                      disabled={evento.status === 'aprovado'}
-                    >
-                      ✅ Aprovar
-                    </button>
-                    <button 
-                      onClick={() => rejeitarEvento(evento.id)} 
-                      className="btn-rejeitar"
-                      disabled={evento.status === 'rejeitado'}
-                    >
-                      ❌ Rejeitar
-                    </button>
+                    
+                    {abaAtiva === 'passados' && (
+                      <button 
+                        onClick={() => confirmarPagamento(evento.id)} 
+                        className="btn-confirmar-pagamento"
+                        style={{
+                          backgroundColor: '#27ae60',
+                          color: 'white',
+                          padding: '10px 20px',
+                          border: 'none',
+                          borderRadius: '5px',
+                          cursor: 'pointer',
+                          fontWeight: 'bold',
+                          fontSize: '14px'
+                        }}
+                      >
+                        💰 Confirmar Pagamento
+                      </button>
+                    )}
+                    
+                    {abaAtiva !== 'passados' && abaAtiva !== 'finalizados' && (
+                      <>
+                        <button 
+                          onClick={() => aprovarEvento(evento.id)} 
+                          className="btn-aprovar"
+                          disabled={evento.status === 'aprovado'}
+                        >
+                          ✅ Aprovar
+                        </button>
+                        <button 
+                          onClick={() => rejeitarEvento(evento.id)} 
+                          className="btn-rejeitar"
+                          disabled={evento.status === 'rejeitado'}
+                        >
+                          ❌ Rejeitar
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               );
