@@ -1400,7 +1400,7 @@ export default function EventoPage() {
                               </button>
                             )}
                           </div>
-                        );
+                        )}
                       })}
                     </div>
                   )}
