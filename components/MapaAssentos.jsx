@@ -23,17 +23,33 @@ export default function MapaAssentos({
 
   const carregarAssentosOcupados = async () => {
     try {
+      // Busca todos os ingressos vendidos desta sessão
       const { data, error } = await supabase
-        .from('ingressos_vendidos')
-        .select('setor, fileira, numero, assento')
+        .from('ingressos')
+        .select('setor, assento, status')
         .eq('evento_id', eventoId)
-        .eq('sessao_id', sessaoId);
+        .eq('sessao_id', sessaoId)
+        .eq('status', 'vendido');
 
-      if (error && error.code !== 'PGRST116') {
-        console.error('Erro ao carregar assentos:', error);
+      if (error) {
+        console.error('Erro ao carregar assentos ocupados:', error);
       }
       
-      setAssentosOcupados(data || []);
+      // Processa os assentos ocupados extraindo fileira e número do campo 'assento'
+      const ocupados = (data || []).map(item => {
+        const assentoStr = item.assento || '';
+        const match = assentoStr.match(/^([A-Z]+)(\d+)$/);
+        if (match) {
+          return {
+            setor: item.setor,
+            fileira: match[1],
+            numero: parseInt(match[2])
+          };
+        }
+        return null;
+      }).filter(Boolean);
+      
+      setAssentosOcupados(ocupados);
     } catch (error) {
       console.error('Erro ao carregar assentos:', error);
     } finally {
@@ -41,17 +57,17 @@ export default function MapaAssentos({
     }
   };
 
-  const getStatusAssento = (setorId, fileira, numero) => {
+  const getStatusAssento = (setorNome, fileira, numero) => {
     // Verifica se já foi vendido/ocupado
     const ocupado = assentosOcupados.find(
-      a => a.setor === setorId && a.fileira === fileira && parseInt(a.numero) === numero
+      a => a.setor === setorNome && a.fileira === fileira && a.numero === numero
     );
     
     if (ocupado) return 'ocupado';
     
     // Verifica se está selecionado
     const selecionado = assentosSelecionados.find(
-      a => a.setor === setorId && a.fileira === fileira && a.numero === numero
+      a => a.setor === setorNome && a.fileira === fileira && a.numero === numero
     );
     
     if (selecionado) return 'selecionado';
@@ -59,15 +75,15 @@ export default function MapaAssentos({
     return 'disponivel';
   };
 
-  const handleToggleAssento = (setorId, fileira, numero, tipoAssento = 'normal') => {
-    const status = getStatusAssento(setorId, fileira, numero);
+  const handleToggleAssento = (setorNome, fileira, numero, tipoAssento = 'normal') => {
+    const status = getStatusAssento(setorNome, fileira, numero);
     
     // Se está ocupado, não faz nada
     if (status === 'ocupado') return;
     
     // Chama a função passada como prop
     if (onToggleAssento) {
-      onToggleAssento({ setor: setorId, fileira, numero, tipoAssento });
+      onToggleAssento({ setor: setorNome, fileira, numero, tipoAssento });
     }
   };
 
@@ -90,7 +106,16 @@ export default function MapaAssentos({
   };
 
   if (loading) {
-    return <div className="loading-mapa">Carregando mapa de assentos...</div>;
+    return (
+      <div style={{ 
+        textAlign: 'center', 
+        padding: '50px', 
+        fontSize: '18px', 
+        color: '#666' 
+      }}>
+        🔄 Carregando mapa de assentos...
+      </div>
+    );
   }
 
   // Filtra apenas o setor selecionado
@@ -105,7 +130,7 @@ export default function MapaAssentos({
       <div className="palco-container">
         <div className="palco-visual">
           <div className="palco-icon">🎭</div>
-          <div className="palco-texto">Palco</div>
+          <div className="palco-texto">PALCO</div>
         </div>
       </div>
 
@@ -129,7 +154,7 @@ export default function MapaAssentos({
         </div>
         <div className="legenda-item">
           <div className="legenda-cor acompanhante-pcd">👥</div>
-          <span>Acompanhante PCD</span>
+          <span>Acompanhante</span>
         </div>
       </div>
 
@@ -142,23 +167,25 @@ export default function MapaAssentos({
           pointerEvents: 'none',
           backgroundColor: '#333',
           color: 'white',
-          padding: '5px 10px',
-          borderRadius: '5px',
+          padding: '8px 12px',
+          borderRadius: '6px',
           fontSize: '14px',
-          zIndex: 9999
+          fontWeight: 'bold',
+          zIndex: 9999,
+          boxShadow: '0 2px 10px rgba(0,0,0,0.3)'
         }}>
-          Assento {hoveredAssento.fileira}{hoveredAssento.numero}
+          {hoveredAssento.fileira}{hoveredAssento.numero}
         </div>
       )}
 
       {/* Mapa de Setores */}
-      <div className="teatro-layout">
+      <div className="teatr-layout">
         {setoresFiltrados.map(setor => (
           <div key={setor.id} className={`setor setor-${setor.id}`}>
             <h3 className="setor-titulo">{setor.nome}</h3>
             
             <div className="grade-assentos">
-              {setor.fileiras.map((fileira, fileiraIdx) => (
+              {setor.fileiras.map((fileira) => (
                 <div key={fileira} className="fileira-row">
                   
                   {/* Label da fileira (esquerda) */}
@@ -168,7 +195,7 @@ export default function MapaAssentos({
                   <div className="assentos-wrapper">
                     {[...Array(setor.assentosPorFileira)].map((_, idx) => {
                       const numero = idx + 1;
-                      const status = getStatusAssento(setor.id, fileira, numero);
+                      const status = getStatusAssento(setor.nome, fileira, numero);
                       const tipoEspecial = setor.assentosEspeciais?.find(
                         a => a.fileira === fileira && a.numero === numero
                       )?.tipo;
@@ -178,7 +205,7 @@ export default function MapaAssentos({
                           key={numero}
                           className={getClasseAssento(status, tipoEspecial)}
                           disabled={status === 'ocupado'}
-                          onClick={() => handleToggleAssento(setor.id, fileira, numero, tipoEspecial)}
+                          onClick={() => handleToggleAssento(setor.nome, fileira, numero, tipoEspecial)}
                           onMouseEnter={(e) => {
                             setHoveredAssento({
                               fileira,
