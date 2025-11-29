@@ -1064,6 +1064,85 @@ fontWeight: 'bold'
                   onMouseOver={(e) => e.target.style.transform = 'scale(1.02)'}
                   onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
                 >
+{assentosSelecionados.length > 0 && todosAssentosPossuemTipo() && produtos && produtos.length > 0 && (
+  <div style={{
+    marginTop: '30px',
+    padding: '25px',
+    backgroundColor: 'white',
+    borderRadius: '12px',
+    border: '2px solid #3498db'
+  }}>
+    <h3 style={{ color: '#3498db', marginTop: 0, fontSize: '22px', marginBottom: '20px', textAlign: 'center' }}>
+      🛍️ Produtos Disponíveis
+    </h3>
+    <p style={{ textAlign: 'center', color: '#666', fontSize: '14px', marginBottom: '20px' }}>
+      Aproveite para adicionar produtos ao seu pedido!
+    </p>
+    
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+      gap: '15px'
+    }}>
+      {produtos.map(produto => {
+        const quantidadeDisponivel = produto.quantidade_disponivel || 0;
+        const esgotado = quantidadeDisponivel === 0;
+
+        return (
+          <div key={produto.id} style={{
+            border: '1px solid #e0e0e0',
+            borderRadius: '8px',
+            padding: '15px',
+            backgroundColor: esgotado ? '#f8f8f8' : 'white',
+            opacity: esgotado ? 0.6 : 1
+          }}>
+            <h4 style={{ margin: '0 0 8px 0', fontSize: '16px', color: '#2c3e50' }}>
+              {produto.nome}
+            </h4>
+            <p style={{ fontSize: '18px', fontWeight: 'bold', color: '#27ae60', marginBottom: '8px' }}>
+              R$ {parseFloat(produto.preco).toFixed(2)}
+            </p>
+            {esgotado ? (
+              <button disabled style={{
+                width: '100%',
+                backgroundColor: '#ccc',
+                color: '#666',
+                border: 'none',
+                padding: '8px',
+                borderRadius: '6px',
+                fontSize: '14px',
+                cursor: 'not-allowed'
+              }}>
+                Esgotado
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  // Adiciona produto à URL do checkout
+                  alert(`Produto "${produto.nome}" será adicionado no checkout!`);
+                }}
+                style={{
+                  width: '100%',
+                  backgroundColor: '#3498db',
+                  color: 'white',
+                  border: 'none',
+                  padding: '8px',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s'
+                }}
+              >
+                Adicionar
+              </button>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  </div>
+)}
                   🎫 Ir para Pagamento
                 </button>
               </div>
@@ -1243,10 +1322,10 @@ fontWeight: 'bold'
                                 {temDesconto && <span style={{ color: '#28a745', marginLeft: '10px', fontSize: '14px' }}>🎟️ COM DESCONTO</span>}
                               </h4>
                               <p style={{ margin: 0, fontSize: '13px', color: ingressosDisponiveis > 0 ? '#999' : '#dc3545' }}>
-                                {ingressosDisponiveis > 0
-                                  ? `${ingressosDisponiveis} disponíveis`
-                                  : '❌ Esgotado'}
-                              </p>
+  {ingressosDisponiveis > 0
+    ? ''
+    : '❌ Esgotado'}
+</p>
                             </div>
                            
                             <div style={{ textAlign: 'right', marginRight: '20px' }}>
