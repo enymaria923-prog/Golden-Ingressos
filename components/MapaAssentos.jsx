@@ -18,38 +18,26 @@ export default function MapaAssentos({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    carregarAssentosOcupados();
+    if (eventoId && sessaoId) {
+      carregarAssentosOcupados();
+    }
   }, [eventoId, sessaoId]);
 
   const carregarAssentosOcupados = async () => {
     try {
-      // Busca todos os ingressos vendidos desta sessão
+      // Busca assentos já vendidos/reservados na nova tabela
       const { data, error } = await supabase
-        .from('ingressos')
-        .select('setor, assento, status')
+        .from('assentos_vendidos')
+        .select('setor, fileira, numero, assento, status')
         .eq('evento_id', eventoId)
         .eq('sessao_id', sessaoId)
-        .eq('status', 'vendido');
+        .in('status', ['vendido', 'reservado']);
 
-      if (error) {
+      if (error && error.code !== 'PGRST116') {
         console.error('Erro ao carregar assentos ocupados:', error);
       }
       
-      // Processa os assentos ocupados extraindo fileira e número do campo 'assento'
-      const ocupados = (data || []).map(item => {
-        const assentoStr = item.assento || '';
-        const match = assentoStr.match(/^([A-Z]+)(\d+)$/);
-        if (match) {
-          return {
-            setor: item.setor,
-            fileira: match[1],
-            numero: parseInt(match[2])
-          };
-        }
-        return null;
-      }).filter(Boolean);
-      
-      setAssentosOcupados(ocupados);
+      setAssentosOcupados(data || []);
     } catch (error) {
       console.error('Erro ao carregar assentos:', error);
     } finally {
@@ -60,14 +48,18 @@ export default function MapaAssentos({
   const getStatusAssento = (setorNome, fileira, numero) => {
     // Verifica se já foi vendido/ocupado
     const ocupado = assentosOcupados.find(
-      a => a.setor === setorNome && a.fileira === fileira && a.numero === numero
+      a => a.setor === setorNome && 
+           a.fileira === fileira && 
+           a.numero === numero
     );
     
     if (ocupado) return 'ocupado';
     
     // Verifica se está selecionado
     const selecionado = assentosSelecionados.find(
-      a => a.setor === setorNome && a.fileira === fileira && a.numero === numero
+      a => a.setor === setorNome && 
+           a.fileira === fileira && 
+           a.numero === numero
     );
     
     if (selecionado) return 'selecionado';
@@ -79,7 +71,10 @@ export default function MapaAssentos({
     const status = getStatusAssento(setorNome, fileira, numero);
     
     // Se está ocupado, não faz nada
-    if (status === 'ocupado') return;
+    if (status === 'ocupado') {
+      alert('Este assento já está ocupado!');
+      return;
+    }
     
     // Chama a função passada como prop
     if (onToggleAssento) {
@@ -118,10 +113,36 @@ export default function MapaAssentos({
     );
   }
 
+  if (!teatroConfig || !teatroConfig.setores) {
+    return (
+      <div style={{ 
+        textAlign: 'center', 
+        padding: '50px', 
+        fontSize: '18px', 
+        color: '#dc3545' 
+      }}>
+        ⚠️ Configuração de teatro não encontrada
+      </div>
+    );
+  }
+
   // Filtra apenas o setor selecionado
   const setoresFiltrados = setorFiltro 
     ? teatroConfig.setores.filter(s => s.nome === setorFiltro)
     : teatroConfig.setores;
+
+  if (setoresFiltrados.length === 0) {
+    return (
+      <div style={{ 
+        textAlign: 'center', 
+        padding: '50px', 
+        fontSize: '18px', 
+        color: '#dc3545' 
+      }}>
+        ⚠️ Setor não encontrado na configuração do teatro
+      </div>
+    );
+  }
 
   return (
     <div className="mapa-assentos-container">
@@ -160,7 +181,7 @@ export default function MapaAssentos({
 
       {/* Tooltip hover */}
       {hoveredAssento && (
-        <div className="tooltip-assento" style={{
+        <div style={{
           position: 'fixed',
           top: hoveredAssento.y + 10,
           left: hoveredAssento.x + 10,
