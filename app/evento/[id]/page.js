@@ -1399,8 +1399,8 @@ export default function EventoPage() {
                                 Esgotado
                               </button>
                             )}
-                          </div>
-                        )}
+                     </div>
+                        );
                       })}
                     </div>
                   )}
