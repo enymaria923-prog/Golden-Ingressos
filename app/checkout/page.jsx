@@ -16,7 +16,8 @@ function CheckoutContent() {
   const [itensCarrinho, setItensCarrinho] = useState([]);
   const [produtos, setProdutos] = useState([]);
   const [cupom, setCupom] = useState(null);
-  const [formaPagamento, setFormaPagamento] = useState('cartao');
+  const [formaPagamento, setFormaPagamento] = useState('pix');
+  const [user, setUser] = useState(null);
   const [dadosComprador, setDadosComprador] = useState({
     nome: '',
     email: '',
@@ -30,8 +31,40 @@ function CheckoutContent() {
   const cupomId = searchParams.get('cupom_id');
 
   useEffect(() => {
+    carregarUsuario();
     carregarDados();
   }, [eventoId, sessaoId]);
+
+  const carregarUsuario = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (user) {
+      setUser(user);
+      
+      // Busca informações completas do perfil
+      const { data: perfil } = await supabase
+        .from('perfis')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (perfil) {
+        setDadosComprador({
+          nome: perfil.nome_completo || user.user_metadata?.nome_completo || '',
+          email: user.email || '',
+          cpf: perfil.cpf || '',
+          telefone: perfil.telefone || ''
+        });
+      } else {
+        setDadosComprador({
+          nome: user.user_metadata?.nome_completo || '',
+          email: user.email || '',
+          cpf: '',
+          telefone: ''
+        });
+      }
+    }
+  };
 
   const carregarDados = async () => {
     try {
@@ -224,6 +257,7 @@ function CheckoutContent() {
                     fontSize: '16px'
                   }}
                   placeholder="seu@email.com"
+                  disabled={!!user}
                 />
               </div>
 
@@ -266,6 +300,19 @@ function CheckoutContent() {
                   />
                 </div>
               </div>
+
+              {user && (
+                <div style={{
+                  padding: '10px',
+                  backgroundColor: '#d4edda',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  color: '#155724',
+                  border: '1px solid #c3e6cb'
+                }}>
+                  ✅ Dados preenchidos automaticamente da sua conta
+                </div>
+              )}
             </div>
           </div>
 
@@ -276,28 +323,6 @@ function CheckoutContent() {
             </h2>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              <label style={{
-                padding: '20px',
-                border: formaPagamento === 'cartao' ? '3px solid #5d34a4' : '2px solid #e0e0e0',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                backgroundColor: formaPagamento === 'cartao' ? '#f0e6ff' : 'white',
-                transition: 'all 0.3s'
-              }}>
-                <input
-                  type="radio"
-                  name="pagamento"
-                  value="cartao"
-                  checked={formaPagamento === 'cartao'}
-                  onChange={(e) => setFormaPagamento(e.target.value)}
-                  style={{ marginRight: '10px' }}
-                />
-                <span style={{ fontSize: '18px', fontWeight: '600' }}>💳 Cartão de Crédito</span>
-                <div style={{ fontSize: '14px', color: '#666', marginTop: '5px', marginLeft: '25px' }}>
-                  Parcele em até 12x
-                </div>
-              </label>
-
               <label style={{
                 padding: '20px',
                 border: formaPagamento === 'pix' ? '3px solid #5d34a4' : '2px solid #e0e0e0',
@@ -317,6 +342,28 @@ function CheckoutContent() {
                 <span style={{ fontSize: '18px', fontWeight: '600' }}>📱 PIX</span>
                 <div style={{ fontSize: '14px', color: '#666', marginTop: '5px', marginLeft: '25px' }}>
                   Pagamento instantâneo
+                </div>
+              </label>
+
+              <label style={{
+                padding: '20px',
+                border: formaPagamento === 'cartao' ? '3px solid #5d34a4' : '2px solid #e0e0e0',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                backgroundColor: formaPagamento === 'cartao' ? '#f0e6ff' : 'white',
+                transition: 'all 0.3s'
+              }}>
+                <input
+                  type="radio"
+                  name="pagamento"
+                  value="cartao"
+                  checked={formaPagamento === 'cartao'}
+                  onChange={(e) => setFormaPagamento(e.target.value)}
+                  style={{ marginRight: '10px' }}
+                />
+                <span style={{ fontSize: '18px', fontWeight: '600' }}>💳 Cartão de Crédito</span>
+                <div style={{ fontSize: '14px', color: '#666', marginTop: '5px', marginLeft: '25px' }}>
+                  Parcele em até 12x
                 </div>
               </label>
 
