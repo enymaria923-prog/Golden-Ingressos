@@ -3,7 +3,7 @@
 
 export const teatrosConfig = {
   
-  // Exemplo 1: Teatro simples com plateia
+  // Exemplo 1: Teatro simples com plateia (todas fileiras iguais)
   'teatro-paiol': {
     id: 'teatro-paiol',
     nome: 'Teatro Paiol',
@@ -13,7 +13,7 @@ export const teatrosConfig = {
         id: 'plateia',
         nome: 'Plateia',
         fileiras: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'],
-        assentosPorFileira: 20,
+        assentosPorFileira: 20, // Padrão para todas as fileiras
         mostrarNumeracaoInferior: true,
         // Assentos especiais (PCD, Obeso, etc)
         assentosEspeciais: [
@@ -28,7 +28,7 @@ export const teatrosConfig = {
     ]
   },
 
-  // Exemplo 2: Teatro com múltiplos setores
+  // Exemplo 2: Teatro com fileiras de tamanhos DIFERENTES
   'teatro-aspro': {
     id: 'teatro-aspro',
     nome: 'Teatro Aspro',
@@ -37,8 +37,19 @@ export const teatrosConfig = {
       {
         id: 'plateia',
         nome: 'Plateia',
-        fileiras: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'],
-        assentosPorFileira: 20,
+        // OPÇÃO 1: Usar objeto com quantidade específica por fileira
+        fileiras: {
+          'A': 30, // Fileira A tem 30 assentos
+          'B': 30, // Fileira B tem 30 assentos
+          'C': 25, // Fileira C tem 25 assentos
+          'D': 25, // Fileira D tem 25 assentos
+          'E': 20, // Fileira E tem 20 assentos
+          'F': 20,
+          'G': 20,
+          'H': 20,
+          'I': 20,
+          'J': 20
+        },
         mostrarNumeracaoInferior: true,
         assentosEspeciais: [
           { fileira: 'A', numero: 1, tipo: 'pcd' },
@@ -49,15 +60,44 @@ export const teatrosConfig = {
       {
         id: 'balcao',
         nome: 'Balcão',
-        fileiras: ['A', 'B', 'C', 'D'],
-        assentosPorFileira: 15,
+        fileiras: ['A', 'B', 'C', 'D'], // Todas iguais
+        assentosPorFileira: 15, // Usa o padrão quando fileiras é array
         mostrarNumeracaoInferior: true,
         assentosEspeciais: []
       }
     ]
   },
 
-  // Exemplo 3: Circo com layout complexo
+  // Exemplo 3: Teatro com layout irregular (OPÇÃO 2 - array de objetos)
+  'teatro-municipal': {
+    id: 'teatro-municipal',
+    nome: 'Teatro Municipal',
+    cidade: 'São Paulo',
+    setores: [
+      {
+        id: 'plateia',
+        nome: 'Plateia',
+        // OPÇÃO 2: Array de objetos (mais verboso mas mais claro)
+        fileiras: [
+          { letra: 'A', assentos: 30 },
+          { letra: 'B', assentos: 30 },
+          { letra: 'C', assentos: 28 },
+          { letra: 'D', assentos: 26 },
+          { letra: 'E', assentos: 24 },
+          { letra: 'F', assentos: 22 },
+          { letra: 'G', assentos: 20 },
+          { letra: 'H', assentos: 20 },
+        ],
+        mostrarNumeracaoInferior: true,
+        assentosEspeciais: [
+          { fileira: 'A', numero: 1, tipo: 'pcd' },
+          { fileira: 'A', numero: 2, tipo: 'acompanhante_pcd' },
+        ]
+      }
+    ]
+  },
+
+  // Exemplo 4: Circo com layout complexo
   'circo-thathi': {
     id: 'circo-thathi',
     nome: 'Circo Thathi',
@@ -85,14 +125,18 @@ export const teatrosConfig = {
       {
         id: 'centro',
         nome: 'Centro',
-        fileiras: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P'],
-        assentosPorFileira: 21,
+        fileiras: {
+          'A': 21, 'B': 21, 'C': 21, 'D': 21, 'E': 21,
+          'F': 23, 'G': 23, 'H': 23, // Fileiras do meio maiores
+          'I': 23, 'J': 23, 'K': 23,
+          'L': 21, 'M': 21, 'N': 21, 'O': 21, 'P': 21
+        },
         mostrarNumeracaoInferior: true,
         assentosEspeciais: [
           { fileira: 'J', numero: 1, tipo: 'pcd' },
           { fileira: 'J', numero: 2, tipo: 'acompanhante_pcd' },
-          { fileira: 'J', numero: 20, tipo: 'pcd' },
-          { fileira: 'J', numero: 21, tipo: 'acompanhante_pcd' },
+          { fileira: 'J', numero: 22, tipo: 'pcd' },
+          { fileira: 'J', numero: 23, tipo: 'acompanhante_pcd' },
         ]
       },
       {
@@ -106,7 +150,7 @@ export const teatrosConfig = {
     ]
   },
 
-  // Exemplo 4: Teatro médio
+  // Exemplo 5: Teatro com formato triangular (diminui conforme avança)
   'teatro-bradesco': {
     id: 'teatro-bradesco',
     nome: 'Teatro Bradesco',
@@ -115,14 +159,20 @@ export const teatrosConfig = {
       {
         id: 'plateia-a',
         nome: 'Plateia A',
-        fileiras: ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'],
-        assentosPorFileira: 18,
+        fileiras: [
+          { letra: 'A', assentos: 10 }, // Frente menor
+          { letra: 'B', assentos: 12 },
+          { letra: 'C', assentos: 14 },
+          { letra: 'D', assentos: 16 },
+          { letra: 'E', assentos: 18 },
+          { letra: 'F', assentos: 18 },
+          { letra: 'G', assentos: 18 },
+          { letra: 'H', assentos: 18 }
+        ],
         mostrarNumeracaoInferior: true,
         assentosEspeciais: [
           { fileira: 'A', numero: 1, tipo: 'pcd' },
           { fileira: 'A', numero: 2, tipo: 'acompanhante_pcd' },
-          { fileira: 'A', numero: 17, tipo: 'pcd' },
-          { fileira: 'A', numero: 18, tipo: 'acompanhante_pcd' },
         ]
       },
       {
@@ -149,6 +199,39 @@ export const teatrosConfig = {
 
 };
 
+// Função helper para obter número de assentos de uma fileira específica
+export function getAssentosPorFileira(setor, fileira) {
+  // Se fileiras é um objeto (OPÇÃO 1)
+  if (typeof setor.fileiras === 'object' && !Array.isArray(setor.fileiras)) {
+    return setor.fileiras[fileira] || 0;
+  }
+  
+  // Se fileiras é um array de objetos (OPÇÃO 2)
+  if (Array.isArray(setor.fileiras) && setor.fileiras[0]?.letra) {
+    const fileiraObj = setor.fileiras.find(f => f.letra === fileira);
+    return fileiraObj?.assentos || 0;
+  }
+  
+  // Se fileiras é um array simples (padrão antigo)
+  return setor.assentosPorFileira || 0;
+}
+
+// Função helper para obter lista de letras das fileiras
+export function getFileirasLetras(setor) {
+  // Se fileiras é um objeto
+  if (typeof setor.fileiras === 'object' && !Array.isArray(setor.fileiras)) {
+    return Object.keys(setor.fileiras);
+  }
+  
+  // Se fileiras é um array de objetos
+  if (Array.isArray(setor.fileiras) && setor.fileiras[0]?.letra) {
+    return setor.fileiras.map(f => f.letra);
+  }
+  
+  // Se fileiras é um array simples
+  return setor.fileiras;
+}
+
 // Função helper para verificar se um teatro existe
 export function getTeatroConfig(teatroId) {
   return teatrosConfig[teatroId] || null;
@@ -170,6 +253,20 @@ export function calcularTotalAssentos(teatroId) {
   if (!teatro) return 0;
   
   return teatro.setores.reduce((total, setor) => {
-    return total + (setor.fileiras.length * setor.assentosPorFileira);
+    const fileiras = getFileirasLetras(setor);
+    const assentosPorFileira = fileiras.map(fileira => 
+      getAssentosPorFileira(setor, fileira)
+    );
+    return total + assentosPorFileira.reduce((sum, num) => sum + num, 0);
   }, 0);
+}
+
+// Função para obter informações detalhadas de um setor
+export function getDetalhesSetor(setor) {
+  const fileiras = getFileirasLetras(setor);
+  return fileiras.map(fileira => ({
+    fileira,
+    assentos: getAssentosPorFileira(setor, fileira),
+    temAssentosEspeciais: setor.assentosEspeciais?.some(a => a.fileira === fileira)
+  }));
 }
