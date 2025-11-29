@@ -3,28 +3,37 @@ import { useState, useEffect } from 'react';
 import { createClient } from '../utils/supabase/client';
 import './MapaAssentos.css';
 
-export default function MapaAssentos({ eventoId, teatroConfig }) {
+export default function MapaAssentos({ 
+  eventoId, 
+  teatroConfig, 
+  sessaoId, 
+  setorFiltro, 
+  assentosSelecionados = [], 
+  onToggleAssento 
+}) {
   const supabase = createClient();
   
-  const [assentosVendidos, setAssentosVendidos] = useState([]);
-  const [assentosSelecionados, setAssentosSelecionados] = useState([]);
+  const [assentosOcupados, setAssentosOcupados] = useState([]);
   const [hoveredAssento, setHoveredAssento] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    carregarAssentosVendidos();
-  }, [eventoId]);
+    carregarAssentosOcupados();
+  }, [eventoId, sessaoId]);
 
-  const carregarAssentosVendidos = async () => {
+  const carregarAssentosOcupados = async () => {
     try {
       const { data, error } = await supabase
-        .from('ingressos')
-        .select('*')
+        .from('ingressos_vendidos')
+        .select('setor, fileira, numero, assento')
         .eq('evento_id', eventoId)
-        .in('status', ['vendido', 'reservado']);
+        .eq('sessao_id', sessaoId);
 
-      if (error) throw error;
-      setAssentosVendidos(data || []);
+      if (error && error.code !== 'PGRST116') {
+        console.error('Erro ao carregar assentos:', error);
+      }
+      
+      setAssentosOcupados(data || []);
     } catch (error) {
       console.error('Erro ao carregar assentos:', error);
     } finally {
@@ -33,14 +42,12 @@ export default function MapaAssentos({ eventoId, teatroConfig }) {
   };
 
   const getStatusAssento = (setorId, fileira, numero) => {
-    // Verifica se já foi vendido
-    const vendido = assentosVendidos.find(
-      a => a.setor === setorId && a.fileira === fileira && a.numero === numero
+    // Verifica se já foi vendido/ocupado
+    const ocupado = assentosOcupados.find(
+      a => a.setor === setorId && a.fileira === fileira && parseInt(a.numero) === numero
     );
     
-    if (vendido) {
-      return vendido.tipo_assento || 'ocupado'; // 'ocupado', 'pcd', 'acompanhante_pcd', 'obeso', 'pmr'
-    }
+    if (ocupado) return 'ocupado';
     
     // Verifica se está selecionado
     const selecionado = assentosSelecionados.find(
@@ -52,27 +59,16 @@ export default function MapaAssentos({ eventoId, teatroConfig }) {
     return 'disponivel';
   };
 
-  const toggleAssento = (setorId, fileira, numero, tipoAssento = 'normal') => {
+  const handleToggleAssento = (setorId, fileira, numero, tipoAssento = 'normal') => {
     const status = getStatusAssento(setorId, fileira, numero);
     
     // Se está ocupado, não faz nada
-    if (status === 'ocupado' || status === 'pcd' || status === 'acompanhante_pcd' || status === 'obeso' || status === 'pmr') {
-      return;
-    }
+    if (status === 'ocupado') return;
     
-    // Se está selecionado, remove
-    if (status === 'selecionado') {
-      setAssentosSelecionados(prev => 
-        prev.filter(a => !(a.setor === setorId && a.fileira === fileira && a.numero === numero))
-      );
-      return;
+    // Chama a função passada como prop
+    if (onToggleAssento) {
+      onToggleAssento({ setor: setorId, fileira, numero, tipoAssento });
     }
-    
-    // Se está disponível, adiciona
-    setAssentosSelecionados(prev => [
-      ...prev,
-      { setor: setorId, fileira, numero, tipoAssento }
-    ]);
   };
 
   const getClasseAssento = (status, tipoEspecial) => {
@@ -88,13 +84,6 @@ export default function MapaAssentos({ eventoId, teatroConfig }) {
       if (tipoEspecial === 'acompanhante_pcd') classes.push('acompanhante-pcd');
       if (tipoEspecial === 'obeso') classes.push('obeso');
       if (tipoEspecial === 'pmr') classes.push('pmr');
-    } else {
-      // Já vendido com tipo especial
-      classes.push('ocupado');
-      if (status === 'pcd') classes.push('pcd');
-      if (status === 'acompanhante_pcd') classes.push('acompanhante-pcd');
-      if (status === 'obeso') classes.push('obeso');
-      if (status === 'pmr') classes.push('pmr');
     }
     
     return classes.join(' ');
@@ -103,6 +92,11 @@ export default function MapaAssentos({ eventoId, teatroConfig }) {
   if (loading) {
     return <div className="loading-mapa">Carregando mapa de assentos...</div>;
   }
+
+  // Filtra apenas o setor selecionado
+  const setoresFiltrados = setorFiltro 
+    ? teatroConfig.setores.filter(s => s.nome === setorFiltro)
+    : teatroConfig.setores;
 
   return (
     <div className="mapa-assentos-container">
@@ -137,14 +131,6 @@ export default function MapaAssentos({ eventoId, teatroConfig }) {
           <div className="legenda-cor acompanhante-pcd">👥</div>
           <span>Acompanhante PCD</span>
         </div>
-        <div className="legenda-item">
-          <div className="legenda-cor obeso"></div>
-          <span>Obeso</span>
-        </div>
-        <div className="legenda-item">
-          <div className="legenda-cor pmr"></div>
-          <span>PMR</span>
-        </div>
       </div>
 
       {/* Tooltip hover */}
@@ -153,15 +139,21 @@ export default function MapaAssentos({ eventoId, teatroConfig }) {
           position: 'fixed',
           top: hoveredAssento.y + 10,
           left: hoveredAssento.x + 10,
-          pointerEvents: 'none'
+          pointerEvents: 'none',
+          backgroundColor: '#333',
+          color: 'white',
+          padding: '5px 10px',
+          borderRadius: '5px',
+          fontSize: '14px',
+          zIndex: 9999
         }}>
           Assento {hoveredAssento.fileira}{hoveredAssento.numero}
         </div>
       )}
 
       {/* Mapa de Setores */}
-      <div className="teatr-layout">
-        {teatroConfig.setores.map(setor => (
+      <div className="teatro-layout">
+        {setoresFiltrados.map(setor => (
           <div key={setor.id} className={`setor setor-${setor.id}`}>
             <h3 className="setor-titulo">{setor.nome}</h3>
             
@@ -185,8 +177,8 @@ export default function MapaAssentos({ eventoId, teatroConfig }) {
                         <button
                           key={numero}
                           className={getClasseAssento(status, tipoEspecial)}
-                          disabled={status === 'ocupado' || status === 'pcd' || status === 'acompanhante_pcd' || status === 'obeso' || status === 'pmr'}
-                          onClick={() => toggleAssento(setor.id, fileira, numero, tipoEspecial)}
+                          disabled={status === 'ocupado'}
+                          onClick={() => handleToggleAssento(setor.id, fileira, numero, tipoEspecial)}
                           onMouseEnter={(e) => {
                             setHoveredAssento({
                               fileira,
@@ -235,20 +227,6 @@ export default function MapaAssentos({ eventoId, teatroConfig }) {
           </div>
         ))}
       </div>
-
-      {/* Resumo da seleção */}
-      {assentosSelecionados.length > 0 && (
-        <div className="resumo-selecao">
-          <h3>Assentos Selecionados ({assentosSelecionados.length})</h3>
-          <div className="lista-selecionados">
-            {assentosSelecionados.map((a, idx) => (
-              <span key={idx} className="badge-assento">
-                {a.fileira}{a.numero}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
