@@ -219,6 +219,30 @@ export default function PerfilPage() {
     setIsEditing(false);
   };
 
+  const deletarPost = async (postId) => {
+    if (!confirm('Tem certeza que deseja deletar esta publicação?')) {
+      return;
+    }
+
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('posts')
+        .delete()
+        .eq('id', postId);
+
+      if (error) throw error;
+
+      // Atualizar lista de posts
+      setPosts(prev => prev.filter(p => p.id !== postId));
+      setPostSelecionado(null);
+      alert('Publicação deletada com sucesso!');
+    } catch (error) {
+      console.error('Erro ao deletar post:', error);
+      alert('Erro ao deletar publicação');
+    }
+  };
+
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
@@ -672,6 +696,26 @@ export default function PerfilPage() {
                       year: 'numeric'
                     })}
                   </p>
+                </div>
+
+                {/* Botão deletar */}
+                <div style={{ padding: '15px', borderTop: '1px solid #efefef' }}>
+                  <button
+                    onClick={() => deletarPost(postSelecionado.id)}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      backgroundColor: '#ed4956',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    🗑️ Deletar Publicação
+                  </button>
                 </div>
               </div>
             </div>
