@@ -46,17 +46,38 @@ export default function BuscarUsuariosPage() {
 
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // Buscar por username
+      const { data: porUsername, error: errorUsername } = await supabase
         .from('perfis')
         .select('id, nome_completo, username, foto_perfil_url, bio')
-        .or(`username.ilike.%${termoBusca}%,nome_completo.ilike.%${termoBusca}%`)
-        .neq('id', user.id) // Não mostrar o próprio usuário
-        .limit(20);
+        .ilike('username', `%${termoBusca}%`)
+        .neq('id', user.id)
+        .limit(10);
 
-      if (error) throw error;
-      setResultados(data || []);
+      // Buscar por nome
+      const { data: porNome, error: errorNome } = await supabase
+        .from('perfis')
+        .select('id, nome_completo, username, foto_perfil_url, bio')
+        .ilike('nome_completo', `%${termoBusca}%`)
+        .neq('id', user.id)
+        .limit(10);
+
+      if (errorUsername || errorNome) {
+        console.error('Erro na busca:', errorUsername || errorNome);
+        setResultados([]);
+        return;
+      }
+
+      // Combinar resultados e remover duplicatas
+      const todosResultados = [...(porUsername || []), ...(porNome || [])];
+      const resultadosUnicos = Array.from(
+        new Map(todosResultados.map(item => [item.id, item])).values()
+      );
+
+      setResultados(resultadosUnicos);
     } catch (error) {
       console.error('Erro ao buscar usuários:', error);
+      setResultados([]);
     } finally {
       setLoading(false);
     }
