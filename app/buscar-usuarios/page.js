@@ -46,32 +46,50 @@ export default function BuscarUsuariosPage() {
 
     setLoading(true);
     try {
-      // Buscar em todos os perfis (não filtra por username vazio)
-      const { data, error } = await supabase
+      console.log('🔍 Buscando por:', termoBusca);
+      
+      // Buscar TODOS os perfis primeiro (para debug)
+      const { data: todosPerfis, error: erroTodos } = await supabase
         .from('perfis')
-        .select('id, nome_completo, username, foto_perfil_url, bio, email')
-        .neq('id', user?.id || '00000000-0000-0000-0000-000000000000')
-        .limit(50);
+        .select('id, nome_completo, username, foto_perfil_url, bio, email');
 
-      if (error) {
-        console.error('Erro na busca:', error);
+      console.log('📊 Total de perfis no banco:', todosPerfis?.length || 0);
+      console.log('📋 Perfis encontrados:', todosPerfis);
+
+      if (erroTodos) {
+        console.error('❌ Erro ao buscar perfis:', erroTodos);
+        alert('Erro ao buscar: ' + erroTodos.message);
         setResultados([]);
         return;
       }
 
-      // Filtrar manualmente no cliente
-      const filtrados = (data || []).filter(perfil => {
-        const termo = termoBusca.toLowerCase();
-        return (
-          perfil.username?.toLowerCase().includes(termo) ||
-          perfil.nome_completo?.toLowerCase().includes(termo) ||
-          perfil.email?.toLowerCase().includes(termo)
-        );
+      if (!todosPerfis || todosPerfis.length === 0) {
+        console.log('⚠️ Nenhum perfil encontrado no banco de dados');
+        setResultados([]);
+        return;
+      }
+
+      // Filtrar removendo o próprio usuário
+      const perfisOutrosUsuarios = todosPerfis.filter(p => p.id !== user?.id);
+      console.log('👥 Perfis de outros usuários:', perfisOutrosUsuarios.length);
+
+      // Filtrar pelo termo de busca
+      const termo = termoBusca.toLowerCase().trim();
+      const filtrados = perfisOutrosUsuarios.filter(perfil => {
+        const matchUsername = perfil.username?.toLowerCase().includes(termo);
+        const matchNome = perfil.nome_completo?.toLowerCase().includes(termo);
+        const matchEmail = perfil.email?.toLowerCase().includes(termo);
+        
+        return matchUsername || matchNome || matchEmail;
       });
+
+      console.log('✅ Perfis filtrados:', filtrados.length);
+      console.log('📄 Resultados:', filtrados);
 
       setResultados(filtrados);
     } catch (error) {
-      console.error('Erro ao buscar usuários:', error);
+      console.error('💥 Erro geral na busca:', error);
+      alert('Erro ao buscar usuários: ' + error.message);
       setResultados([]);
     } finally {
       setLoading(false);
@@ -165,12 +183,12 @@ export default function BuscarUsuariosPage() {
           border: '1px solid #dbdbdb',
           marginBottom: '20px'
         }}>
-          <div style={{ position: 'relative' }}>
+          <div style={{ position: 'relative', marginBottom: '15px' }}>
             <input
               type="text"
               value={busca}
               onChange={handleBuscaChange}
-              placeholder="🔍 Buscar usuários por nome ou @username..."
+              placeholder="🔍 Buscar usuários por nome, @username ou email..."
               style={{
                 width: '100%',
                 padding: '12px 45px 12px 15px',
@@ -192,6 +210,25 @@ export default function BuscarUsuariosPage() {
               </div>
             )}
           </div>
+          
+          {/* Botão de debug - mostrar todos */}
+          <button
+            onClick={() => {
+              setBusca('');
+              buscarUsuarios(' '); // Busca com espaço para forçar a busca
+            }}
+            style={{
+              padding: '8px 15px',
+              backgroundColor: '#efefef',
+              border: '1px solid #dbdbdb',
+              borderRadius: '6px',
+              fontSize: '12px',
+              cursor: 'pointer',
+              color: '#262626'
+            }}
+          >
+            🔍 Ver todos os usuários
+          </button>
         </div>
 
         {/* Resultados */}
