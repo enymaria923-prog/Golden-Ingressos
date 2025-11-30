@@ -22,7 +22,15 @@ export default function MinhaVitrinePage() {
     foto_capa_url: '',
     instagram: '',
     facebook: '',
-    youtube: ''
+    youtube: '',
+    // Novos campos de personalização
+    tema: 'default',
+    cor_primaria: '#667eea',
+    cor_secundaria: '#764ba2',
+    cor_fundo: '#f5f7fa',
+    cor_texto: '#2c3e50',
+    fonte_titulo: 'system-ui',
+    fonte_corpo: 'system-ui'
   });
 
   const [links, setLinks] = useState([]);
@@ -32,6 +40,18 @@ export default function MinhaVitrinePage() {
   const fotoPerfilRef = useRef(null);
   const fotoCapaRef = useRef(null);
   const imagemLinkRefs = useRef({});
+
+  // Opções de fontes
+  const fontesDisponiveis = [
+    { nome: 'System UI', valor: 'system-ui' },
+    { nome: 'Arial', valor: 'Arial, sans-serif' },
+    { nome: 'Georgia', valor: 'Georgia, serif' },
+    { nome: 'Courier', valor: 'Courier New, monospace' },
+    { nome: 'Verdana', valor: 'Verdana, sans-serif' },
+    { nome: 'Times New Roman', valor: 'Times New Roman, serif' },
+    { nome: 'Comic Sans', valor: 'Comic Sans MS, cursive' },
+    { nome: 'Impact', valor: 'Impact, sans-serif' }
+  ];
 
   useEffect(() => {
     checkUser();
@@ -66,7 +86,14 @@ export default function MinhaVitrinePage() {
           foto_capa_url: perfilData.foto_capa_url || '',
           instagram: perfilData.instagram || '',
           facebook: perfilData.facebook || '',
-          youtube: perfilData.youtube || ''
+          youtube: perfilData.youtube || '',
+          tema: perfilData.tema || 'default',
+          cor_primaria: perfilData.cor_primaria || '#667eea',
+          cor_secundaria: perfilData.cor_secundaria || '#764ba2',
+          cor_fundo: perfilData.cor_fundo || '#f5f7fa',
+          cor_texto: perfilData.cor_texto || '#2c3e50',
+          fonte_titulo: perfilData.fonte_titulo || 'system-ui',
+          fonte_corpo: perfilData.fonte_corpo || 'system-ui'
         });
         const { data: linksData } = await supabase.from('links_vitrine').select('*').eq('user_id', userId).order('ordem');
         setLinks(linksData || []);
@@ -129,7 +156,19 @@ export default function MinhaVitrinePage() {
     setUploadingImagensLinks(prev => ({ ...prev, [linkId]: false }));
   };
 
-  const adicionarLink = () => setLinks([...links, { id: Date.now().toString(), titulo: '', url: '', descricao: '', imagem_url: '', icone: '🔗', ordem: links.length, novo: true }]);
+  const adicionarLink = () => setLinks([...links, { 
+    id: Date.now().toString(), 
+    titulo: '', 
+    url: '', 
+    descricao: '', 
+    imagem_url: '', 
+    icone: '🔗', 
+    ordem: links.length, 
+    agendamento_inicio: null,
+    agendamento_fim: null,
+    novo: true 
+  }]);
+  
   const atualizarLink = (id, campo, valor) => setLinks(links.map(link => link.id === id ? { ...link, [campo]: valor } : link));
   const removerLink = (id) => { if (confirm('Remover?')) setLinks(links.filter(link => link.id !== id)); };
 
@@ -151,10 +190,22 @@ export default function MinhaVitrinePage() {
 
       for (const link of links) {
         if (!link.titulo || !link.url) continue;
+        const linkData = {
+          user_id: user.id,
+          titulo: link.titulo,
+          url: link.url,
+          descricao: link.descricao,
+          imagem_url: link.imagem_url,
+          icone: link.icone,
+          ordem: link.ordem,
+          agendamento_inicio: link.agendamento_inicio || null,
+          agendamento_fim: link.agendamento_fim || null
+        };
+        
         if (link.novo) {
-          await supabase.from('links_vitrine').insert([{ user_id: user.id, titulo: link.titulo, url: link.url, descricao: link.descricao, imagem_url: link.imagem_url, icone: link.icone, ordem: link.ordem }]);
+          await supabase.from('links_vitrine').insert([linkData]);
         } else {
-          await supabase.from('links_vitrine').update({ titulo: link.titulo, url: link.url, descricao: link.descricao, imagem_url: link.imagem_url, icone: link.icone, ordem: link.ordem }).eq('id', link.id);
+          await supabase.from('links_vitrine').update(linkData).eq('id', link.id);
         }
       }
       alert('✅ Salvo!');
@@ -202,6 +253,106 @@ export default function MinhaVitrinePage() {
         </div>
       </div>
 
+      {/* NOVA SEÇÃO: PERSONALIZAÇÃO AVANÇADA */}
+      <div className="form-section" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', padding: '30px', borderRadius: '15px' }}>
+        <h2 style={{ color: 'white', marginBottom: '20px' }}>🎨 Personalização Avançada</h2>
+        
+        <div className="form-group">
+          <label style={{ color: 'white' }}>Tema Predefinido</label>
+          <select value={perfil.tema} onChange={(e) => {
+            const tema = e.target.value;
+            handlePerfilChange('tema', tema);
+            // Aplicar cores predefinidas
+            if (tema === 'default') {
+              handlePerfilChange('cor_primaria', '#667eea');
+              handlePerfilChange('cor_secundaria', '#764ba2');
+              handlePerfilChange('cor_fundo', '#f5f7fa');
+            } else if (tema === 'dark') {
+              handlePerfilChange('cor_primaria', '#0f0c29');
+              handlePerfilChange('cor_secundaria', '#302b63');
+              handlePerfilChange('cor_fundo', '#24243e');
+            } else if (tema === 'ocean') {
+              handlePerfilChange('cor_primaria', '#2E3192');
+              handlePerfilChange('cor_secundaria', '#1BFFFF');
+              handlePerfilChange('cor_fundo', '#e0f7fa');
+            } else if (tema === 'sunset') {
+              handlePerfilChange('cor_primaria', '#FF512F');
+              handlePerfilChange('cor_secundaria', '#F09819');
+              handlePerfilChange('cor_fundo', '#fff5e6');
+            } else if (tema === 'forest') {
+              handlePerfilChange('cor_primaria', '#134E5E');
+              handlePerfilChange('cor_secundaria', '#71B280');
+              handlePerfilChange('cor_fundo', '#e8f5e9');
+            }
+          }} style={{ background: 'white' }}>
+            <option value="default">Padrão (Roxo)</option>
+            <option value="dark">Escuro</option>
+            <option value="ocean">Oceano</option>
+            <option value="sunset">Pôr do Sol</option>
+            <option value="forest">Floresta</option>
+            <option value="custom">Personalizado</option>
+          </select>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px', marginTop: '20px' }}>
+          <div className="form-group">
+            <label style={{ color: 'white' }}>Cor Primária</label>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <input type="color" value={perfil.cor_primaria} onChange={(e) => handlePerfilChange('cor_primaria', e.target.value)} style={{ width: '60px', height: '40px', border: 'none', borderRadius: '8px' }} />
+              <input type="text" value={perfil.cor_primaria} onChange={(e) => handlePerfilChange('cor_primaria', e.target.value)} style={{ flex: 1, background: 'white' }} />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label style={{ color: 'white' }}>Cor Secundária</label>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <input type="color" value={perfil.cor_secundaria} onChange={(e) => handlePerfilChange('cor_secundaria', e.target.value)} style={{ width: '60px', height: '40px', border: 'none', borderRadius: '8px' }} />
+              <input type="text" value={perfil.cor_secundaria} onChange={(e) => handlePerfilChange('cor_secundaria', e.target.value)} style={{ flex: 1, background: 'white' }} />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label style={{ color: 'white' }}>Cor de Fundo</label>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <input type="color" value={perfil.cor_fundo} onChange={(e) => handlePerfilChange('cor_fundo', e.target.value)} style={{ width: '60px', height: '40px', border: 'none', borderRadius: '8px' }} />
+              <input type="text" value={perfil.cor_fundo} onChange={(e) => handlePerfilChange('cor_fundo', e.target.value)} style={{ flex: 1, background: 'white' }} />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label style={{ color: 'white' }}>Cor do Texto</label>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <input type="color" value={perfil.cor_texto} onChange={(e) => handlePerfilChange('cor_texto', e.target.value)} style={{ width: '60px', height: '40px', border: 'none', borderRadius: '8px' }} />
+              <input type="text" value={perfil.cor_texto} onChange={(e) => handlePerfilChange('cor_texto', e.target.value)} style={{ flex: 1, background: 'white' }} />
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '15px', marginTop: '20px' }}>
+          <div className="form-group">
+            <label style={{ color: 'white' }}>Fonte dos Títulos</label>
+            <select value={perfil.fonte_titulo} onChange={(e) => handlePerfilChange('fonte_titulo', e.target.value)} style={{ background: 'white' }}>
+              {fontesDisponiveis.map(fonte => (
+                <option key={fonte.valor} value={fonte.valor}>{fonte.nome}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label style={{ color: 'white' }}>Fonte do Corpo</label>
+            <select value={perfil.fonte_corpo} onChange={(e) => handlePerfilChange('fonte_corpo', e.target.value)} style={{ background: 'white' }}>
+              {fontesDisponiveis.map(fonte => (
+                <option key={fonte.valor} value={fonte.valor}>{fonte.nome}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <p style={{ color: 'white', fontSize: '14px', marginTop: '15px', opacity: 0.9 }}>
+          💡 Personalize completamente a aparência da sua vitrine! As mudanças serão aplicadas imediatamente.
+        </p>
+      </div>
+
       <div className="form-section">
         <h2>📸 Fotos</h2>
         <div className="form-group">
@@ -239,7 +390,9 @@ export default function MinhaVitrinePage() {
       </div>
 
       <div className="form-section">
-        <h2>🔗 Links</h2>
+        <h2>🔗 Links Ilimitados</h2>
+        <p style={{ color: '#666', marginBottom: '20px' }}>Adicione quantos links quiser! Configure agendamentos para aparecer automaticamente em datas específicas.</p>
+        
         {links.map((link, index) => (
           <div key={link.id} style={{ border: '2px solid #ddd', borderRadius: '8px', padding: '20px', marginBottom: '15px', background: '#f9f9f9' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
@@ -270,9 +423,47 @@ export default function MinhaVitrinePage() {
               </button>
               {link.imagem_url && <img src={link.imagem_url} alt={link.titulo} style={{ width: '100%', maxWidth: '300px', height: '120px', objectFit: 'cover', borderRadius: '8px', marginTop: '10px' }} />}
             </div>
+
+            {/* AGENDAMENTO */}
+            <div style={{ background: '#fff3cd', padding: '15px', borderRadius: '8px', marginTop: '15px' }}>
+              <h4 style={{ margin: '0 0 10px 0' }}>⏰ Agendamento Automático</h4>
+              <p style={{ fontSize: '13px', color: '#666', marginBottom: '10px' }}>Configure para este link aparecer e sumir automaticamente</p>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div className="form-group">
+                  <label>Aparecer em:</label>
+                  <input 
+                    type="datetime-local" 
+                    value={link.agendamento_inicio || ''} 
+                    onChange={(e) => atualizarLink(link.id, 'agendamento_inicio', e.target.value)} 
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Sumir em:</label>
+                  <input 
+                    type="datetime-local" 
+                    value={link.agendamento_fim || ''} 
+                    onChange={(e) => atualizarLink(link.id, 'agendamento_fim', e.target.value)} 
+                  />
+                </div>
+              </div>
+              
+              {(link.agendamento_inicio || link.agendamento_fim) && (
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    atualizarLink(link.id, 'agendamento_inicio', null);
+                    atualizarLink(link.id, 'agendamento_fim', null);
+                  }}
+                  style={{ marginTop: '10px', padding: '5px 10px', background: '#6c757d', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontSize: '12px' }}
+                >
+                  Limpar Agendamento
+                </button>
+              )}
+            </div>
           </div>
         ))}
-        <button type="button" onClick={adicionarLink} className="btn-submit" style={{ background: '#27ae60' }}>➕ Adicionar Link</button>
+        <button type="button" onClick={adicionarLink} className="btn-submit" style={{ background: '#27ae60', width: '100%', fontSize: '16px' }}>➕ Adicionar Link</button>
       </div>
 
       <div style={{ display: 'flex', gap: '15px', marginTop: '30px', flexWrap: 'wrap' }}>
@@ -286,9 +477,6 @@ export default function MinhaVitrinePage() {
             </Link>
             <Link href="/minha-vitrine/organizar" className="btn-submit" style={{ flex: 1, minWidth: '200px', background: '#9b59b6', textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               🎭 Organizar
-            </Link>
-            <Link href="/minha-vitrine/analytics" className="btn-submit" style={{ flex: 1, minWidth: '200px', background: '#e74c3c', textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              📊 Analytics
             </Link>
           </>
         )}
