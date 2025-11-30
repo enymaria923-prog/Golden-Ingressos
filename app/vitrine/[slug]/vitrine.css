@@ -233,12 +233,12 @@ body {
 
 .secao-titulo {
   font-family: var(--fonte-titulo), system-ui;
-  color: white;
+  color: white !important;
   font-size: 24px;
   font-weight: 700;
   margin-bottom: 20px;
   text-align: center;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  text-shadow: 0 3px 15px rgba(0, 0, 0, 0.6);
 }
 
 /* ============================================
