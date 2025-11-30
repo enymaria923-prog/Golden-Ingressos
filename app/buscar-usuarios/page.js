@@ -46,35 +46,30 @@ export default function BuscarUsuariosPage() {
 
     setLoading(true);
     try {
-      // Buscar por username
-      const { data: porUsername, error: errorUsername } = await supabase
+      // Buscar em todos os perfis (não filtra por username vazio)
+      const { data, error } = await supabase
         .from('perfis')
-        .select('id, nome_completo, username, foto_perfil_url, bio')
-        .ilike('username', `%${termoBusca}%`)
-        .neq('id', user.id)
-        .limit(10);
+        .select('id, nome_completo, username, foto_perfil_url, bio, email')
+        .neq('id', user?.id || '00000000-0000-0000-0000-000000000000')
+        .limit(50);
 
-      // Buscar por nome
-      const { data: porNome, error: errorNome } = await supabase
-        .from('perfis')
-        .select('id, nome_completo, username, foto_perfil_url, bio')
-        .ilike('nome_completo', `%${termoBusca}%`)
-        .neq('id', user.id)
-        .limit(10);
-
-      if (errorUsername || errorNome) {
-        console.error('Erro na busca:', errorUsername || errorNome);
+      if (error) {
+        console.error('Erro na busca:', error);
         setResultados([]);
         return;
       }
 
-      // Combinar resultados e remover duplicatas
-      const todosResultados = [...(porUsername || []), ...(porNome || [])];
-      const resultadosUnicos = Array.from(
-        new Map(todosResultados.map(item => [item.id, item])).values()
-      );
+      // Filtrar manualmente no cliente
+      const filtrados = (data || []).filter(perfil => {
+        const termo = termoBusca.toLowerCase();
+        return (
+          perfil.username?.toLowerCase().includes(termo) ||
+          perfil.nome_completo?.toLowerCase().includes(termo) ||
+          perfil.email?.toLowerCase().includes(termo)
+        );
+      });
 
-      setResultados(resultadosUnicos);
+      setResultados(filtrados);
     } catch (error) {
       console.error('Erro ao buscar usuários:', error);
       setResultados([]);
@@ -287,11 +282,11 @@ export default function BuscarUsuariosPage() {
                 {/* Informações */}
                 <div style={{ flex: 1 }}>
                   <Link 
-                    href={`/perfil/${perfil.username || perfil.id}`}
+                    href={perfil.username ? `/perfil/${perfil.username}` : `/perfil-id/${perfil.id}`}
                     style={{ textDecoration: 'none', color: '#262626' }}
                   >
                     <p style={{ margin: '0 0 3px 0', fontWeight: '600', fontSize: '14px' }}>
-                      {perfil.username || perfil.nome_completo}
+                      {perfil.username || perfil.nome_completo || 'Usuário'}
                     </p>
                     <p style={{ margin: 0, color: '#8e8e8e', fontSize: '14px' }}>
                       {perfil.nome_completo}
