@@ -1825,3 +1825,5 @@ R$ {precoMaisBaixo.toFixed(2)}
     )}
   </div>
 </div>
+ );
+}
