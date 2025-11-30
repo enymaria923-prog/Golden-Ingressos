@@ -737,7 +737,7 @@ export default function EventoPage() {
             padding: '25px',
             borderRadius: '12px',
             boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-            margin Bottom: '40px',
+            marginBottom: '40px',
 border: cupomAplicado ? '2px solid #28a745' : '2px solid #ffc107'
 }}>
 <h3 style={{ color: cupomAplicado ? '#155724' : '#856404', marginTop: 0, fontSize: '22px', marginBottom: '15px', textAlign: 'center' }}>
