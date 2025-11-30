@@ -103,7 +103,7 @@ export default function VitrinePage() {
         setEventosPorCategoria(grouped);
       }
 
-      // Buscar links
+      // Buscar links e filtrar por agendamento
       const { data: linksData } = await supabase
         .from('links_vitrine')
         .select('*')
@@ -111,7 +111,23 @@ export default function VitrinePage() {
         .eq('ativo', true)
         .order('ordem', { ascending: true });
 
-      setLinks(linksData || []);
+      // Filtrar links por agendamento
+      const agora = new Date();
+      const linksFiltrados = (linksData || []).filter(link => {
+        // Se não tem agendamento, mostra sempre
+        if (!link.agendamento_inicio && !link.agendamento_fim) return true;
+        
+        // Verifica se está dentro do período agendado
+        const inicio = link.agendamento_inicio ? new Date(link.agendamento_inicio) : null;
+        const fim = link.agendamento_fim ? new Date(link.agendamento_fim) : null;
+        
+        if (inicio && agora < inicio) return false; // Ainda não começou
+        if (fim && agora > fim) return false; // Já terminou
+        
+        return true; // Está dentro do período
+      });
+
+      setLinks(linksFiltrados);
 
     } catch (error) {
       console.error('Erro:', error);
@@ -151,8 +167,18 @@ export default function VitrinePage() {
     );
   }
 
+  // Aplicar estilos personalizados
+  const customStyles = {
+    '--cor-primaria': produtor.cor_primaria || '#667eea',
+    '--cor-secundaria': produtor.cor_secundaria || '#764ba2',
+    '--cor-fundo': produtor.cor_fundo || '#f5f7fa',
+    '--cor-texto': produtor.cor_texto || '#2c3e50',
+    '--fonte-titulo': produtor.fonte_titulo || 'system-ui',
+    '--fonte-corpo': produtor.fonte_corpo || 'system-ui'
+  };
+
   return (
-    <div className="vitrine-container" data-tema={produtor.tema}>
+    <div className="vitrine-container" data-tema={produtor.tema} style={customStyles}>
       <div className="vitrine-content">
         
         {produtor.foto_capa_url && (
