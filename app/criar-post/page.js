@@ -206,30 +206,41 @@ export default function CriarPostPage() {
 
             {/* Formulário de legenda e localização */}
             <div style={{ padding: '20px' }}>
-              <textarea
-                value={legenda}
-                onChange={(e) => setLegenda(e.target.value)}
-                placeholder="Escreva uma legenda..."
-                rows={4}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: 'none',
-                  outline: 'none',
-                  resize: 'vertical',
-                  fontSize: '16px',
-                  fontFamily: 'inherit',
-                  marginBottom: '15px'
-                }}
-                maxLength={2200}
-              />
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px' }}>
+                  ✍️ Legenda
+                </label>
+                <textarea
+                  value={legenda}
+                  onChange={(e) => setLegenda(e.target.value)}
+                  placeholder="Escreva uma legenda... (opcional)"
+                  rows={4}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '1px solid #dbdbdb',
+                    borderRadius: '8px',
+                    outline: 'none',
+                    resize: 'vertical',
+                    fontSize: '16px',
+                    fontFamily: 'inherit'
+                  }}
+                  maxLength={2200}
+                />
+                <small style={{ color: '#8e8e8e', fontSize: '12px' }}>
+                  {legenda.length}/2200 caracteres
+                </small>
+              </div>
               
-              <div style={{ borderTop: '1px solid #efefef', paddingTop: '15px' }}>
+              <div style={{ paddingTop: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', fontSize: '14px' }}>
+                  📍 Localização (opcional)
+                </label>
                 <input
                   type="text"
                   value={localizacao}
                   onChange={(e) => setLocalizacao(e.target.value)}
-                  placeholder="📍 Adicionar localização"
+                  placeholder="Adicionar localização..."
                   style={{
                     width: '100%',
                     padding: '12px',
