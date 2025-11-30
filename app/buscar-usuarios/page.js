@@ -17,12 +17,11 @@ export default function BuscarUsuariosPage() {
   useEffect(() => {
     async function checkUser() {
       const { data: { user: userData } } = await supabase.auth.getUser();
-      if (!userData) {
-        router.push('/login');
-        return;
-      }
       setUser(userData);
-      carregarSeguindo(userData.id);
+      
+      if (userData) {
+        carregarSeguindo(userData.id);
+      }
     }
     checkUser();
   }, []);
@@ -39,16 +38,11 @@ export default function BuscarUsuariosPage() {
   };
 
   const buscarUsuarios = async (termoBusca) => {
-    if (!termoBusca.trim()) {
-      setResultados([]);
-      return;
-    }
-
     setLoading(true);
     try {
       console.log('🔍 Buscando por:', termoBusca);
       
-      // Buscar TODOS os perfis primeiro (para debug)
+      // Buscar TODOS os perfis
       const { data: todosPerfis, error: erroTodos } = await supabase
         .from('perfis')
         .select('id, nome_completo, username, foto_perfil_url, bio, email');
@@ -69,9 +63,19 @@ export default function BuscarUsuariosPage() {
         return;
       }
 
-      // Filtrar removendo o próprio usuário
-      const perfisOutrosUsuarios = todosPerfis.filter(p => p.id !== user?.id);
+      // Filtrar removendo o próprio usuário (se logado)
+      const perfisOutrosUsuarios = user 
+        ? todosPerfis.filter(p => p.id !== user.id)
+        : todosPerfis;
+      
       console.log('👥 Perfis de outros usuários:', perfisOutrosUsuarios.length);
+
+      // Se não tem termo de busca, mostrar todos
+      if (!termoBusca || termoBusca.trim() === '') {
+        console.log('✅ Mostrando todos os perfis');
+        setResultados(perfisOutrosUsuarios);
+        return;
+      }
 
       // Filtrar pelo termo de busca
       const termo = termoBusca.toLowerCase().trim();
@@ -104,8 +108,15 @@ export default function BuscarUsuariosPage() {
     clearTimeout(window.buscaTimeout);
     window.buscaTimeout = setTimeout(() => {
       buscarUsuarios(valor);
-    }, 500);
+    }, 300);
   };
+
+  // Carregar todos os usuários ao abrir a página
+  useEffect(() => {
+    if (user !== null) { // Espera carregar o user (pode ser null se não logado)
+      buscarUsuarios(''); // Busca vazia = todos os usuários
+    }
+  }, [user]);
 
   const toggleSeguir = async (perfilId) => {
     try {
@@ -232,23 +243,7 @@ export default function BuscarUsuariosPage() {
         </div>
 
         {/* Resultados */}
-        {busca.trim() === '' ? (
-          <div style={{
-            backgroundColor: 'white',
-            padding: '60px 20px',
-            borderRadius: '8px',
-            border: '1px solid #dbdbdb',
-            textAlign: 'center'
-          }}>
-            <div style={{ fontSize: '60px', marginBottom: '20px' }}>🔍</div>
-            <h3 style={{ margin: '0 0 10px 0', color: '#262626', fontWeight: '600' }}>
-              Buscar pessoas
-            </h3>
-            <p style={{ margin: 0, color: '#8e8e8e' }}>
-              Digite um nome ou @username para encontrar usuários
-            </p>
-          </div>
-        ) : resultados.length === 0 && !loading ? (
+        {resultados.length === 0 && !loading && busca.trim() !== '' ? (
           <div style={{
             backgroundColor: 'white',
             padding: '60px 20px',
@@ -263,6 +258,19 @@ export default function BuscarUsuariosPage() {
             <p style={{ margin: 0, color: '#8e8e8e' }}>
               Tente buscar por outro termo
             </p>
+          </div>
+        ) : resultados.length === 0 && !loading && busca.trim() === '' ? (
+          <div style={{
+            backgroundColor: 'white',
+            padding: '60px 20px',
+            borderRadius: '8px',
+            border: '1px solid #dbdbdb',
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '60px', marginBottom: '20px' }}>👥</div>
+            <h3 style={{ margin: '0 0 10px 0', color: '#262626', fontWeight: '600' }}>
+              Carregando usuários...
+            </h3>
           </div>
         ) : (
           <div style={{
