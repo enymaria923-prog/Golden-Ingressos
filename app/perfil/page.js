@@ -25,6 +25,7 @@ export default function PerfilPage() {
   const [loading, setLoading] = useState(true);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [activeTab, setActiveTab] = useState('posts'); // 'posts', 'seguidores', 'seguindo'
+  const [postSelecionado, setPostSelecionado] = useState(null);
 
   useEffect(() => {
     async function loadUserData() {
@@ -37,21 +38,38 @@ export default function PerfilPage() {
       }
       setUser(userData);
 
-      // Carregar perfil
-      const { data: perfilData } = await supabase
+      // Carregar perfil - se não existir, criar com dados do auth
+      let { data: perfilData, error: perfilError } = await supabase
         .from('perfis')
         .select('*')
         .eq('id', userData.id)
         .single();
 
+      // Se não existe perfil, criar automaticamente
+      if (perfilError || !perfilData) {
+        const { data: newPerfil } = await supabase
+          .from('perfis')
+          .insert({
+            id: userData.id,
+            nome_completo: userData.user_metadata?.nome_completo || '',
+            telefone: userData.user_metadata?.telefone || '',
+            email: userData.email,
+            perfil_publico: true
+          })
+          .select()
+          .single();
+        
+        perfilData = newPerfil;
+      }
+
       setPerfil(perfilData);
       
       if (perfilData) {
         setFormData({
-          nome_completo: perfilData.nome_completo || '',
+          nome_completo: perfilData.nome_completo || userData.user_metadata?.nome_completo || '',
           username: perfilData.username || '',
           bio: perfilData.bio || '',
-          telefone: perfilData.telefone || '',
+          telefone: perfilData.telefone || userData.user_metadata?.telefone || '',
           data_nascimento: perfilData.data_nascimento || '',
           localizacao: perfilData.localizacao || '',
           perfil_publico: perfilData.perfil_publico ?? true,
@@ -373,6 +391,25 @@ export default function PerfilPage() {
               <div>
                 {isEditing ? (
                   <>
+                    <div style={{ marginBottom: '10px' }}>
+                      <label style={{ display: 'block', fontSize: '12px', color: '#8e8e8e', marginBottom: '5px' }}>
+                        📧 Email (não editável)
+                      </label>
+                      <input
+                        type="email"
+                        value={user.email}
+                        disabled
+                        style={{ 
+                          padding: '8px 12px', 
+                          border: '1px solid #dbdbdb', 
+                          borderRadius: '4px',
+                          width: '100%',
+                          backgroundColor: '#f5f5f5',
+                          color: '#8e8e8e',
+                          cursor: 'not-allowed'
+                        }}
+                      />
+                    </div>
                     <input
                       type="text"
                       name="nome_completo"
@@ -434,8 +471,11 @@ export default function PerfilPage() {
                     <p style={{ margin: '0 0 5px 0', fontWeight: '600', fontSize: '16px' }}>
                       {perfil?.nome_completo}
                     </p>
+                    <p style={{ margin: '0 0 5px 0', color: '#8e8e8e', fontSize: '14px' }}>
+                      📧 {user?.email}
+                    </p>
                     {perfil?.bio && (
-                      <p style={{ margin: '0 0 5px 0', color: '#262626', whiteSpace: 'pre-wrap' }}>
+                      <p style={{ margin: '5px 0 5px 0', color: '#262626', whiteSpace: 'pre-wrap' }}>
                         {perfil.bio}
                       </p>
                     )}
@@ -489,14 +529,18 @@ export default function PerfilPage() {
         }}>
           {posts.length > 0 ? (
             posts.map(post => (
-              <div key={post.id} style={{ 
-                aspectRatio: '1/1',
-                backgroundColor: '#efefef',
-                borderRadius: '4px',
-                overflow: 'hidden',
-                cursor: 'pointer',
-                position: 'relative'
-              }}>
+              <div 
+                key={post.id} 
+                onClick={() => setPostSelecionado(post)}
+                style={{ 
+                  aspectRatio: '1/1',
+                  backgroundColor: '#efefef',
+                  borderRadius: '4px',
+                  overflow: 'hidden',
+                  cursor: 'pointer',
+                  position: 'relative'
+                }}
+              >
                 {post.imagem_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img 
@@ -542,6 +586,97 @@ export default function PerfilPage() {
             </div>
           )}
         </div>
+
+        {/* Modal do Post */}
+        {postSelecionado && (
+          <div 
+            onClick={() => setPostSelecionado(null)}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000,
+              padding: '20px'
+            }}
+          >
+            <div 
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                backgroundColor: 'white',
+                borderRadius: '12px',
+                maxWidth: '1000px',
+                width: '100%',
+                maxHeight: '90vh',
+                display: 'flex',
+                overflow: 'hidden'
+              }}
+            >
+              {/* Imagem */}
+              <div style={{ flex: '1 1 60%', backgroundColor: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img 
+                  src={postSelecionado.imagem_url} 
+                  alt={postSelecionado.legenda || 'Post'}
+                  style={{ maxWidth: '100%', maxHeight: '90vh', objectFit: 'contain' }}
+                />
+              </div>
+
+              {/* Informações */}
+              <div style={{ flex: '1 1 40%', display: 'flex', flexDirection: 'column', maxWidth: '400px' }}>
+                {/* Header */}
+                <div style={{ padding: '15px', borderBottom: '1px solid #efefef', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#dbdbdb', overflow: 'hidden' }}>
+                      {formData.foto_perfil_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={formData.foto_perfil_url} alt="Perfil" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>👤</div>
+                      )}
+                    </div>
+                    <strong style={{ fontSize: '14px' }}>{perfil?.username || perfil?.nome_completo}</strong>
+                  </div>
+                  <button 
+                    onClick={() => setPostSelecionado(null)}
+                    style={{ background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#8e8e8e' }}
+                  >
+                    ×
+                  </button>
+                </div>
+
+                {/* Legenda e detalhes */}
+                <div style={{ padding: '15px', flex: 1, overflowY: 'auto' }}>
+                  {postSelecionado.legenda && (
+                    <div style={{ marginBottom: '15px' }}>
+                      <p style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                        <strong style={{ marginRight: '5px' }}>{perfil?.username || perfil?.nome_completo}</strong>
+                        {postSelecionado.legenda}
+                      </p>
+                    </div>
+                  )}
+                  {postSelecionado.localizacao && (
+                    <p style={{ margin: '10px 0 0 0', color: '#8e8e8e', fontSize: '12px' }}>
+                      📍 {postSelecionado.localizacao}
+                    </p>
+                  )}
+                  <p style={{ margin: '15px 0 0 0', color: '#8e8e8e', fontSize: '12px' }}>
+                    {new Date(postSelecionado.created_at).toLocaleDateString('pt-BR', {
+                      day: '2-digit',
+                      month: 'long',
+                      year: 'numeric'
+                    })}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Botão flutuante para criar post */}
         <Link href="/criar-post">
