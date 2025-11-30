@@ -41,6 +41,7 @@ export default function BuscarUsuariosPage() {
     setLoading(true);
     try {
       console.log('🔍 Buscando por:', termoBusca);
+      console.log('👤 User logado ID:', user?.id);
       
       // Buscar TODOS os perfis
       const { data: todosPerfis, error: erroTodos } = await supabase
@@ -48,7 +49,7 @@ export default function BuscarUsuariosPage() {
         .select('id, nome_completo, username, foto_perfil_url, bio, email');
 
       console.log('📊 Total de perfis no banco:', todosPerfis?.length || 0);
-      console.log('📋 Perfis encontrados:', todosPerfis);
+      console.log('📋 TODOS os perfis (bruto):', todosPerfis);
 
       if (erroTodos) {
         console.error('❌ Erro ao buscar perfis:', erroTodos);
@@ -64,31 +65,43 @@ export default function BuscarUsuariosPage() {
       }
 
       // Filtrar removendo o próprio usuário (se logado)
-      const perfisOutrosUsuarios = user 
-        ? todosPerfis.filter(p => p.id !== user.id)
-        : todosPerfis;
+      let perfisParaMostrar = todosPerfis;
       
-      console.log('👥 Perfis de outros usuários:', perfisOutrosUsuarios.length);
+      if (user && user.id) {
+        console.log('🚫 Removendo perfil do user logado:', user.id);
+        perfisParaMostrar = todosPerfis.filter(p => {
+          const isDiferente = p.id !== user.id;
+          console.log(`   Perfil ${p.username || p.nome_completo} (${p.id}): ${isDiferente ? '✅ MOSTRAR' : '❌ OCULTAR (é o user logado)'}`);
+          return isDiferente;
+        });
+      } else {
+        console.log('ℹ️ User não logado, mostrando todos');
+      }
+      
+      console.log('👥 Perfis após filtrar user logado:', perfisParaMostrar.length);
+      console.log('📝 Lista final antes da busca:', perfisParaMostrar);
 
       // Se não tem termo de busca, mostrar todos
       if (!termoBusca || termoBusca.trim() === '') {
-        console.log('✅ Mostrando todos os perfis');
-        setResultados(perfisOutrosUsuarios);
+        console.log('✅ Mostrando todos os perfis (sem filtro de busca)');
+        setResultados(perfisParaMostrar);
         return;
       }
 
       // Filtrar pelo termo de busca
       const termo = termoBusca.toLowerCase().trim();
-      const filtrados = perfisOutrosUsuarios.filter(perfil => {
+      const filtrados = perfisParaMostrar.filter(perfil => {
         const matchUsername = perfil.username?.toLowerCase().includes(termo);
         const matchNome = perfil.nome_completo?.toLowerCase().includes(termo);
         const matchEmail = perfil.email?.toLowerCase().includes(termo);
         
-        return matchUsername || matchNome || matchEmail;
+        const match = matchUsername || matchNome || matchEmail;
+        console.log(`   ${perfil.username || perfil.nome_completo}: ${match ? '✅' : '❌'}`);
+        return match;
       });
 
-      console.log('✅ Perfis filtrados:', filtrados.length);
-      console.log('📄 Resultados:', filtrados);
+      console.log('✅ Perfis filtrados pela busca:', filtrados.length);
+      console.log('📄 Resultados finais:', filtrados);
 
       setResultados(filtrados);
     } catch (error) {
