@@ -149,20 +149,27 @@ export default function PerfilPage() {
       setLoading(true);
       const supabase = createClient();
       
+      // Preparar dados, removendo campos vazios que causam erro
+      const dadosParaSalvar = {
+        id: user.id,
+        nome_completo: formData.nome_completo || null,
+        username: formData.username || null,
+        bio: formData.bio || null,
+        telefone: formData.telefone || null,
+        localizacao: formData.localizacao || null,
+        perfil_publico: formData.perfil_publico,
+        foto_perfil_url: formData.foto_perfil_url || null,
+        updated_at: new Date().toISOString()
+      };
+
+      // Só adicionar data_nascimento se tiver valor
+      if (formData.data_nascimento && formData.data_nascimento.trim() !== '') {
+        dadosParaSalvar.data_nascimento = formData.data_nascimento;
+      }
+      
       const { error } = await supabase
         .from('perfis')
-        .upsert({
-          id: user.id,
-          nome_completo: formData.nome_completo,
-          username: formData.username,
-          bio: formData.bio,
-          telefone: formData.telefone,
-          data_nascimento: formData.data_nascimento,
-          localizacao: formData.localizacao,
-          perfil_publico: formData.perfil_publico,
-          foto_perfil_url: formData.foto_perfil_url,
-          updated_at: new Date().toISOString()
-        });
+        .upsert(dadosParaSalvar);
 
       if (error) throw error;
 
@@ -172,7 +179,7 @@ export default function PerfilPage() {
       
     } catch (error) {
       console.error('Erro ao salvar perfil:', error);
-      alert('Erro ao salvar as alterações');
+      alert('Erro ao salvar as alterações: ' + error.message);
     } finally {
       setLoading(false);
     }
