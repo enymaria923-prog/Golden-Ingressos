@@ -746,7 +746,7 @@ border: cupomAplicado ? '2px solid #28a745' : '2px solid #ffc107'
 {cupomAplicado ? (
 <div>
 <p style={{ textAlign: 'center', color: '#155724', marginBottom: '15px', fontSize: '16px', fontWeight: 'bold' }}>
-Cupom: {cupomAplicado.codigo} - {cupomAplicado.tipo_desconto === 'percentual' ? ${cupomAplicado.valor_desconto}% OFF : R$ ${cupomAplicado.valor_desconto} OFF}
+Cupom: {cupomAplicado.codigo} - {cupomAplicado.tipo_desconto === 'percentual' ? `${cupomAplicado.valor_desconto}% OFF` : `R$ ${cupomAplicado.valor_desconto} OFF`}
 </p>
 {cupomAplicado.descricao && (
 <p style={{ textAlign: 'center', color: '#155724', marginBottom: '15px', fontSize: '14px' }}>
