@@ -1,39 +1,68 @@
 'use client';
 
 import { useState } from 'react';
-import { signup } from '../actions-auth';
 import Link from 'next/link';
+import { createClient } from '../utils/supabase/client';
 
 export default function CriarContaPage() {
+  const supabase = createClient();
   const [cadastroSucesso, setCadastroSucesso] = useState(false);
   const [emailCadastrado, setEmailCadastrado] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [erro, setErro] = useState('');
 
-  const handleSubmit = async (formData) => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     setIsLoading(true);
     setErro('');
     
+    const formData = new FormData(e.target);
+    const email = formData.get('email');
+    const password = formData.get('password');
+    const confirmPassword = formData.get('confirm_password');
+    const nomeCompleto = formData.get('nome_completo');
+    
+    // Validação de senhas
+    if (password !== confirmPassword) {
+      setErro('As senhas não coincidem!');
+      setIsLoading(false);
+      return;
+    }
+
+    if (password.length < 6) {
+      setErro('A senha deve ter pelo menos 6 caracteres!');
+      setIsLoading(false);
+      return;
+    }
+    
     try {
-      const email = formData.get('email');
-      const password = formData.get('password');
-      const confirmPassword = formData.get('confirm_password');
-      
-      // Validação de senhas
-      if (password !== confirmPassword) {
-        setErro('As senhas não coincidem!');
-        setIsLoading(false);
-        return;
+      // 1. Criar conta no Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: email,
+        password: password,
+      });
+
+      if (authError) throw authError;
+
+      if (!authData.user) {
+        throw new Error('Erro ao criar usuário');
       }
-      
-      const result = await signup(formData);
-      
-      if (result?.error) {
-        setErro(result.error);
-      } else {
-        setEmailCadastrado(email);
-        setCadastroSucesso(true);
-      }
+
+      // 2. Inserir dados do usuário na tabela usuarios
+      const { error: usuarioError } = await supabase
+        .from('usuarios')
+        .insert([{
+          id: authData.user.id,
+          email: email,
+          nome_completo: nomeCompleto,
+        }]);
+
+      if (usuarioError) throw usuarioError;
+
+      // Mostrar página de sucesso
+      setEmailCadastrado(email);
+      setCadastroSucesso(true);
+
     } catch (error) {
       console.error('Erro no cadastro:', error);
       setErro(error.message || 'Erro ao criar conta. Tente novamente.');
@@ -223,7 +252,7 @@ export default function CriarContaPage() {
             </div>
           )}
           
-          <form action={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             
             <div>
               <label htmlFor="nome_completo" style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
