@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { signup } from '../actions-auth';
 import Link from 'next/link';
+import { createClient } from '../../utils/supabase/client';
 
 export default function CriarContaPage() {
   const [cadastroSucesso, setCadastroSucesso] = useState(false);
@@ -12,7 +12,6 @@ export default function CriarContaPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    e.stopPropagation(); // Impede propagação do evento
     
     setIsLoading(true);
     setErro('');
@@ -21,41 +20,54 @@ export default function CriarContaPage() {
     const email = formData.get('email');
     const password = formData.get('password');
     const confirmPassword = formData.get('confirm_password');
+    const nomeCompleto = formData.get('nome_completo');
     
     // Validação de senhas
     if (password !== confirmPassword) {
       setErro('As senhas não coincidem!');
       setIsLoading(false);
-      return false;
+      return;
     }
 
     if (password.length < 6) {
       setErro('A senha deve ter pelo menos 6 caracteres!');
       setIsLoading(false);
-      return false;
+      return;
     }
     
     try {
-      // Usa a mesma função signup que o código original
-      await signup(formData);
+      const supabase = createClient();
       
-      // Sempre mostrar página de sucesso (mesmo que dê erro, o email foi enviado)
+      // Criar conta no Supabase
+      const { error: signUpError } = await supabase.auth.signUp({
+        email: email,
+        password: password,
+        options: {
+          data: {
+            nome_completo: nomeCompleto,
+          }
+        }
+      });
+
+      if (signUpError) {
+        setErro(signUpError.message);
+        setIsLoading(false);
+        return;
+      }
+
+      // SEMPRE mostrar tela de sucesso
       setEmailCadastrado(email);
       setCadastroSucesso(true);
+      setIsLoading(false);
       
     } catch (error) {
       console.error('Erro no cadastro:', error);
-      // Mesmo com erro, mostrar tela de confirmação (email pode ter sido enviado)
-      setEmailCadastrado(email);
-      setCadastroSucesso(true);
-    } finally {
+      setErro(error.message || 'Erro ao criar conta. Tente novamente.');
       setIsLoading(false);
     }
-    
-    return false; // Impede qualquer redirect
   };
 
-  // Página de Sucesso - Verificação de Email
+  // ============== PÁGINA DE SUCESSO ==============
   if (cadastroSucesso) {
     return (
       <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px' }}>
@@ -190,7 +202,7 @@ export default function CriarContaPage() {
     );
   }
 
-  // Formulário de Cadastro
+  // ============== FORMULÁRIO DE CADASTRO ==============
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px' }}>
       
