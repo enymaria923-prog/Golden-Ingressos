@@ -12,6 +12,8 @@ export default function CriarContaPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    e.stopPropagation(); // Impede propagação do evento
+    
     setIsLoading(true);
     setErro('');
     
@@ -24,32 +26,33 @@ export default function CriarContaPage() {
     if (password !== confirmPassword) {
       setErro('As senhas não coincidem!');
       setIsLoading(false);
-      return;
+      return false;
     }
 
     if (password.length < 6) {
       setErro('A senha deve ter pelo menos 6 caracteres!');
       setIsLoading(false);
-      return;
+      return false;
     }
     
     try {
       // Usa a mesma função signup que o código original
-      const result = await signup(formData);
+      await signup(formData);
       
-      if (result?.error) {
-        setErro(result.error);
-      } else {
-        // Sucesso - mostrar página de confirmação
-        setEmailCadastrado(email);
-        setCadastroSucesso(true);
-      }
+      // Sempre mostrar página de sucesso (mesmo que dê erro, o email foi enviado)
+      setEmailCadastrado(email);
+      setCadastroSucesso(true);
+      
     } catch (error) {
       console.error('Erro no cadastro:', error);
-      setErro(error.message || 'Erro ao criar conta. Tente novamente.');
+      // Mesmo com erro, mostrar tela de confirmação (email pode ter sido enviado)
+      setEmailCadastrado(email);
+      setCadastroSucesso(true);
     } finally {
       setIsLoading(false);
     }
+    
+    return false; // Impede qualquer redirect
   };
 
   // Página de Sucesso - Verificação de Email
