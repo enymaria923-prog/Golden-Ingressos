@@ -111,31 +111,33 @@ function CheckoutContent() {
         });
 
         setItensCarrinho(itensDetalhados);
-        const produtosParam = searchParams.get('produtos');
-if (produtosParam) {
-  try {
-    const produtosIds = JSON.parse(produtosParam);
-    
-    const { data: produtosData } = await supabase
-      .from('produtos')
-      .select('*')
-      .in('id', produtosIds.map(p => p.id));
+      }
 
-    if (produtosData) {
-      const produtosComQuantidade = produtosData.map(produto => {
-        const produtoParam = produtosIds.find(p => p.id === produto.id);
-        return {
-          ...produto,
-          quantidade: produtoParam?.quantidade || 1
-        };
-      });
-      
-      setProdutos(produtosComQuantidade);
-    }
-  } catch (error) {
-    console.error('Erro ao carregar produtos:', error);
-  }
-}
+      // Carrega produtos se houver
+      const produtosParam = searchParams.get('produtos');
+      if (produtosParam) {
+        try {
+          const produtosIds = JSON.parse(produtosParam);
+          
+          const { data: produtosData } = await supabase
+            .from('produtos')
+            .select('*')
+            .in('id', produtosIds.map(p => p.id));
+
+          if (produtosData) {
+            const produtosComQuantidade = produtosData.map(produto => {
+              const produtoParam = produtosIds.find(p => p.id === produto.id);
+              return {
+                ...produto,
+                quantidade: produtoParam?.quantidade || 1
+              };
+            });
+            
+            setProdutos(produtosComQuantidade);
+          }
+        } catch (error) {
+          console.error('Erro ao carregar produtos:', error);
+        }
       }
 
       // Carrega cupom se houver
@@ -157,10 +159,17 @@ if (produtosParam) {
   };
 
   const calcularSubtotal = () => {
-    return itensCarrinho.reduce((total, item) => {
+    let total = itensCarrinho.reduce((acc, item) => {
       const quantidade = lugarMarcado ? 1 : (item.quantidade || 0);
-      return total + (item.valor * quantidade);
+      return acc + (item.valor * quantidade);
     }, 0);
+    
+    // Adiciona produtos ao subtotal
+    total += produtos.reduce((acc, produto) => {
+      return acc + (parseFloat(produto.preco) * (produto.quantidade || 1));
+    }, 0);
+    
+    return total;
   };
 
   const calcularDesconto = () => {
@@ -200,6 +209,7 @@ if (produtosParam) {
       evento: evento.nome,
       sessao: sessao,
       itens: itensCarrinho,
+      produtos: produtos,
       formaPagamento,
       comprador: dadosComprador,
       total: calcularTotal()
@@ -476,6 +486,28 @@ if (produtosParam) {
                 </div>
               ))}
             </div>
+
+            {/* Produtos */}
+            {produtos.length > 0 && (
+              <div style={{ marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid #e0e0e0' }}>
+                <h3 style={{ fontSize: '16px', color: '#2c3e50', marginBottom: '15px' }}>Produtos:</h3>
+                {produtos.map((produto, index) => (
+                  <div key={index} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
+                    <div>
+                      <div style={{ fontSize: '14px', fontWeight: '600', color: '#2c3e50' }}>
+                        {produto.nome}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#999' }}>
+                        Qtd: {produto.quantidade}
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#27ae60' }}>
+                      R$ {(parseFloat(produto.preco) * produto.quantidade).toFixed(2)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Totais */}
             <div style={{ marginBottom: '20px' }}>
