@@ -111,6 +111,31 @@ function CheckoutContent() {
         });
 
         setItensCarrinho(itensDetalhados);
+        const produtosParam = searchParams.get('produtos');
+if (produtosParam) {
+  try {
+    const produtosIds = JSON.parse(produtosParam);
+    
+    const { data: produtosData } = await supabase
+      .from('produtos')
+      .select('*')
+      .in('id', produtosIds.map(p => p.id));
+
+    if (produtosData) {
+      const produtosComQuantidade = produtosData.map(produto => {
+        const produtoParam = produtosIds.find(p => p.id === produto.id);
+        return {
+          ...produto,
+          quantidade: produtoParam?.quantidade || 1
+        };
+      });
+      
+      setProdutos(produtosComQuantidade);
+    }
+  } catch (error) {
+    console.error('Erro ao carregar produtos:', error);
+  }
+}
       }
 
       // Carrega cupom se houver
