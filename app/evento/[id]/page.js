@@ -14,12 +14,7 @@ function ProdutorInfo({ produtorId }) {
   useEffect(() => {
     carregarDados();
   }, [id]);
-
   // 👇👇👇 ADICIONE TUDO DAQUI 👇👇👇
-  useEffect(() => {
-    registrarVisualizacao();
-  }, [id]);
-
   const registrarVisualizacao = async () => {
     try {
       const referrer = document.referrer || 'direto';
