@@ -3,6 +3,208 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { createClient } from '../../../../utils/supabase/client';
 import Link from 'next/link';
+// 👇 ADICIONE ESTE COMPONENTE AQUI 👇
+function VisualizacoesEvento({ eventoId }) {
+  const supabase = createClient();
+  const [visualizacoes, setVisualizacoes] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    carregarVisualizacoes();
+  }, [eventoId]);
+
+  const carregarVisualizacoes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('visualizacoes_evento')
+        .select('*')
+        .eq('evento_id', eventoId)
+        .order('data_hora', { ascending: false });
+
+      if (error) throw error;
+      setVisualizacoes(data || []);
+    } catch (error) {
+      console.error('Erro ao carregar visualizações:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const calcularEstatisticas = () => {
+    const total = visualizacoes.length;
+    const porOrigem = {};
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    
+    let visualizacoesHoje = 0;
+
+    visualizacoes.forEach(vis => {
+      // Contar por origem
+      const origem = vis.origem || 'Desconhecido';
+      porOrigem[origem] = (porOrigem[origem] || 0) + 1;
+
+      // Contar hoje
+      const dataVis = new Date(vis.data_hora);
+      dataVis.setHours(0, 0, 0, 0);
+      if (dataVis.getTime() === hoje.getTime()) {
+        visualizacoesHoje++;
+      }
+    });
+
+    // Ordenar por quantidade
+    const origens = Object.entries(porOrigem)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5); // Top 5
+
+    return { total, origens, visualizacoesHoje };
+  };
+
+  const getIconeOrigem = (origem) => {
+    if (origem.includes('Instagram')) return '📱';
+    if (origem.includes('Facebook')) return '📘';
+    if (origem.includes('Twitter')) return '🐦';
+    if (origem.includes('WhatsApp')) return '💬';
+    if (origem.includes('Google')) return '🔍';
+    if (origem.includes('YouTube')) return '📺';
+    if (origem.includes('LinkedIn')) return '💼';
+    if (origem.includes('direto') || origem.includes('Direto')) return '🔗';
+    return '🌐';
+  };
+
+  if (loading) {
+    return (
+      <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '25px', textAlign: 'center' }}>
+        <p>Carregando estatísticas...</p>
+      </div>
+    );
+  }
+
+  const stats = calcularEstatisticas();
+
+  return (
+    <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '25px' }}>
+      <h2 style={{ color: '#5d34a4', marginTop: 0, marginBottom: '20px' }}>📊 Visualizações da Página do Evento</h2>
+      
+      {/* Cards de totais */}
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(3, 1fr)', 
+        gap: '15px',
+        marginBottom: '25px'
+      }}>
+        <div style={{ 
+          backgroundColor: '#e3f2fd', 
+          padding: '20px', 
+          borderRadius: '10px',
+          textAlign: 'center'
+        }}>
+          <div style={{ fontSize: '36px', fontWeight: 'bold', color: '#1976d2' }}>
+            {stats.total}
+          </div>
+          <div style={{ fontSize: '14px', color: '#555', marginTop: '5px' }}>
+            Total de Visualizações
+          </div>
+        </div>
+
+        <div style={{ 
+          backgroundColor: '#e8f5e9', 
+          padding: '20px', 
+          borderRadius: '10px',
+          textAlign: 'center'
+        }}>
+          <div style={{ fontSize: '36px', fontWeight: 'bold', color: '#388e3c' }}>
+            {stats.visualizacoesHoje}
+          </div>
+          <div style={{ fontSize: '14px', color: '#555', marginTop: '5px' }}>
+            Visualizações Hoje
+          </div>
+        </div>
+
+        <div style={{ 
+          backgroundColor: '#fff3e0', 
+          padding: '20px', 
+          borderRadius: '10px',
+          textAlign: 'center'
+        }}>
+          <div style={{ fontSize: '36px', fontWeight: 'bold', color: '#f57c00' }}>
+            {stats.origens.length}
+          </div>
+          <div style={{ fontSize: '14px', color: '#555', marginTop: '5px' }}>
+            Fontes de Tráfego
+          </div>
+        </div>
+      </div>
+
+      {/* Top 5 origens */}
+      {stats.origens.length > 0 && (
+        <div>
+          <h3 style={{ color: '#5d34a4', fontSize: '18px', marginBottom: '15px' }}>
+            🔥 Top 5 Fontes de Visualizações
+          </h3>
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
+            gap: '12px' 
+          }}>
+            {stats.origens.map(([origem, quantidade], index) => {
+              const percentual = ((quantidade / stats.total) * 100).toFixed(1);
+              return (
+                <div key={index} style={{ 
+                  backgroundColor: '#f8f9fa',
+                  padding: '15px',
+                  borderRadius: '8px',
+                  border: '2px solid #e0e0e0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '15px'
+                }}>
+                  <div style={{ fontSize: '32px' }}>
+                    {getIconeOrigem(origem)}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 'bold', color: '#2c3e50', marginBottom: '5px' }}>
+                      {origem}
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#666' }}>
+                      <strong style={{ color: '#27ae60', fontSize: '18px' }}>{quantidade}</strong> visualizações ({percentual}%)
+                    </div>
+                    <div style={{ 
+                      marginTop: '8px',
+                      height: '6px',
+                      backgroundColor: '#e0e0e0',
+                      borderRadius: '3px',
+                      overflow: 'hidden'
+                    }}>
+                      <div style={{ 
+                        width: `${percentual}%`,
+                        height: '100%',
+                        backgroundColor: '#27ae60',
+                        transition: 'width 0.3s'
+                      }}></div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {stats.total === 0 && (
+        <div style={{ 
+          textAlign: 'center', 
+          padding: '40px',
+          color: '#95a5a6'
+        }}>
+          <p style={{ fontSize: '48px', margin: '0 0 15px 0' }}>👀</p>
+          <p style={{ margin: 0, fontSize: '16px' }}>Ainda não há visualizações registradas</p>
+          <p style={{ margin: '10px 0 0 0', fontSize: '14px' }}>Compartilhe o link do seu evento nas redes sociais!</p>
+        </div>
+      )}
+    </div>
+  );
+}
+// 👆 ATÉ AQUI 👆
 
 export default function EventoDetalhesPage() {
   const supabase = createClient();
@@ -1291,7 +1493,12 @@ export default function EventoDetalhesPage() {
             </div>
           </div>
         )}
+{/* PAINEL DE VISUALIZAÇÕES */}
+        <VisualizacoesEvento eventoId={eventoId} />
 
+        {evento.imagem_url && (
+          <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
+            <h2 style={{ color: '#5d34a4', marginTop: 0 }}>🖼️ Imagem do Evento</h2>
         {evento.imagem_url && (
           <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
             <h2 style={{ color: '#5d34a4', marginTop: 0 }}>🖼️ Imagem do Evento</h2>
