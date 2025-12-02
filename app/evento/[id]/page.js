@@ -104,6 +104,38 @@ export default function EventoPage() {
   useEffect(() => {
     carregarDados();
   }, [id]);
+  // 👇 ADICIONE AQUI EMBAIXO 👇
+  useEffect(() => {
+    registrarVisualizacao();
+  }, [id]);
+
+  const registrarVisualizacao = async () => {
+    try {
+      const referrer = document.referrer || 'direto';
+      
+      let origem = 'Acesso direto';
+      if (referrer.includes('instagram.com')) origem = 'Instagram';
+      else if (referrer.includes('facebook.com') || referrer.includes('fb.com')) origem = 'Facebook';
+      else if (referrer.includes('twitter.com') || referrer.includes('t.co')) origem = 'Twitter';
+      else if (referrer.includes('google.com')) origem = 'Google';
+      else if (referrer.includes('youtube.com')) origem = 'YouTube';
+      else if (referrer.includes('linkedin.com')) origem = 'LinkedIn';
+      else if (referrer.includes('whatsapp.com') || referrer.includes('wa.me')) origem = 'WhatsApp';
+      else if (referrer && referrer !== 'direto') origem = 'Outro site';
+
+      await supabase
+        .from('visualizacoes_evento')
+        .insert({
+          evento_id: id,
+          origem: origem,
+          referrer: referrer,
+          user_agent: navigator.userAgent
+        });
+    } catch (error) {
+      console.error('Erro ao registrar visualização:', error);
+    }
+  };
+  // 👆 ATÉ AQUI 👆
 
   const carregarDados = async () => {
     try {
