@@ -108,16 +108,8 @@ export default function ProdutorPage() {
     };
   };
 
-  const extrairCidade = (endereco) => {
-    if (!endereco) return 'Não informado';
-    
-    const partes = endereco.split('-');
-    if (partes.length >= 2) {
-      const ultimaParte = partes[partes.length - 1].trim();
-      return ultimaParte.split('/')[0].trim();
-    }
-    
-    return endereco.split(',')[0].trim();
+  const extrairCidade = (evento) => {
+    return evento.cidade || 'Não informado';
   };
 
   if (loading) {
@@ -290,7 +282,7 @@ export default function ProdutorPage() {
                           </div>
                         </td>
                         <td style={{ padding: '20px', color: '#7f8c8d' }}>
-                          {extrairCidade(evento.endereco)}
+                          {extrairCidade(evento)}
                         </td>
                         <td style={{ padding: '20px', textAlign: 'center', fontSize: '18px', fontWeight: 'bold', color: '#27ae60' }}>
                           {dados.ingressosVendidos}
