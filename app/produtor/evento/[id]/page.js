@@ -1516,7 +1516,7 @@ export default function EventoDetalhesPage() {
             />
           </div>
         )}
-</div>
+      </div>
     </div>
   );
 }
