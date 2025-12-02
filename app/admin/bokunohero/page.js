@@ -260,7 +260,13 @@ export default function AdminPage() {
           🎟️ Produtores e Cupons
         </button>
       </div>
-
+<button 
+          onClick={() => router.push('/admin/bokunohero/publicar-evento')}
+          className="btn-recargar"
+          style={{ backgroundColor: '#f1c40f', color: 'black' }}
+        >
+          ➕ Publicar Evento
+        </button>
       <div className="abas-container">
         <button 
           className={`aba ${abaAtiva === 'pendentes' ? 'aba-ativa' : ''}`}
