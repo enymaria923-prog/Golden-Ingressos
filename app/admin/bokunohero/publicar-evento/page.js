@@ -2,10 +2,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '../../../../utils/supabase/client';
-import dynamic from 'next/dynamic';
+import dynamicImport from 'next/dynamic';
 
-const SetorManager = dynamic(() => import('../../../publicar-evento/components/SetorManager.js'), { ssr: false });
-const CategoriaSelector = dynamic(() => import('../../../publicar-evento/components/CategoriaSelector.js'), { ssr: false });
+const SetorManager = dynamicImport(() => import('../../../publicar-evento/components/SetorManager.js'), { ssr: false });
+const CategoriaSelector = dynamicImport(() => import('../../../publicar-evento/components/CategoriaSelector.js'), { ssr: false });
 import '../../../publicar-evento/PublicarEvento.css';
 
 export const dynamic = 'force-dynamic';
