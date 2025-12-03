@@ -1128,3 +1128,4 @@ return (
 </div>
 );
 };
+export default PublicarEventoAdmin;
