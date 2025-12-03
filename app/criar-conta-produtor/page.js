@@ -69,8 +69,8 @@ export default function CriarContaProdutorPage() {
         throw new Error('Erro ao criar usuário');
       }
 
-      // 2. Inserir dados do produtor na tabela produtores
-      const { error: produtorError } = await supabase
+     // 2. Inserir dados do produtor na tabela produtores
+      const { data: produtorData, error: produtorError } = await supabase
         .from('produtores')
         .insert([{
           id: authData.user.id,
@@ -82,10 +82,15 @@ export default function CriarContaProdutorPage() {
           dados_bancarios: formData.dadosBancarios || null,
           forma_pagamento: formData.formaPagamento,
           cupom_recomendacao: formData.cupomRecomendacao.trim().toUpperCase() || null
-        }]);
+        }])
+        .select();
 
-      if (produtorError) throw produtorError;
+      if (produtorError) {
+        console.error('Erro detalhado ao inserir produtor:', produtorError);
+        throw produtorError;
+      }
 
+      console.log('✅ Produtor inserido com sucesso:', produtorData);
       // Mostrar página de sucesso
       setCadastroSucesso(true);
 
