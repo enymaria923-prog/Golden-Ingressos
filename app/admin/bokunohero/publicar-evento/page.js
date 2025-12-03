@@ -2,10 +2,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '../../../../utils/supabase/client';
-import SetorManager from '../../../../../../publicar-evento/components/SetorManager';
-import CategoriaSelector from '../../../../../../publicar-evento/components/CategoriaSelector';
-import '../../../../../publicar-evento/PublicarEvento.css';
-
+import SetorManager from './components/SetorManager';
+import CategoriaSelector from './components/CategoriaSelector';
+import './PublicarEvento.css';
 const PublicarEventoAdmin = () => {
   const supabase = createClient();
   const router = useRouter();
