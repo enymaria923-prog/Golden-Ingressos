@@ -170,7 +170,7 @@ function ComplementoContent() {
     }
   };
 
-  // 🆕 FUNÇÃO PARA PESQUISAR PRODUTORES
+ // 🆕 FUNÇÃO PARA PESQUISAR PRODUTORES
   const pesquisarProdutor = async (termo) => {
     if (!termo || termo.trim().length < 2) {
       setProdutoresEncontrados([]);
@@ -180,16 +180,19 @@ function ComplementoContent() {
     setPesquisando(true);
 
     try {
-      // Pesquisa por nome_completo, nome_empresa ou user_id
+      // Pesquisa por nome_completo, nome_empresa ou user_id (id)
+      const termoLower = termo.toLowerCase().trim();
+      
       const { data, error } = await supabase
         .from('produtores')
         .select('*')
-        .or(`nome_completo.ilike.%${termo}%,nome_empresa.ilike.%${termo}%,user_id.eq.${termo}`)
+        .or(`nome_completo.ilike.%${termoLower}%,nome_empresa.ilike.%${termoLower}%,id.ilike.%${termoLower}%,user_id.ilike.%${termoLower}%`)
         .limit(10);
 
       if (!error && data) {
         setProdutoresEncontrados(data);
       } else {
+        console.error('Erro na busca:', error);
         setProdutoresEncontrados([]);
       }
     } catch (error) {
