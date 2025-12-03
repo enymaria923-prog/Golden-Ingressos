@@ -6,7 +6,7 @@ import CupomManager from '../../../../publicar-evento/components/CupomManager';
 import ProdutoManager from '../../../../publicar-evento/components/ProdutoManager';
 export const dynamic = 'force-dynamic';
 
-function ComplementoContent() {
+export default function ComplementoContent() {
   const supabase = createClient();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -893,17 +893,5 @@ function ComplementoContent() {
         </div>
       </form>
     </div>
-  );
-}
-
-export default function PublicarEventoComplemento() {
-  return (
-    <Suspense fallback={
-      <div style={{ fontFamily: 'sans-serif', padding: '50px', textAlign: 'center' }}>
-        <h2>🔄 Carregando...</h2>
-      </div>
-    }>
-      <ComplementoContent />
-    </Suspense>
   );
 }
