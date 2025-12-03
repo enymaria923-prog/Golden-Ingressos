@@ -8,8 +8,9 @@ const SetorManager = dynamic(() => import('../../../publicar-evento/components/S
 const CategoriaSelector = dynamic(() => import('../../../publicar-evento/components/CategoriaSelector.js'), { ssr: false });
 import '../../../publicar-evento/PublicarEvento.css';
 
+export const dynamic = 'force-dynamic';
+
 const PublicarEventoAdmin = () => {
-  const supabase = createClient();
   const router = useRouter();
   
   const [user, setUser] = useState(null);
