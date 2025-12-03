@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '../../../../utils/supabase/client';
 import SetorManager from '../../../../publicar-evento/components/SetorManager';
 import CategoriaSelector from '../../../../publicar-evento/components/CategoriaSelector';
-import '../../../publicar-evento/PublicarEvento.css';
+import '../../../../publicar-evento/PublicarEvento.css';
 const PublicarEventoAdmin = () => {
   const supabase = createClient();
   const router = useRouter();
