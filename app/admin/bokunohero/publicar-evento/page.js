@@ -7,7 +7,7 @@ import CategoriaSelector from '../../../publicar-evento/components/CategoriaSele
 import '../../../publicar-evento/PublicarEvento.css';
 
 export const dynamic = 'force-dynamic';
-
+const supabase = createClient();
 const PublicarEventoAdmin = () => {
   const router = useRouter();
   
