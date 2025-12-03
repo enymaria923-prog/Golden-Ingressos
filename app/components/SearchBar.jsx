@@ -2,29 +2,22 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function SearchBar() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [location, setLocation] = useState('São Paulo, SP');
   const router = useRouter();
 
   const handleSearch = (e) => {
     e.preventDefault();
-    if (searchTerm.trim() || location) {
-      const params = new URLSearchParams();
-      if (searchTerm.trim()) params.append('q', searchTerm.trim());
-      if (location) params.append('local', location);
-      router.push(`/busca?${params.toString()}`);
+    if (searchTerm.trim()) {
+      router.push(`/busca?q=${encodeURIComponent(searchTerm.trim())}`);
     }
   };
 
   const handleQuickFilter = (filter) => {
     setSearchTerm(filter);
-    // Busca imediatamente quando clica em um filtro rápido
-    const params = new URLSearchParams();
-    params.append('q', filter);
-    if (location) params.append('local', location);
-    router.push(`/busca?${params.toString()}`);
+    router.push(`/busca?q=${encodeURIComponent(filter)}`);
   };
 
   return (
@@ -61,36 +54,36 @@ export default function SearchBar() {
             />
           </div>
           
-          {/* Seletor de localização */}
-          <div style={{ flex: '1', minWidth: '200px', display: 'flex', alignItems: 'center', backgroundColor: '#f8f9fa', borderRadius: '25px', padding: '0 20px', border: '2px solid #e9ecef' }}>
-            <span style={{ marginRight: '12px', color: '#6c757d', fontSize: '18px' }}>📍</span>
-            <select
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
+          {/* Botão Escolher Cidade */}
+          <Link href="/escolher-cidade" style={{ textDecoration: 'none' }}>
+            <button
+              type="button"
               style={{
-                border: 'none',
-                backgroundColor: 'transparent',
-                padding: '15px 0',
-                width: '100%',
+                backgroundColor: '#f8f9fa',
+                color: '#5d34a4',
+                border: '2px solid #5d34a4',
+                borderRadius: '25px',
+                padding: '15px 25px',
                 fontSize: '15px',
-                outline: 'none',
+                fontWeight: 'bold',
                 cursor: 'pointer',
-                fontWeight: '500'
+                whiteSpace: 'nowrap',
+                minWidth: '180px',
+                transition: 'all 0.2s',
+                height: '100%'
+              }}
+              onMouseOver={(e) => {
+                e.target.style.backgroundColor = '#5d34a4';
+                e.target.style.color = 'white';
+              }}
+              onMouseOut={(e) => {
+                e.target.style.backgroundColor = '#f8f9fa';
+                e.target.style.color = '#5d34a4';
               }}
             >
-              <option value="São Paulo, SP">São Paulo, SP</option>
-              <option value="Rio de Janeiro, RJ">Rio de Janeiro, RJ</option>
-              <option value="Belo Horizonte, MG">Belo Horizonte, MG</option>
-              <option value="Brasília, DF">Brasília, DF</option>
-              <option value="Salvador, BA">Salvador, BA</option>
-              <option value="Porto Alegre, RS">Porto Alegre, RS</option>
-              <option value="Curitiba, PR">Curitiba, PR</option>
-              <option value="Fortaleza, CE">Fortaleza, CE</option>
-              <option value="Recife, PE">Recife, PE</option>
-              <option value="Online">Eventos Online</option>
-              <option value="">Qualquer local</option>
-            </select>
-          </div>
+              📍 Escolher Cidade
+            </button>
+          </Link>
 
           {/* Botão de busca */}
           <button
