@@ -170,7 +170,7 @@ function ComplementoContent() {
     }
   };
 
- // 🆕 FUNÇÃO PARA PESQUISAR PRODUTORES
+// 🆕 FUNÇÃO PARA PESQUISAR PRODUTORES
   const pesquisarProdutor = async (termo) => {
     if (!termo || termo.trim().length < 2) {
       setProdutoresEncontrados([]);
@@ -180,14 +180,22 @@ function ComplementoContent() {
     setPesquisando(true);
 
     try {
-      // Pesquisa por nome_completo, nome_empresa ou user_id (id)
-      const termoLower = termo.toLowerCase().trim();
+      const termoTrimmed = termo.trim();
       
-      const { data, error } = await supabase
-        .from('produtores')
-        .select('*')
-        .or(`nome_completo.ilike.%${termoLower}%,nome_empresa.ilike.%${termoLower}%,id.ilike.%${termoLower}%,user_id.ilike.%${termoLower}%`)
-        .limit(10);
+      // Tentar buscar por UUID primeiro (se o termo parece um UUID)
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(termoTrimmed);
+      
+      let query = supabase.from('produtores').select('*');
+      
+      if (isUUID) {
+        // Se for UUID, busca exata por id ou user_id
+        query = query.or(`id.eq.${termoTrimmed},user_id.eq.${termoTrimmed}`);
+      } else {
+        // Se for texto, busca por nome
+        query = query.or(`nome_completo.ilike.%${termoTrimmed}%,nome_empresa.ilike.%${termoTrimmed}%`);
+      }
+      
+      const { data, error } = await query.limit(10);
 
       if (!error && data) {
         setProdutoresEncontrados(data);
