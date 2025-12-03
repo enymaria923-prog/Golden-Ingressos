@@ -9,8 +9,6 @@ import '../../../publicar-evento/PublicarEvento.css';
 export const dynamic = 'force-dynamic';
 
 const PublicarEventoAdmin = () => {
-
-const PublicarEventoAdmin = () => {
   const router = useRouter();
   
   const [user, setUser] = useState(null);
