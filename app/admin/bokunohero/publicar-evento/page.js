@@ -2,13 +2,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '../../../../utils/supabase/client';
-import dynamicImport from 'next/dynamic';
-
-const SetorManager = dynamicImport(() => import('../../../publicar-evento/components/SetorManager.js'), { ssr: false });
-const CategoriaSelector = dynamicImport(() => import('../../../publicar-evento/components/CategoriaSelector.js'), { ssr: false });
+import SetorManager from '../../../publicar-evento/components/SetorManager.js';
+import CategoriaSelector from '../../../publicar-evento/components/CategoriaSelector.js';
 import '../../../publicar-evento/PublicarEvento.css';
 
 export const dynamic = 'force-dynamic';
+
+const PublicarEventoAdmin = () => {
 
 const PublicarEventoAdmin = () => {
   const router = useRouter();
