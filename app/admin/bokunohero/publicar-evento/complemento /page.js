@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '../../../../../utils/supabase/client';
 import CupomManager from '../../../../publicar-evento/components/CupomManager';
 import ProdutoManager from '../../../../publicar-evento/components/ProdutoManager';
+export const dynamic = 'force-dynamic';
 
 function ComplementoContent() {
   const supabase = createClient();
