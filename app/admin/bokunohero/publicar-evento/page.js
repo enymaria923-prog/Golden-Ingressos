@@ -2,8 +2,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '../../../../utils/supabase/client';
-import SetorManager from '../../../publicar-evento/components/SetorManager.js';
-import CategoriaSelector from '../../../publicar-evento/components/CategoriaSelector.js';
+import dynamic from 'next/dynamic';
+
+const SetorManager = dynamic(() => import('../../../publicar-evento/components/SetorManager.js'), { ssr: false });
+const CategoriaSelector = dynamic(() => import('../../../publicar-evento/components/CategoriaSelector.js'), { ssr: false });
 import '../../../publicar-evento/PublicarEvento.css';
 
 const PublicarEventoAdmin = () => {
