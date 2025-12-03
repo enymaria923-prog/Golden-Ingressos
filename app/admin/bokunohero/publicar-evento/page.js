@@ -1,10 +1,11 @@
 'use client';
-import React, { useState, useRef, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { createClient } from '../../../../utils/supabase/client';
-import SetorManager from './components/SetorManager';
-import CategoriaSelector from './components/CategoriaSelector';
-import './PublicarEvento.css';
+import SetorManager from '../../../../publicar-evento/components/SetorManager';
+import CategoriaSelector from '../../../../publicar-evento/components/CategoriaSelector';
+import RichTextEditor from '../../../../publicar-evento/components/RichTextEditor';
+import LocalSearch from '../../../../publicar-evento/components/LocalSearch';
+import ProdutoManager from '../../../../publicar-evento/components/ProdutoManager';
+import CupomManager from '../../../../publicar-evento/components/CupomManager';
+
 const PublicarEventoAdmin = () => {
   const supabase = createClient();
   const router = useRouter();
