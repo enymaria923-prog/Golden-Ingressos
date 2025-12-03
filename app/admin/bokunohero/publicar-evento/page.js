@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '../../../../utils/supabase/client';
+import { createClient } from '../../../../utils/supabase/client';  //aaaaaa
 import SetorManager from '../../../publicar-evento/components/SetorManager.js';
 import CategoriaSelector from '../../../publicar-evento/components/CategoriaSelector.js';
 import '../../../publicar-evento/PublicarEvento.css';
