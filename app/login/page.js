@@ -1,7 +1,6 @@
 // app/login/page.js
-
-// Importa a ação de login
 import { login } from '../actions-auth';
+import GoogleLoginButton from './GoogleLoginButton';
 
 export default function LoginPage() {
   return (
@@ -15,10 +14,21 @@ export default function LoginPage() {
 
       {/* Container principal */}
       <div style={{ maxWidth: '400px', margin: '0 auto' }}>
-
+        
         {/* Formulário de Login */}
         <div style={{ padding: '30px', backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
           <h2 style={{ textAlign: 'center', color: '#5d34a4', marginBottom: '25px' }}>Entrar na sua conta</h2>
+          
+          {/* Botão de Login com Google */}
+          <GoogleLoginButton />
+          
+          {/* Divisor */}
+          <div style={{ display: 'flex', alignItems: 'center', margin: '25px 0' }}>
+            <div style={{ flex: 1, height: '1px', backgroundColor: '#ddd' }}></div>
+            <span style={{ padding: '0 10px', color: '#999', fontSize: '14px' }}>ou</span>
+            <div style={{ flex: 1, height: '1px', backgroundColor: '#ddd' }}></div>
+          </div>
+
           <form action={login} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div>
               <label htmlFor="email" style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Email:</label>
@@ -109,7 +119,6 @@ export default function LoginPage() {
             </a>
           </div>
         </div>
-
       </div>
     </div>
   );
