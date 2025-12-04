@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '../../../utils/supabase/server';
+import { createClient } from '@supabase/supabase-js';
 
 export async function POST(request) {
   try {
@@ -16,31 +16,43 @@ export async function POST(request) {
     );
     
     const decoded = JSON.parse(jsonPayload);
-    console.log('Google user:', decoded);
+    console.log('✅ Dados do Google recebidos:', decoded.email);
     
-    // Usa o Supabase Admin para criar/buscar usuário
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     
-    const { createClient: createAdminClient } = await import('@supabase/supabase-js');
-    const supabaseAdmin = createAdminClient(supabaseUrl, supabaseServiceKey, {
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Variáveis de ambiente não configuradas');
+    }
+    
+    // Cliente Admin do Supabase
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false
       }
     });
     
+    // Cliente normal para fazer login
+    const supabaseClient = createClient(
+      supabaseUrl, 
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    );
+    
     // Verifica se usuário existe
     const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
     let user = existingUsers.users.find(u => u.email === decoded.email);
     
-    // Se não existe, cria o usuário
+    // Senha padrão para usuários do Google
+    const senhaGoogle = `google_${decoded.sub}`;
+    
     if (!user) {
-      const senhaTemporaria = decoded.sub + '_' + Math.random().toString(36).substring(7);
+      // Cria novo usuário
+      console.log('📝 Criando novo usuário...');
       
       const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
         email: decoded.email,
-        password: senhaTemporaria,
+        password: senhaGoogle,
         email_confirm: true,
         user_metadata: {
           nome: decoded.name,
@@ -58,23 +70,17 @@ export async function POST(request) {
       console.log('✅ Novo usuário criado:', user.id);
     } else {
       console.log('✅ Usuário já existe:', user.id);
+      
+      // Atualiza a senha para garantir que seja a mesma
+      await supabaseAdmin.auth.admin.updateUserById(user.id, {
+        password: senhaGoogle
+      });
     }
     
-    // Cria sessão usando o Supabase do servidor
-    const supabase = createClient();
-    
-    // Faz "login" com senha temporária
-    const senhaParaLogin = decoded.sub + '_google';
-    
-    // Atualiza a senha do usuário para uma senha conhecida
-    await supabaseAdmin.auth.admin.updateUserById(user.id, {
-      password: senhaParaLogin
-    });
-    
-    // Faz login com a senha
-    const { data: sessionData, error: signInError } = await supabase.auth.signInWithPassword({
+    // Faz login com o cliente normal (isso cria os cookies!)
+    const { data: sessionData, error: signInError } = await supabaseClient.auth.signInWithPassword({
       email: user.email,
-      password: senhaParaLogin
+      password: senhaGoogle
     });
     
     if (signInError) {
@@ -83,7 +89,8 @@ export async function POST(request) {
     
     console.log('✅ Sessão criada com sucesso!');
     
-    return NextResponse.json({ 
+    // Configura os cookies no response
+    const response = NextResponse.json({ 
       success: true,
       user: {
         id: user.id,
@@ -93,8 +100,29 @@ export async function POST(request) {
       }
     });
     
+    // Copia os cookies de autenticação do Supabase
+    if (sessionData.session) {
+      response.cookies.set('sb-access-token', sessionData.session.access_token, {
+        path: '/',
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 7 // 7 dias
+      });
+      
+      response.cookies.set('sb-refresh-token', sessionData.session.refresh_token, {
+        path: '/',
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 30 // 30 dias
+      });
+    }
+    
+    return response;
+    
   } catch (error) {
-    console.error('Erro completo:', error);
+    console.error('❌ Erro completo:', error);
     return NextResponse.json(
       { error: 'Erro no login', details: error.message },
       { status: 500 }
