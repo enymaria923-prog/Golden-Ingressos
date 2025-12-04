@@ -19,77 +19,82 @@ export async function POST(request) {
     
     console.log('Dados do Google:', decoded);
     
-    const googleUser = {
-      email: decoded.email,
-      nome: decoded.name,
-      foto: decoded.picture,
-      google_id: decoded.sub
-    };
-    
     // Conecta ao Supabase
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     
-    if (!supabaseUrl || !supabaseKey) {
+    if (!supabaseUrl || !supabaseServiceKey) {
       throw new Error('Variáveis do Supabase não configuradas');
     }
     
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    // Usa Service Role Key para criar/buscar usuário
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    // Verifica se usuário existe
-    const { data: existingUser, error: fetchError } = await supabase
-      .from('usuarios')
-      .select('*')
-      .eq('email', googleUser.email)
-      .maybeSingle();
+    // Verifica se usuário já existe pelo email
+    const { data: existingUsers, error: listError } = await supabase.auth.admin.listUsers();
     
-    console.log('Usuário existente:', existingUser);
+    if (listError) {
+      console.error('Erro ao listar usuários:', listError);
+      throw listError;
+    }
     
-    let userId;
+    const existingUser = existingUsers.users.find(u => u.email === decoded.email);
+    
+    let user;
     
     if (existingUser) {
-      // Usuário já existe
-      userId = existingUser.id;
-      console.log('Usuário já cadastrado, ID:', userId);
+      console.log('Usuário já existe:', existingUser.id);
+      user = existingUser;
     } else {
-      // Cria novo usuário
+      // Cria novo usuário no Supabase Auth
       console.log('Criando novo usuário...');
-      const { data: newUser, error: insertError } = await supabase
-        .from('usuarios')
-        .insert([
-          {
-            email: googleUser.email,
-            nome: googleUser.nome,
-            foto_perfil: googleUser.foto,
-            google_id: googleUser.google_id,
-            tipo_usuario: 'comum'
-          }
-        ])
-        .select()
-        .single();
+      const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
+        email: decoded.email,
+        email_confirm: true,
+        user_metadata: {
+          nome: decoded.name,
+          foto_perfil: decoded.picture,
+          google_id: decoded.sub,
+          tipo_usuario: 'comum'
+        }
+      });
       
-      if (insertError) {
-        console.error('Erro ao criar usuário:', insertError);
-        throw insertError;
+      if (createError) {
+        console.error('Erro ao criar usuário:', createError);
+        throw createError;
       }
       
-      userId = newUser.id;
-      console.log('Novo usuário criado, ID:', userId);
+      user = newUser.user;
+      console.log('Novo usuário criado:', user.id);
+    }
+    
+    // Cria sessão para o usuário
+    const { data: sessionData, error: sessionError } = await supabase.auth.admin.generateLink({
+      type: 'magiclink',
+      email: user.email
+    });
+    
+    if (sessionError) {
+      console.error('Erro ao criar sessão:', sessionError);
     }
     
     // Cria resposta com cookie
     const response = NextResponse.json({ 
       success: true,
-      user: googleUser,
-      userId: userId
+      user: {
+        id: user.id,
+        email: user.email,
+        nome: decoded.name,
+        foto: decoded.picture
+      }
     });
     
     // Define cookie de sessão
     response.cookies.set('user_session', JSON.stringify({
-      userId: userId,
-      email: googleUser.email,
-      nome: googleUser.nome,
-      foto: googleUser.foto
+      userId: user.id,
+      email: user.email,
+      nome: decoded.name,
+      foto: decoded.picture
     }), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -106,8 +111,7 @@ export async function POST(request) {
     return NextResponse.json(
       { 
         error: 'Erro no login com Google', 
-        details: error.message,
-        stack: error.stack 
+        details: error.message
       },
       { status: 500 }
     );
