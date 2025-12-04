@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
 export async function POST(request) {
   try {
     const { credential } = await request.json();
@@ -20,6 +17,8 @@ export async function POST(request) {
     
     const decoded = JSON.parse(jsonPayload);
     
+    console.log('Dados do Google:', decoded);
+    
     const googleUser = {
       email: decoded.email,
       nome: decoded.name,
@@ -27,22 +26,35 @@ export async function POST(request) {
       google_id: decoded.sub
     };
     
+    // Conecta ao Supabase
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Variáveis do Supabase não configuradas');
+    }
+    
     const supabase = createClient(supabaseUrl, supabaseKey);
     
     // Verifica se usuário existe
-    const { data: existingUser } = await supabase
+    const { data: existingUser, error: fetchError } = await supabase
       .from('usuarios')
       .select('*')
       .eq('email', googleUser.email)
-      .single();
+      .maybeSingle();
+    
+    console.log('Usuário existente:', existingUser);
     
     let userId;
     
     if (existingUser) {
+      // Usuário já existe
       userId = existingUser.id;
+      console.log('Usuário já cadastrado, ID:', userId);
     } else {
       // Cria novo usuário
-      const { data: newUser } = await supabase
+      console.log('Criando novo usuário...');
+      const { data: newUser, error: insertError } = await supabase
         .from('usuarios')
         .insert([
           {
@@ -56,33 +68,47 @@ export async function POST(request) {
         .select()
         .single();
       
+      if (insertError) {
+        console.error('Erro ao criar usuário:', insertError);
+        throw insertError;
+      }
+      
       userId = newUser.id;
+      console.log('Novo usuário criado, ID:', userId);
     }
     
+    // Cria resposta com cookie
     const response = NextResponse.json({ 
       success: true,
       user: googleUser,
       userId: userId
     });
     
-    // Cookie de sessão
+    // Define cookie de sessão
     response.cookies.set('user_session', JSON.stringify({
       userId: userId,
       email: googleUser.email,
-      nome: googleUser.nome
+      nome: googleUser.nome,
+      foto: googleUser.foto
     }), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7
+      maxAge: 60 * 60 * 24 * 7, // 7 dias
+      path: '/'
     });
     
+    console.log('Login bem-sucedido!');
     return response;
     
   } catch (error) {
-    console.error('Erro no login:', error);
+    console.error('Erro completo no login:', error);
     return NextResponse.json(
-      { error: 'Erro no login', details: error.message },
+      { 
+        error: 'Erro no login com Google', 
+        details: error.message,
+        stack: error.stack 
+      },
       { status: 500 }
     );
   }
