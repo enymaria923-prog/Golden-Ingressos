@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createClient } from '@supabase/supabase-js';
 
 export async function POST(request) {
   try {
@@ -17,67 +16,70 @@ export async function POST(request) {
     );
     
     const decoded = JSON.parse(jsonPayload);
+    console.log('Google user:', decoded);
     
-    console.log('Dados do Google:', decoded);
-    
-    const cookieStore = cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
-    
-    // Tenta fazer login com o email do Google
-    // Se não existir, o Supabase vai retornar erro
-    const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
-      email: decoded.email,
-      password: decoded.sub // Usa o ID do Google como senha temporária
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
     });
     
-    // Se deu erro, significa que o usuário não existe
-    if (signInError) {
-      console.log('Usuário não existe, criando...');
+    // Verifica se usuário existe
+    const { data: existingUsers } = await supabase.auth.admin.listUsers();
+    let user = existingUsers.users.find(u => u.email === decoded.email);
+    
+    // Se não existe, cria o usuário
+    if (!user) {
+      const senhaTemporaria = decoded.sub + '_' + Math.random().toString(36).substring(7);
       
-      // Cria o usuário no Supabase Auth
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
         email: decoded.email,
-        password: decoded.sub, // Senha = Google ID
-        options: {
-          data: {
-            nome: decoded.name,
-            foto_perfil: decoded.picture,
-            google_id: decoded.sub,
-            email_confirmed: true
-          }
+        password: senhaTemporaria,
+        email_confirm: true,
+        user_metadata: {
+          nome: decoded.name,
+          foto_perfil: decoded.picture,
+          google_id: decoded.sub,
+          login_tipo: 'google'
         }
       });
       
-      if (signUpError) {
-        console.error('Erro ao criar usuário:', signUpError);
-        throw signUpError;
+      if (createError) {
+        throw new Error(`Erro ao criar usuário: ${createError.message}`);
       }
       
-      console.log('Usuário criado:', signUpData);
-      
-      // Agora faz login com o usuário recém-criado
-      const { data: newAuthData, error: newSignInError } = await supabase.auth.signInWithPassword({
-        email: decoded.email,
-        password: decoded.sub
-      });
-      
-      if (newSignInError) {
-        throw newSignInError;
-      }
-      
-      return NextResponse.json({ 
-        success: true,
-        user: newAuthData.user,
-        session: newAuthData.session
-      });
+      user = newUser.user;
+      console.log('✅ Novo usuário criado:', user.id);
+    } else {
+      console.log('✅ Usuário já existe:', user.id);
     }
     
-    console.log('Login bem-sucedido:', authData);
+    // Gera link de login mágico (Magic Link) para criar sessão
+    const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+      type: 'magiclink',
+      email: user.email,
+    });
     
+    if (linkError) {
+      throw new Error(`Erro ao gerar link: ${linkError.message}`);
+    }
+    
+    console.log('✅ Link de acesso gerado');
+    
+    // Retorna as informações necessárias para o frontend criar a sessão
     return NextResponse.json({ 
       success: true,
-      user: authData.user,
-      session: authData.session
+      user: {
+        id: user.id,
+        email: user.email,
+        nome: decoded.name,
+        foto: decoded.picture
+      },
+      accessToken: linkData.properties.hashed_token,
+      refreshToken: linkData.properties.refresh_token
     });
     
   } catch (error) {
