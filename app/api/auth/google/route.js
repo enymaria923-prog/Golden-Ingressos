@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '../../../utils/supabase/server';
 
 export async function POST(request) {
   try {
@@ -18,9 +18,12 @@ export async function POST(request) {
     const decoded = JSON.parse(jsonPayload);
     console.log('Google user:', decoded);
     
+    // Usa o Supabase Admin para criar/buscar usuário
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+    
+    const { createClient: createAdminClient } = await import('@supabase/supabase-js');
+    const supabaseAdmin = createAdminClient(supabaseUrl, supabaseServiceKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false
@@ -28,14 +31,14 @@ export async function POST(request) {
     });
     
     // Verifica se usuário existe
-    const { data: existingUsers } = await supabase.auth.admin.listUsers();
+    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
     let user = existingUsers.users.find(u => u.email === decoded.email);
     
     // Se não existe, cria o usuário
     if (!user) {
       const senhaTemporaria = decoded.sub + '_' + Math.random().toString(36).substring(7);
       
-      const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
+      const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
         email: decoded.email,
         password: senhaTemporaria,
         email_confirm: true,
@@ -57,19 +60,29 @@ export async function POST(request) {
       console.log('✅ Usuário já existe:', user.id);
     }
     
-    // Gera link de login mágico (Magic Link) para criar sessão
-    const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
-      type: 'magiclink',
-      email: user.email,
+    // Cria sessão usando o Supabase do servidor
+    const supabase = createClient();
+    
+    // Faz "login" com senha temporária
+    const senhaParaLogin = decoded.sub + '_google';
+    
+    // Atualiza a senha do usuário para uma senha conhecida
+    await supabaseAdmin.auth.admin.updateUserById(user.id, {
+      password: senhaParaLogin
     });
     
-    if (linkError) {
-      throw new Error(`Erro ao gerar link: ${linkError.message}`);
+    // Faz login com a senha
+    const { data: sessionData, error: signInError } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: senhaParaLogin
+    });
+    
+    if (signInError) {
+      throw new Error(`Erro ao fazer login: ${signInError.message}`);
     }
     
-    console.log('✅ Link de acesso gerado');
+    console.log('✅ Sessão criada com sucesso!');
     
-    // Retorna as informações necessárias para o frontend criar a sessão
     return NextResponse.json({ 
       success: true,
       user: {
@@ -77,9 +90,7 @@ export async function POST(request) {
         email: user.email,
         nome: decoded.name,
         foto: decoded.picture
-      },
-      accessToken: linkData.properties.hashed_token,
-      refreshToken: linkData.properties.refresh_token
+      }
     });
     
   } catch (error) {
