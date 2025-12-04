@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 
 export async function POST(request) {
   try {
     const { credential } = await request.json();
     
-    // Decodifica o token JWT do Google
+    // Decodifica o token do Google
     const base64Url = credential.split('.')[1];
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
     const jsonPayload = decodeURIComponent(
@@ -19,100 +20,70 @@ export async function POST(request) {
     
     console.log('Dados do Google:', decoded);
     
-    // Conecta ao Supabase
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const cookieStore = cookies();
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
     
-    if (!supabaseUrl || !supabaseServiceKey) {
-      throw new Error('Variáveis do Supabase não configuradas');
-    }
+    // Tenta fazer login com o email do Google
+    // Se não existir, o Supabase vai retornar erro
+    const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
+      email: decoded.email,
+      password: decoded.sub // Usa o ID do Google como senha temporária
+    });
     
-    // Usa Service Role Key para criar/buscar usuário
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    
-    // Verifica se usuário já existe pelo email
-    const { data: existingUsers, error: listError } = await supabase.auth.admin.listUsers();
-    
-    if (listError) {
-      console.error('Erro ao listar usuários:', listError);
-      throw listError;
-    }
-    
-    const existingUser = existingUsers.users.find(u => u.email === decoded.email);
-    
-    let user;
-    
-    if (existingUser) {
-      console.log('Usuário já existe:', existingUser.id);
-      user = existingUser;
-    } else {
-      // Cria novo usuário no Supabase Auth
-      console.log('Criando novo usuário...');
-      const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
+    // Se deu erro, significa que o usuário não existe
+    if (signInError) {
+      console.log('Usuário não existe, criando...');
+      
+      // Cria o usuário no Supabase Auth
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: decoded.email,
-        email_confirm: true,
-        user_metadata: {
-          nome: decoded.name,
-          foto_perfil: decoded.picture,
-          google_id: decoded.sub,
-          tipo_usuario: 'comum'
+        password: decoded.sub, // Senha = Google ID
+        options: {
+          data: {
+            nome: decoded.name,
+            foto_perfil: decoded.picture,
+            google_id: decoded.sub,
+            email_confirmed: true
+          }
         }
       });
       
-      if (createError) {
-        console.error('Erro ao criar usuário:', createError);
-        throw createError;
+      if (signUpError) {
+        console.error('Erro ao criar usuário:', signUpError);
+        throw signUpError;
       }
       
-      user = newUser.user;
-      console.log('Novo usuário criado:', user.id);
-    }
-    
-    // Cria sessão para o usuário
-    const { data: sessionData, error: sessionError } = await supabase.auth.admin.generateLink({
-      type: 'magiclink',
-      email: user.email
-    });
-    
-    if (sessionError) {
-      console.error('Erro ao criar sessão:', sessionError);
-    }
-    
-    // Cria resposta com cookie
-    const response = NextResponse.json({ 
-      success: true,
-      user: {
-        id: user.id,
-        email: user.email,
-        nome: decoded.name,
-        foto: decoded.picture
+      console.log('Usuário criado:', signUpData);
+      
+      // Agora faz login com o usuário recém-criado
+      const { data: newAuthData, error: newSignInError } = await supabase.auth.signInWithPassword({
+        email: decoded.email,
+        password: decoded.sub
+      });
+      
+      if (newSignInError) {
+        throw newSignInError;
       }
-    });
+      
+      return NextResponse.json({ 
+        success: true,
+        user: newAuthData.user,
+        session: newAuthData.session
+      });
+    }
     
-    // Define cookie de sessão
-    response.cookies.set('user_session', JSON.stringify({
-      userId: user.id,
-      email: user.email,
-      nome: decoded.name,
-      foto: decoded.picture
-    }), {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7 dias
-      path: '/'
-    });
+    console.log('Login bem-sucedido:', authData);
     
-    console.log('Login bem-sucedido!');
-    return response;
+    return NextResponse.json({ 
+      success: true,
+      user: authData.user,
+      session: authData.session
+    });
     
   } catch (error) {
-    console.error('Erro completo no login:', error);
+    console.error('Erro completo:', error);
     return NextResponse.json(
-      { 
-        error: 'Erro no login com Google', 
-        details: error.message
-      },
+      { error: 'Erro no login', details: error.message },
       { status: 500 }
     );
   }
