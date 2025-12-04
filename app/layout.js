@@ -1,17 +1,14 @@
 // app/layout.js - Molde principal da aplicação
-
-/* Este 'layout' é obrigatório para o Next.js */
-
-export const metadata = {
-  title: 'Golden Ingressos',
-  description: 'Sua plataforma de eventos VIP',
-};
+'use client';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 
 export default function RootLayout({ children }) {
   return (
     <html lang="pt-BR">
       <body style={{ margin: 0, padding: 0 }}>
-        {children}
+        <GoogleOAuthProvider clientId="338308438974-b8hlo2isn9569h5oae7176tgppne5mnd.apps.googleusercontent.com">
+          {children}
+        </GoogleOAuthProvider>
       </body>
     </html>
   );
