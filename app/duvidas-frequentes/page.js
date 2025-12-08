@@ -171,12 +171,9 @@ const FAQPage = () => {
         <div className="mt-12 text-center bg-gradient-to-r from-yellow-400 to-amber-500 rounded-xl p-8 text-white">
           <h2 className="text-2xl font-bold mb-3">Ainda tem dúvidas?</h2>
           <p className="mb-6 text-yellow-50">Entre em contato com nosso suporte. Estamos aqui para ajudar!</p>
-          <a 
-            href="mailto:contato@goldeningressos.com.br"
-            className="inline-block bg-white text-yellow-600 font-semibold px-8 py-3 rounded-lg hover:bg-yellow-50 transition-colors shadow-lg"
-          >
-            Enviar E-mail para o Suporte
-          </a>
+          <button className="bg-white text-yellow-600 font-semibold px-8 py-3 rounded-lg hover:bg-yellow-50 transition-colors shadow-lg">
+            Falar com o Suporte
+          </button>
         </div>
       </div>
     </div>
