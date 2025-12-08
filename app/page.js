@@ -238,15 +238,7 @@ export default async function Index() {
                   O melhor marketplace para Teatros
                 </Link>
               </li>
-              <li style={{ marginBottom: '12px' }}>
-                <Link href="/baladas" style={{ 
-                  color: '#ecf0f1', 
-                  textDecoration: 'none',
-                  fontSize: '15px'
-                }}>
-                  O melhor marketplace para Baladas
-                </Link>
-              </li>
+            
               <li style={{ marginBottom: '12px' }}>
                 <Link href="/stand-up" style={{ 
                   color: '#ecf0f1', 
