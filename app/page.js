@@ -102,89 +102,307 @@ export default async function Index() {
   const eventosRegulares = eventos || [];
 
   return (
-    <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px' }}>
-      <header style={{ 
-        backgroundColor: '#5d34a4', 
-        color: 'white', 
-        padding: '20px', 
-        textAlign: 'center', 
-        marginBottom: '20px', 
-        borderRadius: '8px' 
-      }}>
-        <h1>GOLDEN INGRESSOS</h1>
-        <p>Encontre seu próximo evento inesquecível.</p>
-      </header>
-      
-      {/* Barra de Pesquisa */}
-      <SearchBar />
-      
-      <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-        <Link href="/publicar-evento">
-          <button style={{ 
-            backgroundColor: '#f1c40f', 
-            color: 'black', 
-            padding: '12px 25px', 
-            border: 'none', 
-            borderRadius: '5px', 
-            fontWeight: 'bold', 
-            cursor: 'pointer', 
-            marginRight: '15px' 
-          }}>
-            Publicar Novo Evento
-          </button>
-        </Link>
+    <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh' }}>
+      <div style={{ padding: '20px', paddingBottom: '0' }}>
+        <header style={{ 
+          backgroundColor: '#5d34a4', 
+          color: 'white', 
+          padding: '20px', 
+          textAlign: 'center', 
+          marginBottom: '20px', 
+          borderRadius: '8px' 
+        }}>
+          <h1>GOLDEN INGRESSOS</h1>
+          <p>Encontre seu próximo evento inesquecível.</p>
+        </header>
         
-        {user ? (
-          <UserDropdown user={user} />
-        ) : (
-          <Link href="/login">
+        {/* Barra de Pesquisa */}
+        <SearchBar />
+        
+        <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+          <Link href="/publicar-evento">
             <button style={{ 
-              backgroundColor: '#fff', 
-              color: '#5d34a4', 
+              backgroundColor: '#f1c40f', 
+              color: 'black', 
               padding: '12px 25px', 
-              border: '2px solid #5d34a4', 
+              border: 'none', 
               borderRadius: '5px', 
               fontWeight: 'bold', 
-              cursor: 'pointer' 
+              cursor: 'pointer', 
+              marginRight: '15px' 
             }}>
-              Entrar
+              Publicar Novo Evento
             </button>
           </Link>
+          
+          {user ? (
+            <UserDropdown user={user} />
+          ) : (
+            <Link href="/login">
+              <button style={{ 
+                backgroundColor: '#fff', 
+                color: '#5d34a4', 
+                padding: '12px 25px', 
+                border: '2px solid #5d34a4', 
+                borderRadius: '5px', 
+                fontWeight: 'bold', 
+                cursor: 'pointer' 
+              }}>
+                Entrar
+              </button>
+            </Link>
+          )}
+        </div>
+
+        {/* Carrossel de Eventos em Destaque */}
+        {eventosDestaque.length > 0 && (
+          <div style={{ marginBottom: '50px' }}>
+            <h2 style={{ textAlign: 'center', marginBottom: '30px' }}>🌟 Eventos em Destaque</h2>
+            <EventosCarousel eventos={eventosDestaque} userId={user?.id} favoritos={favoritos} />
+          </div>
+        )}
+
+        {/* Lista de Todos os Eventos */}
+        <h2 style={{ textAlign: 'center', marginBottom: '30px' }}>📅 Todos os Eventos</h2>
+        
+        {eventosRegulares && eventosRegulares.length > 0 ? (
+          <div style={{ 
+            display: 'flex', 
+            flexWrap: 'wrap', 
+            justifyContent: 'center', 
+            gap: '30px', 
+            maxWidth: '1200px', 
+            margin: '40px auto',
+            marginBottom: '60px'
+          }}>
+            {eventosRegulares.map((evento) => (
+              <CardEvento 
+                key={evento.id} 
+                evento={evento} 
+                userId={user?.id}
+                isFavorited={favoritos.includes(evento.id)}
+              />
+            ))}
+          </div>
+        ) : (
+          <p style={{ textAlign: 'center', marginBottom: '60px' }}>Nenhum evento aprovado encontrado.</p>
         )}
       </div>
 
-      {/* Carrossel de Eventos em Destaque */}
-      {eventosDestaque.length > 0 && (
-        <div style={{ marginBottom: '50px' }}>
-          <h2 style={{ textAlign: 'center', marginBottom: '30px' }}>🌟 Eventos em Destaque</h2>
-          <EventosCarousel eventos={eventosDestaque} userId={user?.id} favoritos={favoritos} />
-        </div>
-      )}
-
-      {/* Lista de Todos os Eventos */}
-      <h2 style={{ textAlign: 'center', marginBottom: '30px' }}>📅 Todos os Eventos</h2>
-      
-      {eventosRegulares && eventosRegulares.length > 0 ? (
+      {/* RODAPÉ COM DOCUMENTAÇÕES */}
+      <footer style={{ 
+        backgroundColor: '#2c3e50', 
+        color: '#ecf0f1',
+        padding: '50px 20px 30px',
+        marginTop: '60px'
+      }}>
         <div style={{ 
-          display: 'flex', 
-          flexWrap: 'wrap', 
-          justifyContent: 'center', 
-          gap: '30px', 
           maxWidth: '1200px', 
-          margin: '40px auto' 
+          margin: '0 auto',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+          gap: '40px'
         }}>
-          {eventosRegulares.map((evento) => (
-            <CardEvento 
-              key={evento.id} 
-              evento={evento} 
-              userId={user?.id}
-              isFavorited={favoritos.includes(evento.id)}
-            />
-          ))}
+          
+          {/* Coluna 1: Marketplace */}
+          <div>
+            <h3 style={{ 
+              color: '#f1c40f', 
+              marginBottom: '20px',
+              fontSize: '18px',
+              fontWeight: 'bold'
+            }}>
+              🎭 Marketplace
+            </h3>
+            <ul style={{ 
+              listStyle: 'none', 
+              padding: 0,
+              margin: 0
+            }}>
+              <li style={{ marginBottom: '12px' }}>
+                <Link href="/shows" style={{ 
+                  color: '#ecf0f1', 
+                  textDecoration: 'none',
+                  fontSize: '15px',
+                  transition: 'color 0.3s'
+                }}>
+                  O melhor marketplace para Shows
+                </Link>
+              </li>
+              <li style={{ marginBottom: '12px' }}>
+                <Link href="/teatros" style={{ 
+                  color: '#ecf0f1', 
+                  textDecoration: 'none',
+                  fontSize: '15px'
+                }}>
+                  O melhor marketplace para Teatros
+                </Link>
+              </li>
+              <li style={{ marginBottom: '12px' }}>
+                <Link href="/baladas" style={{ 
+                  color: '#ecf0f1', 
+                  textDecoration: 'none',
+                  fontSize: '15px'
+                }}>
+                  O melhor marketplace para Baladas
+                </Link>
+              </li>
+              <li style={{ marginBottom: '12px' }}>
+                <Link href="/stand-up" style={{ 
+                  color: '#ecf0f1', 
+                  textDecoration: 'none',
+                  fontSize: '15px'
+                }}>
+                  O melhor marketplace para Stand-up
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Coluna 2: Institucional */}
+          <div>
+            <h3 style={{ 
+              color: '#f1c40f', 
+              marginBottom: '20px',
+              fontSize: '18px',
+              fontWeight: 'bold'
+            }}>
+              📄 Institucional
+            </h3>
+            <ul style={{ 
+              listStyle: 'none', 
+              padding: 0,
+              margin: 0
+            }}>
+              <li style={{ marginBottom: '12px' }}>
+                <Link href="/termos" style={{ 
+                  color: '#ecf0f1', 
+                  textDecoration: 'none',
+                  fontSize: '15px'
+                }}>
+                  Termos de Uso
+                </Link>
+              </li>
+              <li style={{ marginBottom: '12px' }}>
+                <Link href="/privacidade" style={{ 
+                  color: '#ecf0f1', 
+                  textDecoration: 'none',
+                  fontSize: '15px'
+                }}>
+                  Políticas de Privacidade
+                </Link>
+              </li>
+              <li style={{ marginBottom: '12px' }}>
+                <Link href="/confianca" style={{ 
+                  color: '#ecf0f1', 
+                  textDecoration: 'none',
+                  fontSize: '15px'
+                }}>
+                  Golden Ingressos é confiável?
+                </Link>
+              </li>
+              <li style={{ marginBottom: '12px' }}>
+                <Link href="/sobre" style={{ 
+                  color: '#ecf0f1', 
+                  textDecoration: 'none',
+                  fontSize: '15px'
+                }}>
+                  Sobre a Golden
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Coluna 3: Suporte */}
+          <div>
+            <h3 style={{ 
+              color: '#f1c40f', 
+              marginBottom: '20px',
+              fontSize: '18px',
+              fontWeight: 'bold'
+            }}>
+              🆘 Suporte
+            </h3>
+            <ul style={{ 
+              listStyle: 'none', 
+              padding: 0,
+              margin: 0
+            }}>
+              <li style={{ marginBottom: '12px' }}>
+                <Link href="/ajuda-produtores" style={{ 
+                  color: '#ecf0f1', 
+                  textDecoration: 'none',
+                  fontSize: '15px'
+                }}>
+                  Tutorial e Ajuda para Produtores
+                </Link>
+              </li>
+              <li style={{ marginBottom: '12px' }}>
+                <Link href="/duvidas-frequentes" style={{ 
+                  color: '#ecf0f1', 
+                  textDecoration: 'none',
+                  fontSize: '15px'
+                }}>
+                  Dúvidas Frequentes
+                </Link>
+              </li>
+              <li style={{ marginBottom: '12px' }}>
+                <a href="mailto:contato@goldeningressos.com.br" style={{ 
+                  color: '#ecf0f1', 
+                  textDecoration: 'none',
+                  fontSize: '15px'
+                }}>
+                  Fale Conosco
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          {/* Coluna 4: Contato */}
+          <div>
+            <h3 style={{ 
+              color: '#f1c40f', 
+              marginBottom: '20px',
+              fontSize: '18px',
+              fontWeight: 'bold'
+            }}>
+              📞 Contato
+            </h3>
+            <p style={{ 
+              margin: '0 0 15px 0',
+              fontSize: '15px',
+              lineHeight: '1.8'
+            }}>
+              <strong>Email:</strong><br />
+              contato@goldeningressos.com.br
+            </p>
+            <p style={{ 
+              margin: '0',
+              fontSize: '15px',
+              lineHeight: '1.8'
+            }}>
+              <strong>Atendimento:</strong><br />
+              Segunda a Sexta<br />
+              09:00 - 18:00
+            </p>
+          </div>
+
         </div>
-      ) : (
-        <p style={{ textAlign: 'center' }}>Nenhum evento aprovado encontrado.</p>
-      )}
+
+        {/* Linha de copyright */}
+        <div style={{ 
+          textAlign: 'center', 
+          marginTop: '40px',
+          paddingTop: '20px',
+          borderTop: '1px solid #34495e',
+          fontSize: '14px',
+          color: '#95a5a6'
+        }}>
+          <p style={{ margin: 0 }}>
+            © 2025 Golden Ingressos. Todos os direitos reservados.
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }
