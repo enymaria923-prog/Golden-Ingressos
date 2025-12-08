@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ChevronDown, HelpCircle, User, Ticket, Monitor, RefreshCw, DollarSign, FileCheck } from 'lucide-react';
 
 const FAQPage = () => {
   const [expandedCard, setExpandedCard] = useState(null);
@@ -9,7 +8,7 @@ const FAQPage = () => {
   const faqs = [
     {
       id: 1,
-      icon: User,
+      icon: "👤",
       title: "Como criar minha conta (Cliente)?",
       content: (
         <>
@@ -25,7 +24,7 @@ const FAQPage = () => {
     },
     {
       id: 2,
-      icon: Ticket,
+      icon: "🎫",
       title: "Como encontrar e acessar meus ingressos?",
       content: (
         <>
@@ -40,7 +39,7 @@ const FAQPage = () => {
     },
     {
       id: 3,
-      icon: Monitor,
+      icon: "💻",
       title: "Como posso acessar um evento online?",
       content: (
         <>
@@ -58,7 +57,7 @@ const FAQPage = () => {
     },
     {
       id: 4,
-      icon: RefreshCw,
+      icon: "🔄",
       title: "Por que não consegui solicitar meu reembolso?",
       content: (
         <>
@@ -74,7 +73,7 @@ const FAQPage = () => {
     },
     {
       id: 5,
-      icon: DollarSign,
+      icon: "💰",
       title: "Qual o custo para utilizar a Golden Ingressos?",
       content: (
         <>
@@ -92,7 +91,7 @@ const FAQPage = () => {
     },
     {
       id: 6,
-      icon: FileCheck,
+      icon: "✅",
       title: "Existe alguma taxa para criar uma conta ou publicar um evento?",
       content: (
         <>
@@ -112,7 +111,7 @@ const FAQPage = () => {
       {/* Header */}
       <div className="bg-gradient-to-r from-yellow-400 to-amber-500 text-white py-16 px-4">
         <div className="max-w-4xl mx-auto text-center">
-          <HelpCircle className="w-16 h-16 mx-auto mb-4" />
+          <div className="text-6xl mb-4">❓</div>
           <h1 className="text-4xl md:text-5xl font-bold mb-4">Dúvidas Frequentes</h1>
           <p className="text-lg text-yellow-50">Encontre respostas para as perguntas mais comuns sobre a Golden Ingressos</p>
         </div>
@@ -122,7 +121,6 @@ const FAQPage = () => {
       <div className="max-w-4xl mx-auto px-4 py-12">
         <div className="space-y-4">
           {faqs.map((faq) => {
-            const Icon = faq.icon;
             const isExpanded = expandedCard === faq.id;
             
             return (
@@ -137,20 +135,25 @@ const FAQPage = () => {
                   className="w-full px-6 py-5 flex items-center justify-between text-left transition-colors hover:bg-yellow-50"
                 >
                   <div className="flex items-center gap-4 flex-1">
-                    <div className={`p-3 rounded-lg transition-colors ${
-                      isExpanded ? 'bg-yellow-400 text-white' : 'bg-yellow-100 text-yellow-600'
+                    <div className={`text-3xl p-3 rounded-lg transition-colors ${
+                      isExpanded ? 'bg-yellow-400' : 'bg-yellow-100'
                     }`}>
-                      <Icon className="w-6 h-6" />
+                      {faq.icon}
                     </div>
                     <h3 className="text-lg font-semibold text-gray-800 pr-4">
                       {faq.title}
                     </h3>
                   </div>
-                  <ChevronDown
+                  <svg
                     className={`w-6 h-6 text-gray-400 transition-transform duration-300 flex-shrink-0 ${
                       isExpanded ? 'rotate-180' : ''
                     }`}
-                  />
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
                 </button>
                 
                 <div
