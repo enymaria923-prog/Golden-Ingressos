@@ -9,6 +9,7 @@ const FAQPage = () => {
     {
       id: 1,
       icon: "👤",
+      color: "blue",
       title: "Como criar minha conta (Cliente)?",
       content: (
         <>
@@ -25,6 +26,7 @@ const FAQPage = () => {
     {
       id: 2,
       icon: "🎫",
+      color: "green",
       title: "Como encontrar e acessar meus ingressos?",
       content: (
         <>
@@ -40,6 +42,7 @@ const FAQPage = () => {
     {
       id: 3,
       icon: "💻",
+      color: "purple",
       title: "Como posso acessar um evento online?",
       content: (
         <>
@@ -58,6 +61,7 @@ const FAQPage = () => {
     {
       id: 4,
       icon: "🔄",
+      color: "orange",
       title: "Por que não consegui solicitar meu reembolso?",
       content: (
         <>
@@ -74,6 +78,7 @@ const FAQPage = () => {
     {
       id: 5,
       icon: "💰",
+      color: "yellow",
       title: "Qual o custo para utilizar a Golden Ingressos?",
       content: (
         <>
@@ -92,6 +97,7 @@ const FAQPage = () => {
     {
       id: 6,
       icon: "✅",
+      color: "green",
       title: "Existe alguma taxa para criar uma conta ou publicar um evento?",
       content: (
         <>
@@ -106,46 +112,45 @@ const FAQPage = () => {
     setExpandedCard(expandedCard === id ? null : id);
   };
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-yellow-50">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-yellow-400 to-amber-500 text-white py-16 px-4">
-        <div className="max-w-4xl mx-auto text-center">
-          <div className="text-6xl mb-4">❓</div>
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">Dúvidas Frequentes</h1>
-          <p className="text-lg text-yellow-50">Encontre respostas para as perguntas mais comuns sobre a Golden Ingressos</p>
-        </div>
-      </div>
+  const getColorClasses = (color) => {
+    const colors = {
+      blue: { border: 'border-l-blue-500', icon: 'text-blue-600' },
+      green: { border: 'border-l-green-500', icon: 'text-green-600' },
+      purple: { border: 'border-l-purple-500', icon: 'text-purple-600' },
+      orange: { border: 'border-l-orange-500', icon: 'text-orange-600' },
+      yellow: { border: 'border-l-yellow-500', icon: 'text-yellow-600' }
+    };
+    return colors[color] || colors.blue;
+  };
 
+  return (
+    <div className="min-h-screen bg-gray-50">
       {/* FAQ Cards */}
-      <div className="max-w-4xl mx-auto px-4 py-12">
-        <div className="space-y-4">
+      <div className="max-w-5xl mx-auto px-4 py-12">
+        <div className="space-y-6">
           {faqs.map((faq) => {
             const isExpanded = expandedCard === faq.id;
+            const colorClasses = getColorClasses(faq.color);
             
             return (
               <div
                 key={faq.id}
-                className={`bg-white rounded-xl shadow-md overflow-hidden transition-all duration-300 ${
-                  isExpanded ? 'shadow-xl' : 'hover:shadow-lg'
-                }`}
+                className={`bg-white rounded-lg border-l-4 ${colorClasses.border} shadow-sm overflow-hidden transition-all duration-200 hover:shadow-md`}
               >
                 <button
                   onClick={() => toggleCard(faq.id)}
-                  className="w-full px-6 py-5 flex items-center justify-between text-left transition-colors hover:bg-yellow-50"
+                  className="w-full px-6 py-4 flex items-center justify-between text-left"
                 >
-                  <div className="flex items-center gap-4 flex-1">
-                    <div className={`text-3xl p-3 rounded-lg transition-colors ${
-                      isExpanded ? 'bg-yellow-400' : 'bg-yellow-100'
-                    }`}>
+                  <div className="flex items-center gap-3 flex-1">
+                    <span className={`text-2xl ${colorClasses.icon}`}>
                       {faq.icon}
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-800 pr-4">
+                    </span>
+                    <h3 className="text-base font-semibold text-gray-800">
                       {faq.title}
                     </h3>
                   </div>
                   <svg
-                    className={`w-6 h-6 text-gray-400 transition-transform duration-300 flex-shrink-0 ${
+                    className={`w-5 h-5 text-gray-400 transition-transform duration-200 flex-shrink-0 ${
                       isExpanded ? 'rotate-180' : ''
                     }`}
                     fill="none"
@@ -156,31 +161,27 @@ const FAQPage = () => {
                   </svg>
                 </button>
                 
-                <div
-                  className={`transition-all duration-300 ease-in-out ${
-                    isExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
-                  }`}
-                >
-                  <div className="px-6 pb-6 pt-2">
-                    <div className="pl-16 pr-4 text-gray-700 leading-relaxed">
+                {isExpanded && (
+                  <div className="px-6 pb-5 pt-1">
+                    <div className="text-sm text-gray-700 leading-relaxed">
                       {faq.content}
                     </div>
                   </div>
-                </div>
+                )}
               </div>
             );
           })}
         </div>
 
         {/* Footer CTA */}
-        <div className="mt-12 text-center bg-gradient-to-r from-yellow-400 to-amber-500 rounded-xl p-8 text-white">
-          <h2 className="text-2xl font-bold mb-3">Ainda tem dúvidas?</h2>
-          <p className="mb-6 text-yellow-50">Entre em contato com nosso suporte. Estamos aqui para ajudar!</p>
+        <div className="mt-12 text-center bg-gradient-to-br from-purple-600 to-indigo-700 rounded-lg p-10 text-white shadow-lg">
+          <h2 className="text-2xl font-bold mb-2">Pronto para revolucionar seus eventos?</h2>
+          <p className="mb-6 text-purple-100">Junte-se à Golden Ingressos e comece a lucrar mais hoje mesmo!</p>
           <a 
             href="mailto:contato@goldeningressos.com.br"
-            className="inline-block bg-white text-yellow-600 font-semibold px-8 py-3 rounded-lg hover:bg-yellow-50 transition-colors shadow-lg"
+            className="inline-block bg-yellow-400 text-gray-900 font-semibold px-8 py-3 rounded-lg hover:bg-yellow-300 transition-colors shadow-md"
           >
-            Enviar E-mail para o Suporte
+            🚀 Enviar E-mail para o Suporte
           </a>
         </div>
       </div>
