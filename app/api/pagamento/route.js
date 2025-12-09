@@ -1,12 +1,23 @@
 // app/api/pagamento/route.js
 import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
+// ==================================================================
+// 1. SUBSTITUA TODO O BLOCO DE CONFIGURAÇÃO INICIAL POR ISSO AQUI:
+// ==================================================================
 
-// ⚠️ TEMPORÁRIO - Apenas para teste
-const ASAAS_API_KEY = process.env.ASAAS_API_KEY || '$aact_prod_000MzkwODA2MWY2OGM3MWRlMDU2NWM3MzJlNzZmNGZhZGY6OmU0MmYyMzFjLTJlMTYtNDRiYi04NDJkLTk4NzM5MThkYTA1Mzo6JGFhY2hfY2RiZWVhZDEtN2Q1OS00NTU2LWI3NDAtMDhkZTcyNmQ0ODhj';
-const ASAAS_WALLET_ID = process.env.ASAAS_WALLET_ID || '3be2035e-fe8a-4afa-941e-6a31d95371ec';
-const ASAAS_BASE_URL = (process.env.ASAAS_ENV || 'production') === 'production' 
-  ? 'https://api.asaas.com/v3' 
+const ASAAS_API_KEY = process.env.ASAAS_API_KEY;
+const ASAAS_WALLET_ID = process.env.ASAAS_WALLET_ID;
+
+// Define a URL base dependendo se o ambiente é 'sandbox' ou 'production'
+const ASAAS_BASE_URL = process.env.ASAAS_ENV === 'sandbox'
+  ? 'https://sandbox.asaas.com/api/v3'
+  : 'https://api.asaas.com/v3';
+
+// ==================================================================
+
+export async function POST(request) {
+  try {
+    // ... resto do seu código continua igual ...
   : 'https://sandbox.asaas.com/api/v3';
 
 export async function POST(request) {
