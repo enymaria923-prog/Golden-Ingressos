@@ -11,7 +11,7 @@ export async function POST(request) {
   try {
     const supabase = createClient();
     const { pedidoId, formaPagamento, dadosCartao } = await request.json();
-
+    
     console.log('💳 Processando pagamento com cartão...');
     console.log('Pedido ID:', pedidoId);
     console.log('Forma:', formaPagamento);
@@ -76,7 +76,7 @@ export async function POST(request) {
     });
 
     const result = await response.json();
-
+    
     console.log('📥 Resposta Asaas:', result);
 
     if (result.errors) {
