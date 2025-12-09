@@ -74,27 +74,42 @@ export async function POST(request) {
 
     console.log('✅ Cobrança criada:', cobranca.id);
 
-    // 3. Salvar pedido no banco de dados
+    // 3. Preparar dados para salvar no banco
+    const dadosPedido = {
+      evento_id: String(eventoId),
+      sessao_id: sessaoId ? String(sessaoId) : null,
+      user_id: dadosComprador.userId ? String(dadosComprador.userId) : null,
+      comprador_nome: dadosComprador.nome,
+      comprador_email: dadosComprador.email,
+      comprador_cpf: dadosComprador.cpf.replace(/\D/g, ''),
+      comprador_telefone: dadosComprador.telefone ? dadosComprador.telefone.replace(/\D/g, '') : null,
+      forma_pagamento: formaPagamento,
+      valor_total: parseFloat(total.toFixed(2)),
+      status: 'PENDENTE',
+      asaas_payment_id: cobranca.id,
+      asaas_customer_id: asaasCustomer.id,
+      cupom_id: cupomId ? String(cupomId) : null,
+      itens: JSON.stringify(itensCarrinho),
+      produtos: produtos && produtos.length > 0 ? JSON.stringify(produtos) : null
+    };
+
+    // Adicionar dados específicos por método de pagamento
+    if (formaPagamento === 'pix') {
+      dadosPedido.pix_qr_code = cobranca.encodedImage;
+      dadosPedido.pix_copy_paste = cobranca.payload;
+      dadosPedido.pix_expiration_date = cobranca.expirationDate;
+    } else if (formaPagamento === 'boleto') {
+      dadosPedido.boleto_url = cobranca.bankSlipUrl;
+      dadosPedido.boleto_codigo_barras = cobranca.identificationField;
+      dadosPedido.boleto_linha_digitavel = cobranca.nossoNumero || cobranca.identificationField;
+      dadosPedido.data_vencimento = cobranca.dueDate;
+    }
+
+    // 4. Salvar pedido no banco de dados
     console.log('💾 Salvando pedido no banco...');
     const { data: pedido, error: pedidoError } = await supabase
       .from('pedidos')
-      .insert({
-        evento_id: String(eventoId),
-        sessao_id: sessaoId ? String(sessaoId) : null,
-        user_id: dadosComprador.userId ? String(dadosComprador.userId) : null,
-        comprador_nome: dadosComprador.nome,
-        comprador_email: dadosComprador.email,
-        comprador_cpf: dadosComprador.cpf.replace(/\D/g, ''),
-        comprador_telefone: dadosComprador.telefone ? dadosComprador.telefone.replace(/\D/g, '') : null,
-        forma_pagamento: formaPagamento,
-        valor_total: parseFloat(total.toFixed(2)),
-        status: 'PENDENTE',
-        asaas_payment_id: cobranca.id,
-        asaas_customer_id: asaasCustomer.id,
-        cupom_id: cupomId ? String(cupomId) : null,
-        itens: JSON.stringify(itensCarrinho),
-        produtos: produtos && produtos.length > 0 ? JSON.stringify(produtos) : null
-      })
+      .insert(dadosPedido)
       .select()
       .single();
 
@@ -108,8 +123,9 @@ export async function POST(request) {
 
     console.log('✅ Pedido salvo:', pedido.id);
 
-    // 4. Retornar resposta com dados do pagamento
+    // 5. Retornar resposta com dados do pagamento
     const resposta = {
+      success: true,
       pedidoId: pedido.id,
       paymentId: cobranca.id,
       status: cobranca.status,
@@ -124,7 +140,7 @@ export async function POST(request) {
     } else if (formaPagamento === 'boleto') {
       resposta.boletoUrl = cobranca.bankSlipUrl;
       resposta.boletoBarcode = cobranca.identificationField;
-      resposta.boletoDigitableLine = await obterLinhaDigitavel(cobranca.id);
+      resposta.boletoDigitableLine = cobranca.identificationField;
     } else if (formaPagamento.includes('cartao')) {
       resposta.invoiceUrl = cobranca.invoiceUrl;
       resposta.transactionReceiptUrl = cobranca.transactionReceiptUrl;
@@ -134,7 +150,7 @@ export async function POST(request) {
       }
     }
 
-    return NextResponse.json({ success: true, ...resposta });
+    return NextResponse.json(resposta);
 
   } catch (error) {
     console.error('Erro no processamento do pagamento:', error);
@@ -280,24 +296,6 @@ async function criarCobranca({ customer, billingType, value, dueDate, descriptio
   } catch (error) {
     console.error('❌ Erro ao criar cobrança:', error);
     return { errors: [{ description: error.message }] };
-  }
-}
-
-async function obterLinhaDigitavel(paymentId) {
-  try {
-    const response = await fetch(
-      `${ASAAS_BASE_URL}/payments/${paymentId}/identificationField`,
-      {
-        headers: {
-          'access_token': ASAAS_API_KEY
-        }
-      }
-    );
-    const data = await response.json();
-    return data.identificationField;
-  } catch (error) {
-    console.error('Erro ao obter linha digitável:', error);
-    return null;
   }
 }
 
