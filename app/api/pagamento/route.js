@@ -8,6 +8,12 @@ const ASAAS_BASE_URL = process.env.ASAAS_ENV === 'production'
   ? 'https://api.asaas.com/v3' 
   : 'https://sandbox.asaas.com/api/v3';
 
+// TEMPORÁRIO - APENAS PARA DEBUG
+console.log('🔍 Verificando variáveis de ambiente:');
+console.log('ASAAS_API_KEY existe?', !!process.env.ASAAS_API_KEY);
+console.log('ASAAS_API_KEY valor:', process.env.ASAAS_API_KEY?.substring(0, 20) + '...');
+console.log('ASAAS_ENV:', process.env.ASAAS_ENV);
+
 export async function POST(request) {
   try {
     const supabase = createClient();
