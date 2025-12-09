@@ -1,4 +1,4 @@
-// app/api/pagamento/route.js
+// app/api/pagamento/route.js porra
 import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
 import { getAsaasConfig, validateAsaasConfig } from '../../lib/asaas-config';
