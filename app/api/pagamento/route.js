@@ -3,7 +3,7 @@ import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
 
 // ⚠️ TEMPORÁRIO - Apenas para teste
-const ASAAS_API_KEY = process.env.ASAAS_API_KEY || '$aact_prod_000MZkwODA2MWY2OGM3MWNh1MDU2NWM3MzJlNTNzZmNmZjY6OmU0MWYzZjI1JTJIMT1tNDRiNDJkLTkxK4NzM5MTh5YTA1Mzo2JGFhY2hfMmFjOGFjMzMtNzAyNy00MzUzLThmYzktYzNjNmE2OWQyMWM1';
+const ASAAS_API_KEY = process.env.ASAAS_API_KEY || '$aact_prod_000MzkwODA2MWY2OGM3MWRlMDU2NWM3MzJlNzZmNGZhZGY6OmU0MmYyMzFjLTJlMTYtNDRiYi04NDJkLTk4NzM5MThkYTA1Mzo6JGFhY2hfY2RiZWVhZDEtN2Q1OS00NTU2LWI3NDAtMDhkZTcyNmQ0ODhj';
 const ASAAS_WALLET_ID = process.env.ASAAS_WALLET_ID || '3be2035e-fe8a-4afa-941e-6a31d95371ec';
 const ASAAS_BASE_URL = (process.env.ASAAS_ENV || 'production') === 'production' 
   ? 'https://api.asaas.com/v3' 
