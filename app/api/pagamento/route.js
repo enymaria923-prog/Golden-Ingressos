@@ -41,7 +41,7 @@ export async function POST(request) {
       console.error('❌ ASAAS_API_KEY não configurada');
       console.error('❌ Variáveis disponíveis:', Object.keys(process.env));
       return NextResponse.json({ 
-        error: 'Gateway de pagamento não configurado. Configure ASAAS_API_KEY no .env.local',
+        error: 'Gateway de pagamento não configurado. Configure ASAAS_API_KEY',
         debug: {
           hasApiKey: !!ASAAS_API_KEY,
           env: process.env.ASAAS_ENV,
@@ -63,7 +63,7 @@ export async function POST(request) {
       console.error('❌ Erro ao criar cliente:', asaasCustomer);
       return NextResponse.json({ 
         error: 'Erro ao criar cliente no Asaas',
-        details: asaasCustomer?.errors || 'Cliente não foi criado'
+        details: asaasCustomer?.errors || asaasCustomer?.message || 'Cliente não foi criado'
       }, { status: 400 });
     }
 
@@ -186,8 +186,6 @@ async function criarOuBuscarCliente(dadosComprador) {
     }
     
     console.log('🔍 Buscando cliente pelo CPF:', cpfLimpo);
-    console.log('🔑 Usando API Key:', ASAAS_API_KEY.substring(0, 20) + '...');
-    console.log('🌐 URL:', ASAAS_BASE_URL);
     
     // Primeiro tenta buscar cliente existente pelo CPF/CNPJ
     const searchUrl = `${ASAAS_BASE_URL}/customers?cpfCnpj=${cpfLimpo}`;
@@ -196,14 +194,14 @@ async function criarOuBuscarCliente(dadosComprador) {
     const response = await fetch(searchUrl, {
       headers: {
         'access_token': ASAAS_API_KEY,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'User-Agent': 'GoldenIngressos/1.0'
       }
     });
 
+    console.log('📊 Status da busca:', response.status);
     const result = await response.json();
-    
-    console.log('📋 Status da busca:', response.status);
-    console.log('📋 Resultado da busca:', result);
+    console.log('📋 Resultado completo da busca:', JSON.stringify(result, null, 2));
     
     // Se teve erro na busca, retornar erro
     if (result.errors) {
@@ -219,13 +217,65 @@ async function criarOuBuscarCliente(dadosComprador) {
 
     console.log('➕ Cliente não existe, criando novo...');
 
-    // Limpar telefone e validar
+    // Limpar telefone
     let telefoneLimpo = null;
     if (dadosComprador.telefone) {
       telefoneLimpo = dadosComprador.telefone.replace(/\D/g, '');
       // Telefone deve ter 10 ou 11 dígitos
       if (telefoneLimpo.length < 10 || telefoneLimpo.length > 11) {
-        console.warn('
+        console.warn('⚠️ Telefone inválido, ignorando:', telefoneLimpo);
+        telefoneLimpo = null;
+      }
+    }
+
+    // Se não encontrou, cria novo cliente
+    const createPayload = {
+      name: dadosComprador.nome.trim(),
+      email: dadosComprador.email.trim().toLowerCase(),
+      cpfCnpj: cpfLimpo
+    };
+
+    // Só adiciona telefone se for válido
+    if (telefoneLimpo) {
+      createPayload.mobilePhone = telefoneLimpo;
+    }
+
+    console.log('📤 Payload de criação:', createPayload);
+
+    const createResponse = await fetch(`${ASAAS_BASE_URL}/customers`, {
+      method: 'POST',
+      headers: {
+        'access_token': ASAAS_API_KEY,
+        'Content-Type': 'application/json',
+        'User-Agent': 'GoldenIngressos/1.0'
+      },
+      body: JSON.stringify(createPayload)
+    });
+
+    console.log('📊 Status da criação:', createResponse.status);
+    const createResult = await createResponse.json();
+    console.log('📥 Resultado completo da criação:', JSON.stringify(createResult, null, 2));
+
+    if (createResult.errors) {
+      console.error('❌ Erros detalhados ao criar cliente:', JSON.stringify(createResult.errors, null, 2));
+      
+      // Retornar erro com mais detalhes
+      return {
+        errors: createResult.errors,
+        message: 'Verifique se sua conta Asaas está ativa e configurada corretamente'
+      };
+    }
+
+    return createResult;
+  } catch (error) {
+    console.error('❌ Exceção ao criar/buscar cliente:', error);
+    console.error('Stack trace:', error.stack);
+    return { 
+      errors: [{ description: error.message }],
+      exception: error.toString()
+    };
+  }
+}
 
 async function criarCobranca({ customer, billingType, value, dueDate, description, externalReference, dadosCartao }) {
   try {
