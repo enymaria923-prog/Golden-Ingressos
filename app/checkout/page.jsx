@@ -11,6 +11,7 @@ function CheckoutContent() {
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
+  const [processando, setProcessando] = useState(false);
   const [evento, setEvento] = useState(null);
   const [sessao, setSessao] = useState(null);
   const [itensCarrinho, setItensCarrinho] = useState([]);
@@ -41,7 +42,6 @@ function CheckoutContent() {
     if (user) {
       setUser(user);
       
-      // Busca informações completas do perfil
       const { data: perfil } = await supabase
         .from('perfis')
         .select('*')
@@ -70,7 +70,6 @@ function CheckoutContent() {
     try {
       setLoading(true);
 
-      // Carrega evento
       const { data: eventoData } = await supabase
         .from('eventos')
         .select('*')
@@ -79,7 +78,6 @@ function CheckoutContent() {
 
       setEvento(eventoData);
 
-      // Carrega sessão
       const { data: sessaoData } = await supabase
         .from('sessoes')
         .select('*')
@@ -88,12 +86,10 @@ function CheckoutContent() {
 
       setSessao(sessaoData);
 
-      // Processa itens do carrinho
       const itensParam = searchParams.get('itens');
       if (itensParam) {
         const itens = JSON.parse(itensParam);
         
-        // Busca detalhes dos ingressos
         const ingressosIds = itens.map(item => item.ingressoId);
         const { data: ingressosData } = await supabase
           .from('ingressos')
@@ -113,7 +109,6 @@ function CheckoutContent() {
         setItensCarrinho(itensDetalhados);
       }
 
-      // Carrega produtos se houver
       const produtosParam = searchParams.get('produtos');
       if (produtosParam) {
         try {
@@ -140,7 +135,6 @@ function CheckoutContent() {
         }
       }
 
-      // Carrega cupom se houver
       if (cupomId) {
         const { data: cupomData } = await supabase
           .from('cupons')
@@ -164,7 +158,6 @@ function CheckoutContent() {
       return acc + (item.valor * quantidade);
     }, 0);
     
-    // Adiciona produtos ao subtotal
     total += produtos.reduce((acc, produto) => {
       return acc + (parseFloat(produto.preco) * (produto.quantidade || 1));
     }, 0);
@@ -195,25 +188,57 @@ function CheckoutContent() {
   };
 
   const handleFinalizarPedido = async () => {
-    // Validações
     if (!dadosComprador.nome || !dadosComprador.email || !dadosComprador.cpf) {
       alert('Por favor, preencha todos os dados obrigatórios!');
       return;
     }
 
-    // TODO: Integrar com gateway de pagamento
-    alert('🚧 Gateway de pagamento em desenvolvimento!\n\nSeus dados foram salvos temporariamente.');
-    
-    // Aqui virá a integração com Mercado Pago, Stripe, etc.
-    console.log('Dados do pedido:', {
-      evento: evento.nome,
-      sessao: sessao,
-      itens: itensCarrinho,
-      produtos: produtos,
-      formaPagamento,
-      comprador: dadosComprador,
-      total: calcularTotal()
-    });
+    setProcessando(true);
+
+    try {
+      const payload = {
+        eventoId,
+        sessaoId,
+        itensCarrinho,
+        produtos,
+        formaPagamento,
+        dadosComprador: {
+          ...dadosComprador,
+          userId: user?.id
+        },
+        cupomId,
+        total: calcularTotal()
+      };
+
+      const response = await fetch('/api/pagamento', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Erro ao processar pagamento');
+      }
+
+      // Redirecionar para página de pagamento específica
+      if (formaPagamento === 'pix') {
+        router.push(`/pagamento/pix?pedido_id=${result.pedidoId}`);
+      } else if (formaPagamento === 'boleto') {
+        router.push(`/pagamento/boleto?pedido_id=${result.pedidoId}`);
+      } else if (formaPagamento === 'cartao_credito' || formaPagamento === 'cartao_debito') {
+        router.push(`/pagamento/cartao?pedido_id=${result.pedidoId}&tipo=${formaPagamento}`);
+      }
+
+    } catch (error) {
+      console.error('Erro ao finalizar pedido:', error);
+      alert(`Erro: ${error.message}`);
+    } finally {
+      setProcessando(false);
+    }
   };
 
   if (loading) {
@@ -248,7 +273,7 @@ function CheckoutContent() {
 
       <div style={{ maxWidth: '1200px', margin: '30px auto', padding: '0 20px', display: 'grid', gridTemplateColumns: '1fr 400px', gap: '30px' }}>
         
-        {/* Coluna Esquerda - Dados do Comprador e Pagamento */}
+        {/* Coluna Esquerda */}
         <div>
           {/* Dados do Comprador */}
           <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
@@ -382,23 +407,45 @@ function CheckoutContent() {
 
               <label style={{
                 padding: '20px',
-                border: formaPagamento === 'cartao' ? '3px solid #5d34a4' : '2px solid #e0e0e0',
+                border: formaPagamento === 'cartao_credito' ? '3px solid #5d34a4' : '2px solid #e0e0e0',
                 borderRadius: '10px',
                 cursor: 'pointer',
-                backgroundColor: formaPagamento === 'cartao' ? '#f0e6ff' : 'white',
+                backgroundColor: formaPagamento === 'cartao_credito' ? '#f0e6ff' : 'white',
                 transition: 'all 0.3s'
               }}>
                 <input
                   type="radio"
                   name="pagamento"
-                  value="cartao"
-                  checked={formaPagamento === 'cartao'}
+                  value="cartao_credito"
+                  checked={formaPagamento === 'cartao_credito'}
                   onChange={(e) => setFormaPagamento(e.target.value)}
                   style={{ marginRight: '10px' }}
                 />
                 <span style={{ fontSize: '18px', fontWeight: '600' }}>💳 Cartão de Crédito</span>
                 <div style={{ fontSize: '14px', color: '#666', marginTop: '5px', marginLeft: '25px' }}>
                   Parcele em até 12x
+                </div>
+              </label>
+
+              <label style={{
+                padding: '20px',
+                border: formaPagamento === 'cartao_debito' ? '3px solid #5d34a4' : '2px solid #e0e0e0',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                backgroundColor: formaPagamento === 'cartao_debito' ? '#f0e6ff' : 'white',
+                transition: 'all 0.3s'
+              }}>
+                <input
+                  type="radio"
+                  name="pagamento"
+                  value="cartao_debito"
+                  checked={formaPagamento === 'cartao_debito'}
+                  onChange={(e) => setFormaPagamento(e.target.value)}
+                  style={{ marginRight: '10px' }}
+                />
+                <span style={{ fontSize: '18px', fontWeight: '600' }}>💳 Cartão de Débito</span>
+                <div style={{ fontSize: '14px', color: '#666', marginTop: '5px', marginLeft: '25px' }}>
+                  Débito em conta
                 </div>
               </label>
 
@@ -424,22 +471,10 @@ function CheckoutContent() {
                 </div>
               </label>
             </div>
-
-            <div style={{
-              marginTop: '20px',
-              padding: '15px',
-              backgroundColor: '#fff3cd',
-              borderRadius: '8px',
-              border: '1px solid #ffc107'
-            }}>
-              <p style={{ margin: 0, fontSize: '14px', color: '#856404' }}>
-                ⚠️ <strong>Modo Demonstração:</strong> Gateway de pagamento em desenvolvimento. Nenhuma cobrança real será feita.
-              </p>
-            </div>
           </div>
         </div>
 
-        {/* Coluna Direita - Resumo do Pedido */}
+        {/* Coluna Direita - Resumo */}
         <div>
           <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', position: 'sticky', top: '20px' }}>
             <h2 style={{ color: '#5d34a4', marginTop: 0, fontSize: '24px', marginBottom: '20px' }}>
@@ -539,23 +574,24 @@ function CheckoutContent() {
             {/* Botão Finalizar */}
             <button
               onClick={handleFinalizarPedido}
+              disabled={processando}
               style={{
                 width: '100%',
-                backgroundColor: '#27ae60',
+                backgroundColor: processando ? '#95a5a6' : '#27ae60',
                 color: 'white',
                 border: 'none',
                 padding: '18px',
                 borderRadius: '10px',
                 fontSize: '18px',
                 fontWeight: 'bold',
-                cursor: 'pointer',
+                cursor: processando ? 'not-allowed' : 'pointer',
                 transition: 'all 0.3s',
                 boxShadow: '0 4px 10px rgba(39, 174, 96, 0.3)'
               }}
-              onMouseOver={(e) => e.target.style.transform = 'scale(1.02)'}
+              onMouseOver={(e) => !processando && (e.target.style.transform = 'scale(1.02)')}
               onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
             >
-              🎫 Finalizar Pedido
+              {processando ? '⏳ Processando...' : '🎫 Finalizar Pedido'}
             </button>
 
             <div style={{ marginTop: '20px', textAlign: 'center' }}>
