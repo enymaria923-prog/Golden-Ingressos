@@ -2,9 +2,10 @@
 import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
 
-const ASAAS_API_KEY = process.env.ASAAS_API_KEY;
+// ⚠️ TEMPORÁRIO - Apenas para teste
+const ASAAS_API_KEY = process.env.ASAAS_API_KEY || '$aact_prod_000MZkwODA2MWY2OGM3MWNh1MDU2NWM3MzJlNTNzZmNmZjY6OmU0MWYzZjI1JTJIMT1tNDRiNDJkLTkxK4NzM5MTh5YTA1Mzo2JGFhY2hfMmFjOGFjMzMtNzAyNy00MzUzLThmYzktYzNjNmE2OWQyMWM1';
 const ASAAS_WALLET_ID = process.env.ASAAS_WALLET_ID || '3be2035e-fe8a-4afa-941e-6a31d95371ec';
-const ASAAS_BASE_URL = process.env.ASAAS_ENV === 'production' 
+const ASAAS_BASE_URL = (process.env.ASAAS_ENV || 'production') === 'production' 
   ? 'https://api.asaas.com/v3' 
   : 'https://sandbox.asaas.com/api/v3';
 
@@ -27,33 +28,23 @@ export async function POST(request) {
       dadosCartao
     } = body;
 
-    // DEBUG: Verificar todas as variáveis de ambiente
-    console.log('🔍 DEBUG - Variáveis de Ambiente:');
+    // DEBUG: Verificar variáveis
+    console.log('🔍 DEBUG - Configuração:');
     console.log('ASAAS_API_KEY existe?', !!ASAAS_API_KEY);
-    console.log('ASAAS_API_KEY valor:', ASAAS_API_KEY ? ASAAS_API_KEY.substring(0, 30) + '...' : 'UNDEFINED');
+    console.log('ASAAS_API_KEY primeiros 30 chars:', ASAAS_API_KEY.substring(0, 30) + '...');
     console.log('ASAAS_WALLET_ID:', ASAAS_WALLET_ID);
-    console.log('ASAAS_ENV:', process.env.ASAAS_ENV);
     console.log('ASAAS_BASE_URL:', ASAAS_BASE_URL);
-    console.log('process.env completo (keys):', Object.keys(process.env).filter(k => k.includes('ASAAS')));
 
     // Validação da API Key
     if (!ASAAS_API_KEY) {
       console.error('❌ ASAAS_API_KEY não configurada');
-      console.error('❌ Variáveis disponíveis:', Object.keys(process.env));
       return NextResponse.json({ 
-        error: 'Gateway de pagamento não configurado. Configure ASAAS_API_KEY',
-        debug: {
-          hasApiKey: !!ASAAS_API_KEY,
-          env: process.env.ASAAS_ENV,
-          availableEnvVars: Object.keys(process.env).filter(k => k.includes('ASAAS'))
-        }
+        error: 'Gateway de pagamento não configurado'
       }, { status: 500 });
     }
 
-    console.log('🔑 API Key configurada:', ASAAS_API_KEY.substring(0, 20) + '...');
-    console.log('🔑 Tipo de Key:', ASAAS_API_KEY.includes('_prod_') ? 'PRODUÇÃO' : 'SANDBOX');
+    console.log('🔑 API Key configurada (hardcoded ou env)');
     console.log('🌐 URL Base:', ASAAS_BASE_URL);
-    console.log('🌐 Ambiente:', process.env.ASAAS_ENV);
 
     // 1. Criar ou buscar cliente no Asaas
     console.log('👤 Criando/buscando cliente...');
@@ -144,7 +135,6 @@ export async function POST(request) {
       updateData.invoice_url = cobranca.invoiceUrl;
       updateData.transaction_receipt_url = cobranca.transactionReceiptUrl;
       
-      // Se pagamento foi aprovado na hora
       if (cobranca.status === 'CONFIRMED' || cobranca.status === 'RECEIVED') {
         updateData.status = 'CONFIRMADO';
       }
@@ -179,7 +169,6 @@ async function criarOuBuscarCliente(dadosComprador) {
   try {
     const cpfLimpo = dadosComprador.cpf.replace(/\D/g, '');
     
-    // Validar CPF
     if (cpfLimpo.length !== 11) {
       console.error('❌ CPF inválido:', cpfLimpo);
       return { errors: [{ description: 'CPF deve ter 11 dígitos' }] };
@@ -187,7 +176,6 @@ async function criarOuBuscarCliente(dadosComprador) {
     
     console.log('🔍 Buscando cliente pelo CPF:', cpfLimpo);
     
-    // Primeiro tenta buscar cliente existente pelo CPF/CNPJ
     const searchUrl = `${ASAAS_BASE_URL}/customers?cpfCnpj=${cpfLimpo}`;
     console.log('🔗 URL de busca:', searchUrl);
     
@@ -201,15 +189,13 @@ async function criarOuBuscarCliente(dadosComprador) {
 
     console.log('📊 Status da busca:', response.status);
     const result = await response.json();
-    console.log('📋 Resultado completo da busca:', JSON.stringify(result, null, 2));
+    console.log('📋 Resultado da busca:', JSON.stringify(result, null, 2));
     
-    // Se teve erro na busca, retornar erro
     if (result.errors) {
       console.error('❌ Erro ao buscar cliente:', result.errors);
       return result;
     }
     
-    // Se encontrou, retorna o cliente existente
     if (result.data && result.data.length > 0) {
       console.log('✅ Cliente já existe, usando ID:', result.data[0].id);
       return result.data[0];
@@ -217,25 +203,21 @@ async function criarOuBuscarCliente(dadosComprador) {
 
     console.log('➕ Cliente não existe, criando novo...');
 
-    // Limpar telefone
     let telefoneLimpo = null;
     if (dadosComprador.telefone) {
       telefoneLimpo = dadosComprador.telefone.replace(/\D/g, '');
-      // Telefone deve ter 10 ou 11 dígitos
       if (telefoneLimpo.length < 10 || telefoneLimpo.length > 11) {
         console.warn('⚠️ Telefone inválido, ignorando:', telefoneLimpo);
         telefoneLimpo = null;
       }
     }
 
-    // Se não encontrou, cria novo cliente
     const createPayload = {
       name: dadosComprador.nome.trim(),
       email: dadosComprador.email.trim().toLowerCase(),
       cpfCnpj: cpfLimpo
     };
 
-    // Só adiciona telefone se for válido
     if (telefoneLimpo) {
       createPayload.mobilePhone = telefoneLimpo;
     }
@@ -254,22 +236,19 @@ async function criarOuBuscarCliente(dadosComprador) {
 
     console.log('📊 Status da criação:', createResponse.status);
     const createResult = await createResponse.json();
-    console.log('📥 Resultado completo da criação:', JSON.stringify(createResult, null, 2));
+    console.log('📥 Resultado da criação:', JSON.stringify(createResult, null, 2));
 
     if (createResult.errors) {
-      console.error('❌ Erros detalhados ao criar cliente:', JSON.stringify(createResult.errors, null, 2));
-      
-      // Retornar erro com mais detalhes
+      console.error('❌ Erros ao criar cliente:', JSON.stringify(createResult.errors, null, 2));
       return {
         errors: createResult.errors,
-        message: 'Verifique se sua conta Asaas está ativa e configurada corretamente'
+        message: 'Verifique se sua conta Asaas está ativa'
       };
     }
 
     return createResult;
   } catch (error) {
     console.error('❌ Exceção ao criar/buscar cliente:', error);
-    console.error('Stack trace:', error.stack);
     return { 
       errors: [{ description: error.message }],
       exception: error.toString()
@@ -290,7 +269,6 @@ async function criarCobranca({ customer, billingType, value, dueDate, descriptio
 
     console.log('📤 Payload da cobrança:', payload);
 
-    // Se for cartão de crédito, adiciona dados do cartão
     if (billingType === 'CREDIT_CARD' && dadosCartao) {
       payload.creditCard = {
         holderName: dadosCartao.holderName,
@@ -330,7 +308,6 @@ async function criarCobranca({ customer, billingType, value, dueDate, descriptio
       return result;
     }
     
-    // Se for PIX, buscar QR Code
     if (billingType === 'PIX' && result.id) {
       console.log('📱 Buscando QR Code PIX...');
       const pixResponse = await fetch(`${ASAAS_BASE_URL}/payments/${result.id}/pixQrCode`, {
@@ -381,13 +358,11 @@ function mapearTipoPagamento(formaPagamento) {
 function calcularDataVencimento(formaPagamento) {
   const hoje = new Date();
   
-  // Boleto: 3 dias úteis
   if (formaPagamento === 'boleto') {
     hoje.setDate(hoje.getDate() + 3);
   } else {
-    // PIX e cartão: hoje
     hoje.setDate(hoje.getDate());
   }
   
-  return hoje.toISOString().split('T')[0]; // Formato: YYYY-MM-DD
+  return hoje.toISOString().split('T')[0];
 }
