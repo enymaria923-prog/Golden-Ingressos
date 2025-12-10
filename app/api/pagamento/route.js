@@ -1,17 +1,14 @@
+// app/api/pagamento/route.js
 import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
-import { getAsaasConfig } from '@/lib/asaas-config';
 
-// Obter configuração
-let ASAAS_API_KEY, ASAAS_WALLET_ID, ASAAS_BASE_URL;
-try {
-  const config = getAsaasConfig();
-  ASAAS_API_KEY = config.apiKey;
-  ASAAS_WALLET_ID = config.walletId;
-  ASAAS_BASE_URL = config.baseUrl;
-} catch (error) {
-  console.error('Erro config:', error.message);
-}
+// Configuração do Asaas
+const ASAAS_API_KEY = process.env.ASAAS_API_KEY;
+const ASAAS_WALLET_ID = process.env.ASAAS_WALLET_ID || '';
+const ASAAS_ENV = process.env.ASAAS_ENV || 'sandbox';
+const ASAAS_BASE_URL = ASAAS_ENV === 'production' 
+  ? 'https://api.asaas.com/v3' 
+  : 'https://sandbox.asaas.com/api/v3';
 
 export async function POST(request) {
   try {
