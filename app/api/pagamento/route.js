@@ -1,13 +1,14 @@
-// app/api/pagamento/route.js porra
+// app/api/pagamento/route.js
 import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
 
-
-// Obter configuração do Asaas (tenta env primeiro, depois fallback)
-const asaasConfig = getAsaasConfig();
-const ASAAS_API_KEY = asaasConfig.apiKey;
-const ASAAS_WALLET_ID = asaasConfig.walletId;
-const ASAAS_BASE_URL = asaasConfig.baseUrl;
+// Configuração do Asaas - LÊ DAS VARIÁVEIS DE AMBIENTE
+const ASAAS_API_KEY = process.env.ASAAS_API_KEY;
+const ASAAS_WALLET_ID = process.env.ASAAS_WALLET_ID || '';
+const ASAAS_ENV = process.env.ASAAS_ENV || 'sandbox';
+const ASAAS_BASE_URL = ASAAS_ENV === 'production' 
+  ? 'https://api.asaas.com/v3' 
+  : 'https://sandbox.asaas.com/api/v3';
 
 export async function POST(request) {
   try {
