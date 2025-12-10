@@ -1,21 +1,24 @@
-// app/api/pagamento/route.js
 import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
+import { getAsaasConfig } from '@/lib/asaas-config';
 
-// Configuração do Asaas - lê das variáveis de ambiente
-const ASAAS_API_KEY = process.env.ASAAS_API_KEY;
-const ASAAS_WALLET_ID = process.env.ASAAS_WALLET_ID || '';
-const ASAAS_ENV = process.env.ASAAS_ENV || 'sandbox';
-const ASAAS_BASE_URL = ASAAS_ENV === 'production' 
-  ? 'https://api.asaas.com/v3' 
-  : 'https://sandbox.asaas.com/api/v3';
+// Obter configuração
+let ASAAS_API_KEY, ASAAS_WALLET_ID, ASAAS_BASE_URL;
+try {
+  const config = getAsaasConfig();
+  ASAAS_API_KEY = config.apiKey;
+  ASAAS_WALLET_ID = config.walletId;
+  ASAAS_BASE_URL = config.baseUrl;
+} catch (error) {
+  console.error('Erro config:', error.message);
+}
 
 export async function POST(request) {
   try {
     const supabase = createClient();
     const body = await request.json();
     
-    console.log('📦 Iniciando processamento do pagamento');
+    console.log('📦 Iniciando pagamento');
 
     const {
       eventoId,
@@ -29,55 +32,48 @@ export async function POST(request) {
       dadosCartao
     } = body;
 
-    // Validação da API Key
     if (!ASAAS_API_KEY) {
-      console.error('❌ ASAAS_API_KEY não configurada');
+      console.error('❌ API Key não configurada');
       return NextResponse.json({ 
         error: 'Gateway de pagamento não configurado'
       }, { status: 500 });
     }
 
-    console.log('✅ Configuração OK');
-    console.log('🌐 Ambiente:', ASAAS_ENV);
-    console.log('🔗 Base URL:', ASAAS_BASE_URL);
+    console.log('✅ Config OK -', ASAAS_ENV);
 
-    // 1. Criar ou buscar cliente no Asaas
-    console.log('👤 Criando/buscando cliente...');
+    // 1. Criar/buscar cliente
     const asaasCustomer = await criarOuBuscarCliente(dadosComprador);
     
     if (!asaasCustomer || asaasCustomer.errors) {
-      console.error('❌ Erro ao criar cliente:', asaasCustomer);
       return NextResponse.json({ 
-        error: 'Erro ao criar cliente no Asaas',
-        details: asaasCustomer?.errors || 'Cliente não foi criado'
+        error: 'Erro ao criar cliente',
+        details: asaasCustomer?.errors
       }, { status: 400 });
     }
 
     console.log('✅ Cliente:', asaasCustomer.id);
 
-    // 2. Criar cobrança no Asaas
-    console.log('💳 Criando cobrança...');
+    // 2. Criar cobrança
     const cobranca = await criarCobranca({
       customer: asaasCustomer.id,
       billingType: mapearTipoPagamento(formaPagamento),
       value: parseFloat(total.toFixed(2)),
       dueDate: calcularDataVencimento(formaPagamento),
-      description: `Ingressos - Evento ID: ${eventoId}`,
+      description: `Ingressos - Evento ${eventoId}`,
       externalReference: `evento_${eventoId}_${Date.now()}`,
       dadosCartao: formaPagamento.includes('cartao') ? dadosCartao : null
     });
 
     if (!cobranca || cobranca.errors) {
-      console.error('❌ Erro ao criar cobrança:', cobranca);
       return NextResponse.json({ 
-        error: 'Erro ao criar cobrança no Asaas', 
-        details: cobranca?.errors || 'Cobrança não foi criada'
+        error: 'Erro ao criar cobrança',
+        details: cobranca?.errors
       }, { status: 400 });
     }
 
-    console.log('✅ Cobrança criada:', cobranca.id);
+    console.log('✅ Cobrança:', cobranca.id);
 
-    // 3. Salvar pedido no banco
+    // 3. Salvar pedido
     const { data: pedido, error: pedidoError } = await supabase
       .from('pedidos')
       .insert({
@@ -101,14 +97,13 @@ export async function POST(request) {
       .single();
 
     if (pedidoError) {
-      console.error('❌ Erro ao salvar pedido:', pedidoError);
       return NextResponse.json({ 
-        error: 'Erro ao salvar pedido', 
-        details: pedidoError.message 
+        error: 'Erro ao salvar pedido',
+        details: pedidoError.message
       }, { status: 500 });
     }
 
-    console.log('✅ Pedido salvo:', pedido.id);
+    console.log('✅ Pedido:', pedido.id);
 
     // 4. Atualizar com dados do pagamento
     const updateData = {
@@ -139,8 +134,6 @@ export async function POST(request) {
       .update(updateData)
       .eq('id', pedido.id);
 
-    console.log('✅ Pedido atualizado');
-
     return NextResponse.json({ 
       success: true, 
       pedidoId: pedido.id,
@@ -150,23 +143,20 @@ export async function POST(request) {
   } catch (error) {
     console.error('❌ Erro:', error);
     return NextResponse.json({ 
-      error: 'Erro interno do servidor',
-      message: error.message 
+      error: 'Erro interno',
+      message: error.message
     }, { status: 500 });
   }
 }
-
-// ==================== FUNÇÕES ====================
 
 async function criarOuBuscarCliente(dadosComprador) {
   try {
     const cpfLimpo = dadosComprador.cpf.replace(/\D/g, '');
     
     if (cpfLimpo.length !== 11) {
-      return { errors: [{ description: 'CPF deve ter 11 dígitos' }] };
+      return { errors: [{ description: 'CPF inválido' }] };
     }
     
-    // Buscar cliente existente
     const searchUrl = `${ASAAS_BASE_URL}/customers?cpfCnpj=${cpfLimpo}`;
     const response = await fetch(searchUrl, {
       headers: {
@@ -176,26 +166,18 @@ async function criarOuBuscarCliente(dadosComprador) {
     });
 
     if (response.status === 401 || response.status === 403) {
-      return { 
-        errors: [{ description: 'Chave da API inválida ou sem permissão' }] 
-      };
+      return { errors: [{ description: 'API Key inválida' }] };
     }
 
     const result = await response.json();
     
-    if (result.errors) {
-      return result;
-    }
+    if (result.errors) return result;
     
-    // Se encontrou, retorna
     if (result.data && result.data.length > 0) {
-      console.log('✅ Cliente existe');
       return result.data[0];
     }
 
-    // Criar novo
-    console.log('➕ Criando cliente');
-    
+    // Criar novo cliente
     let telefoneLimpo = null;
     if (dadosComprador.telefone) {
       telefoneLimpo = dadosComprador.telefone.replace(/\D/g, '');
@@ -223,15 +205,8 @@ async function criarOuBuscarCliente(dadosComprador) {
       body: JSON.stringify(createPayload)
     });
 
-    const createResult = await createResponse.json();
-
-    if (createResult.errors) {
-      console.error('❌ Erro ao criar:', createResult.errors);
-    }
-
-    return createResult;
+    return await createResponse.json();
   } catch (error) {
-    console.error('❌ Exceção:', error);
     return { errors: [{ description: error.message }] };
   }
 }
@@ -279,16 +254,11 @@ async function criarCobranca({ customer, billingType, value, dueDate, descriptio
 
     const result = await response.json();
 
-    if (result.errors) {
-      return result;
-    }
+    if (result.errors) return result;
     
-    // Buscar QR Code PIX
     if (billingType === 'PIX' && result.id) {
       const pixResponse = await fetch(`${ASAAS_BASE_URL}/payments/${result.id}/pixQrCode`, {
-        headers: {
-          'access_token': ASAAS_API_KEY
-        }
+        headers: { 'access_token': ASAAS_API_KEY }
       });
       const pixData = await pixResponse.json();
       return { ...result, ...pixData };
