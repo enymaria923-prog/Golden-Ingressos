@@ -1,5 +1,3 @@
-// lib/asaas-config.js
-
 export function getAsaasConfig() {
   const apiKey = process.env.ASAAS_API_KEY;
   const env = process.env.ASAAS_ENV || 'production';
