@@ -2,20 +2,22 @@
 import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
 
-// Configuração do Asaas
-const ASAAS_API_KEY = process.env.ASAAS_API_KEY;
-const ASAAS_WALLET_ID = process.env.ASAAS_WALLET_ID || '';
-const ASAAS_ENV = process.env.ASAAS_ENV || 'sandbox';
-const ASAAS_BASE_URL = ASAAS_ENV === 'production' 
-  ? 'https://api.asaas.com/v3' 
-  : 'https://sandbox.asaas.com/api/v3';
-
 export async function POST(request) {
   try {
+    // Ler variáveis AQUI dentro da função
+    const ASAAS_API_KEY = process.env.ASAAS_API_KEY;
+    const ASAAS_WALLET_ID = process.env.ASAAS_WALLET_ID || '';
+    const ASAAS_ENV = process.env.ASAAS_ENV || 'sandbox';
+    const ASAAS_BASE_URL = ASAAS_ENV === 'production' 
+      ? 'https://api.asaas.com/v3' 
+      : 'https://sandbox.asaas.com/api/v3';
+
     const supabase = createClient();
     const body = await request.json();
     
     console.log('📦 Iniciando pagamento');
+    console.log('🔑 API Key existe?', !!ASAAS_API_KEY);
+    console.log('🌐 Ambiente:', ASAAS_ENV);
 
     const {
       eventoId,
@@ -36,10 +38,10 @@ export async function POST(request) {
       }, { status: 500 });
     }
 
-    console.log('✅ Config OK -', ASAAS_ENV);
+    console.log('✅ Config OK');
 
     // 1. Criar/buscar cliente
-    const asaasCustomer = await criarOuBuscarCliente(dadosComprador);
+    const asaasCustomer = await criarOuBuscarCliente(dadosComprador, ASAAS_API_KEY, ASAAS_BASE_URL);
     
     if (!asaasCustomer || asaasCustomer.errors) {
       return NextResponse.json({ 
@@ -59,7 +61,7 @@ export async function POST(request) {
       description: `Ingressos - Evento ${eventoId}`,
       externalReference: `evento_${eventoId}_${Date.now()}`,
       dadosCartao: formaPagamento.includes('cartao') ? dadosCartao : null
-    });
+    }, ASAAS_API_KEY, ASAAS_BASE_URL);
 
     if (!cobranca || cobranca.errors) {
       return NextResponse.json({ 
@@ -115,7 +117,7 @@ export async function POST(request) {
     } else if (formaPagamento === 'boleto') {
       updateData.boleto_url = cobranca.bankSlipUrl;
       updateData.boleto_codigo_barras = cobranca.identificationField;
-      updateData.boleto_linha_digitavel = await obterLinhaDigitavel(cobranca.id);
+      updateData.boleto_linha_digitavel = await obterLinhaDigitavel(cobranca.id, ASAAS_API_KEY, ASAAS_BASE_URL);
       updateData.data_vencimento = cobranca.dueDate;
     } else if (formaPagamento.includes('cartao')) {
       updateData.invoice_url = cobranca.invoiceUrl;
@@ -146,7 +148,7 @@ export async function POST(request) {
   }
 }
 
-async function criarOuBuscarCliente(dadosComprador) {
+async function criarOuBuscarCliente(dadosComprador, apiKey, baseUrl) {
   try {
     const cpfLimpo = dadosComprador.cpf.replace(/\D/g, '');
     
@@ -154,10 +156,10 @@ async function criarOuBuscarCliente(dadosComprador) {
       return { errors: [{ description: 'CPF inválido' }] };
     }
     
-    const searchUrl = `${ASAAS_BASE_URL}/customers?cpfCnpj=${cpfLimpo}`;
+    const searchUrl = `${baseUrl}/customers?cpfCnpj=${cpfLimpo}`;
     const response = await fetch(searchUrl, {
       headers: {
-        'access_token': ASAAS_API_KEY,
+        'access_token': apiKey,
         'Content-Type': 'application/json'
       }
     });
@@ -193,10 +195,10 @@ async function criarOuBuscarCliente(dadosComprador) {
       createPayload.mobilePhone = telefoneLimpo;
     }
 
-    const createResponse = await fetch(`${ASAAS_BASE_URL}/customers`, {
+    const createResponse = await fetch(`${baseUrl}/customers`, {
       method: 'POST',
       headers: {
-        'access_token': ASAAS_API_KEY,
+        'access_token': apiKey,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(createPayload)
@@ -208,7 +210,7 @@ async function criarOuBuscarCliente(dadosComprador) {
   }
 }
 
-async function criarCobranca({ customer, billingType, value, dueDate, description, externalReference, dadosCartao }) {
+async function criarCobranca({ customer, billingType, value, dueDate, description, externalReference, dadosCartao }, apiKey, baseUrl) {
   try {
     const payload = {
       customer,
@@ -240,10 +242,10 @@ async function criarCobranca({ customer, billingType, value, dueDate, descriptio
       payload.remoteIp = dadosCartao.remoteIp || '127.0.0.1';
     }
 
-    const response = await fetch(`${ASAAS_BASE_URL}/payments`, {
+    const response = await fetch(`${baseUrl}/payments`, {
       method: 'POST',
       headers: {
-        'access_token': ASAAS_API_KEY,
+        'access_token': apiKey,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(payload)
@@ -254,8 +256,8 @@ async function criarCobranca({ customer, billingType, value, dueDate, descriptio
     if (result.errors) return result;
     
     if (billingType === 'PIX' && result.id) {
-      const pixResponse = await fetch(`${ASAAS_BASE_URL}/payments/${result.id}/pixQrCode`, {
-        headers: { 'access_token': ASAAS_API_KEY }
+      const pixResponse = await fetch(`${baseUrl}/payments/${result.id}/pixQrCode`, {
+        headers: { 'access_token': apiKey }
       });
       const pixData = await pixResponse.json();
       return { ...result, ...pixData };
@@ -267,11 +269,11 @@ async function criarCobranca({ customer, billingType, value, dueDate, descriptio
   }
 }
 
-async function obterLinhaDigitavel(paymentId) {
+async function obterLinhaDigitavel(paymentId, apiKey, baseUrl) {
   try {
     const response = await fetch(
-      `${ASAAS_BASE_URL}/payments/${paymentId}/identificationField`,
-      { headers: { 'access_token': ASAAS_API_KEY } }
+      `${baseUrl}/payments/${paymentId}/identificationField`,
+      { headers: { 'access_token': apiKey } }
     );
     const data = await response.json();
     return data.identificationField;
