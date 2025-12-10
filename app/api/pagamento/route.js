@@ -1,7 +1,7 @@
 // app/api/pagamento/route.js porra
 import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
-import { getAsaasConfig, validateAsaasConfig } from '../../../../lib/asaas-config.js';
+
 
 // Obter configuração do Asaas (tenta env primeiro, depois fallback)
 const asaasConfig = getAsaasConfig();
