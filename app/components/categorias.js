@@ -1,16 +1,15 @@
 'use client';
-
 import Link from 'next/link';
 
 export default function Categorias() {
   const categorias = [
-    { nome: 'Teatro', emoji: '🎭', url: '/teatros' },
-    { nome: 'Shows', emoji: '🎵', url: '/shows' },
-    { nome: 'Stand-up', emoji: '🎤', url: '/stand-up' },
-    { nome: 'Festivais', emoji: '🎪', url: '/festivais' },
-    { nome: 'Online', emoji: '💻', url: '/online' },
+    { nome: 'Teatro', emoji: '🎭', url: '/busca?q=Teatro' },
+    { nome: 'Shows', emoji: '🎵', url: '/busca?q=Shows' },
+    { nome: 'Stand-up', emoji: '🎤', url: '/busca?q=Stand-up' },
+    { nome: 'Festivais', emoji: '🎪', url: '/busca?q=Festivais' },
+    { nome: 'Online', emoji: '💻', url: '/busca?q=Online' },
   ];
-
+  
   return (
     <div className="categorias-container">
       <div className="categorias-scroll">
