@@ -188,11 +188,13 @@ function CheckoutContent() {
   };
 
   const handleFinalizarPedido = async () => {
+    // Validações
     if (!dadosComprador.nome || !dadosComprador.email || !dadosComprador.cpf) {
       alert('Por favor, preencha todos os dados obrigatórios!');
       return;
     }
 
+    // Validar CPF
     const cpfLimpo = dadosComprador.cpf.replace(/\D/g, '');
     if (cpfLimpo.length !== 11) {
       alert('CPF inválido! Digite um CPF válido com 11 dígitos.');
@@ -202,6 +204,24 @@ function CheckoutContent() {
     setProcessando(true);
 
     try {
+      // Preparar itens em formato JSON
+      const itensJson = itensCarrinho.map(item => ({
+        ingresso_id: item.ingressoId,
+        tipo: item.tipo,
+        quantidade: lugarMarcado ? 1 : item.quantidade,
+        valor_unitario: item.valor,
+        assento: item.assento || null
+      }));
+
+      // Preparar produtos em formato JSON
+      const produtosJson = produtos.map(produto => ({
+        produto_id: produto.id,
+        nome: produto.nome,
+        quantidade: produto.quantidade,
+        valor_unitario: parseFloat(produto.preco)
+      }));
+
+      // Criar pedido no banco de dados
       const pedidoData = {
         evento_id: eventoId,
         sessao_id: sessaoId,
@@ -217,7 +237,8 @@ function CheckoutContent() {
         valor_total: calcularTotal(),
         cupom_id: cupomId || null,
         status: 'PENDENTE',
-        created_at: new Date().toISOString()
+        items: itensJson,
+        produtos: produtosJson.length > 0 ? produtosJson : null
       };
 
       console.log('📤 Criando pedido...', pedidoData);
@@ -232,8 +253,7 @@ function CheckoutContent() {
 
       console.log('✅ Pedido criado:', pedido);
 
-    
-
+      // Redirecionar para página de pagamento específica
       const params = new URLSearchParams({
         pedido_id: pedido.id,
         valor: calcularTotal().toFixed(2),
@@ -291,7 +311,9 @@ function CheckoutContent() {
 
       <div style={{ maxWidth: '1200px', margin: '30px auto', padding: '0 20px', display: 'grid', gridTemplateColumns: '1fr 400px', gap: '30px' }}>
         
+        {/* Coluna Esquerda */}
         <div>
+          {/* Dados do Comprador */}
           <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
             <h2 style={{ color: '#5d34a4', marginTop: 0, fontSize: '24px', marginBottom: '20px' }}>
               👤 Dados do Comprador
@@ -392,6 +414,7 @@ function CheckoutContent() {
             </div>
           </div>
 
+          {/* Forma de Pagamento */}
           <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
             <h2 style={{ color: '#5d34a4', marginTop: 0, fontSize: '24px', marginBottom: '20px' }}>
               💳 Forma de Pagamento
@@ -489,12 +512,14 @@ function CheckoutContent() {
           </div>
         </div>
 
+        {/* Coluna Direita - Resumo */}
         <div>
           <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', position: 'sticky', top: '20px' }}>
             <h2 style={{ color: '#5d34a4', marginTop: 0, fontSize: '24px', marginBottom: '20px' }}>
               🛒 Resumo do Pedido
             </h2>
 
+            {/* Evento */}
             <div style={{ marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid #e0e0e0' }}>
               <h3 style={{ fontSize: '18px', color: '#2c3e50', marginBottom: '10px' }}>{evento.nome}</h3>
               <p style={{ fontSize: '14px', color: '#666', margin: '5px 0' }}>
@@ -508,6 +533,7 @@ function CheckoutContent() {
               </p>
             </div>
 
+            {/* Itens */}
             <div style={{ marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid #e0e0e0' }}>
               <h3 style={{ fontSize: '16px', color: '#2c3e50', marginBottom: '15px' }}>Ingressos:</h3>
               {itensCarrinho.map((item, index) => (
@@ -534,6 +560,7 @@ function CheckoutContent() {
               ))}
             </div>
 
+            {/* Produtos */}
             {produtos.length > 0 && (
               <div style={{ marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid #e0e0e0' }}>
                 <h3 style={{ fontSize: '16px', color: '#2c3e50', marginBottom: '15px' }}>Produtos:</h3>
@@ -555,6 +582,7 @@ function CheckoutContent() {
               </div>
             )}
 
+            {/* Totais */}
             <div style={{ marginBottom: '20px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
                 <span style={{ fontSize: '14px', color: '#666' }}>Subtotal:</span>
@@ -581,6 +609,7 @@ function CheckoutContent() {
               </div>
             </div>
 
+            {/* Botão Finalizar */}
             <button
               onClick={handleFinalizarPedido}
               disabled={processando}
