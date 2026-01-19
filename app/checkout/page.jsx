@@ -232,36 +232,7 @@ function CheckoutContent() {
 
       console.log('✅ Pedido criado:', pedido);
 
-      const itensPedido = itensCarrinho.map(item => ({
-        pedido_id: pedido.id,
-        ingresso_id: item.ingressoId,
-        quantidade: lugarMarcado ? 1 : item.quantidade,
-        valor_unitario: item.valor,
-        assento: item.assento || null
-      }));
-
-      if (itensPedido.length > 0) {
-        const { error: itensError } = await supabase
-          .from('itens_pedido')
-          .insert(itensPedido);
-
-        if (itensError) throw itensError;
-      }
-
-      if (produtos.length > 0) {
-        const produtosPedido = produtos.map(produto => ({
-          pedido_id: pedido.id,
-          produto_id: produto.id,
-          quantidade: produto.quantidade,
-          valor_unitario: parseFloat(produto.preco)
-        }));
-
-        const { error: produtosError } = await supabase
-          .from('produtos_pedido')
-          .insert(produtosPedido);
-
-        if (produtosError) throw produtosError;
-      }
+    
 
       const params = new URLSearchParams({
         pedido_id: pedido.id,
