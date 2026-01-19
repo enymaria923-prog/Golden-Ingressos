@@ -204,54 +204,91 @@ function CheckoutContent() {
     setProcessando(true);
 
     try {
-      const payload = {
-        eventoId,
-        sessaoId,
-        itensCarrinho,
-        produtos,
-        formaPagamento,
-        dadosComprador: {
-          ...dadosComprador,
-          userId: user?.id
-        },
-        cupomId,
-        total: calcularTotal()
+      // Criar pedido no banco de dados
+      const pedidoData = {
+        evento_id: eventoId,
+        sessao_id: sessaoId,
+        user_id: user?.id || null,
+        nome_comprador: dadosComprador.nome,
+        email_comprador: dadosComprador.email,
+        cpf_comprador: cpfLimpo,
+        telefone_comprador: dadosComprador.telefone,
+        forma_pagamento: formaPagamento,
+        subtotal: calcularSubtotal(),
+        desconto: calcularDesconto(),
+        taxa_servico: calcularTaxas(),
+        valor_total: calcularTotal(),
+        cupom_id: cupomId || null,
+        status: 'pendente',
+        created_at: new Date().toISOString()
       };
 
-      console.log('📤 Enviando pedido...', payload);
+      console.log('📤 Criando pedido...', pedidoData);
 
-      const response = await fetch('/api/pagamento', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload)
-      });
+      const { data: pedido, error: pedidoError } = await supabase
+        .from('pedidos')
+        .insert([pedidoData])
+        .select()
+        .single();
 
-      const result = await response.json();
+      if (pedidoError) throw pedidoError;
 
-      console.log('📥 Resposta:', result);
+      console.log('✅ Pedido criado:', pedido);
 
-      if (!response.ok) {
-        throw new Error(result.error || result.details || 'Erro ao processar pagamento');
+      // Criar itens do pedido (ingressos)
+      const itensPedido = itensCarrinho.map(item => ({
+        pedido_id: pedido.id,
+        ingresso_id: item.ingressoId,
+        quantidade: lugarMarcado ? 1 : item.quantidade,
+        valor_unitario: item.valor,
+        assento: item.assento || null
+      }));
+
+      if (itensPedido.length > 0) {
+        const { error: itensError } = await supabase
+          .from('itens_pedido')
+          .insert(itensPedido);
+
+        if (itensError) throw itensError;
       }
 
-      if (!result.success) {
-        throw new Error('Erro ao criar pedido');
+      // Criar produtos do pedido (se houver)
+      if (produtos.length > 0) {
+        const produtosPedido = produtos.map(produto => ({
+          pedido_id: pedido.id,
+          produto_id: produto.id,
+          quantidade: produto.quantidade,
+          valor_unitario: parseFloat(produto.preco)
+        }));
+
+        const { error: produtosError } = await supabase
+          .from('produtos_pedido')
+          .insert(produtosPedido);
+
+        if (produtosError) throw produtosError;
       }
 
       // Redirecionar para página de pagamento específica
+      const params = new URLSearchParams({
+        pedido_id: pedido.id,
+        valor: calcularTotal().toFixed(2),
+        nome: dadosComprador.nome,
+        email: dadosComprador.email,
+        cpf: cpfLimpo
+      });
+
       if (formaPagamento === 'pix') {
-        router.push(`/pagamento/pix?pedido_id=${result.pedidoId}`);
+        router.push(`/pagamento/pix?${params.toString()}`);
       } else if (formaPagamento === 'boleto') {
-        router.push(`/pagamento/boleto?pedido_id=${result.pedidoId}`);
+        router.push(`/pagamento/boleto?${params.toString()}`);
       } else if (formaPagamento === 'cartao_credito' || formaPagamento === 'cartao_debito') {
-        router.push(`/pagamento/cartao?pedido_id=${result.pedidoId}&tipo=${formaPagamento}`);
+        params.append('tipo', formaPagamento);
+        router.push(`/pagamento/cartao?${params.toString()}`);
       }
 
     } catch (error) {
       console.error('❌ Erro ao finalizar pedido:', error);
-      alert(`Erro: ${error.message}\n\nVerifique o console (F12) para mais detalhes.`);
+      alert(`Erro ao processar pedido: ${error.message}`);
     } finally {
       setProcessando(false);
     }
