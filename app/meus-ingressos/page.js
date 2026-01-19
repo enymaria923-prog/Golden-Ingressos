@@ -1,320 +1,341 @@
-// app/meus-ingressos/page.js
-import { createClient } from '../../utils/supabase/server';
-import Link from 'next/link';
-import { redirect } from 'next/navigation';
+'use client';
 
-export default async function MeusIngressosPage() {
+import { useState, useEffect } from 'react';
+import { createClient } from '../utils/supabase/client';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+
+export default function MeusIngressosPage() {
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  if (!user) {
-    redirect('/login');
+  const router = useRouter();
+
+  const [loading, setLoading] = useState(true);
+  const [ingressos, setIngressos] = useState([]);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    carregarIngressos();
+  }, []);
+
+  const carregarIngressos = async () => {
+    try {
+      setLoading(true);
+
+      // Verificar autenticação
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        router.push('/login');
+        return;
+      }
+
+      setUser(user);
+
+      // Buscar pedidos pagos do usuário
+      const { data: pedidos, error: pedidosError } = await supabase
+        .from('pedidos')
+        .select('id, evento_id, sessao_id, status')
+        .eq('user_id', user.id)
+        .eq('status', 'PAGO');
+
+      if (pedidosError) throw pedidosError;
+
+      if (!pedidos || pedidos.length === 0) {
+        setIngressos([]);
+        setLoading(false);
+        return;
+      }
+
+      const pedidosIds = pedidos.map(p => p.id);
+
+      // Buscar ingressos
+      const { data: ingressosData, error: ingressosError } = await supabase
+        .from('ingressos_vendidos')
+        .select('*')
+        .in('pedido_id', pedidosIds)
+        .order('created_at', { ascending: false });
+
+      if (ingressosError) throw ingressosError;
+
+      // Buscar informações dos eventos
+      const eventosIds = [...new Set(pedidos.map(p => p.evento_id))];
+      const sessoesIds = [...new Set(pedidos.map(p => p.sessao_id))];
+
+      const { data: eventos } = await supabase
+        .from('eventos')
+        .select('id, nome, local, imagem')
+        .in('id', eventosIds);
+
+      const { data: sessoes } = await supabase
+        .from('sessoes')
+        .select('id, data, hora')
+        .in('id', sessoesIds);
+
+      // Combinar dados
+      const ingressosCompletos = ingressosData.map(ingresso => {
+        const pedido = pedidos.find(p => p.id === ingresso.pedido_id);
+        const evento = eventos?.find(e => e.id === pedido.evento_id);
+        const sessao = sessoes?.find(s => s.id === pedido.sessao_id);
+
+        return {
+          ...ingresso,
+          evento,
+          sessao
+        };
+      });
+
+      setIngressos(ingressosCompletos);
+
+    } catch (error) {
+      console.error('Erro ao carregar ingressos:', error);
+      alert('Erro ao carregar ingressos: ' + error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const gerarQRCodeURL = (texto) => {
+    return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(texto)}`;
+  };
+
+  if (loading) {
+    return (
+      <div style={{ fontFamily: 'sans-serif', padding: '50px', textAlign: 'center' }}>
+        <h2>🔄 Carregando seus ingressos...</h2>
+      </div>
+    );
   }
 
-  // Buscar ingressos confirmados (pagamento aprovado)
-  const { data: ingressosConfirmados, error: errorConfirmados } = await supabase
-    .from('ingressos')
-    .select(`
-      *,
-      eventos (*)
-    `)
-    .eq('user_id', user.id)
-    .eq('status', 'confirmado')
-    .order('created_at', { ascending: false });
-
-  // Buscar ingressos pendentes (compra iniciada mas não finalizada)
-  const { data: ingressosPendentes, error: errorPendentes } = await supabase
-    .from('ingressos')
-    .select(`
-      *,
-      eventos (*)
-    `)
-    .eq('user_id', user.id)
-    .in('status', ['pendente', 'aguardando_pagamento', 'processando'])
-    .order('created_at', { ascending: false });
-
   return (
-    <div style={{ 
-      fontFamily: 'sans-serif', 
-      backgroundColor: '#f4f4f4', 
-      minHeight: '100vh', 
-      padding: '20px' 
-    }}>
-      <header style={{ 
-        backgroundColor: '#5d34a4', 
-        color: 'white', 
-        padding: '20px', 
-        marginBottom: '30px', 
-        borderRadius: '8px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between'
-      }}>
-        <Link href="/">
-          <button style={{
-            backgroundColor: 'white',
-            color: '#5d34a4',
-            border: 'none',
-            padding: '10px 20px',
-            borderRadius: '5px',
-            fontWeight: 'bold',
-            cursor: 'pointer'
-          }}>
-            ← Voltar
-          </button>
+    <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', paddingBottom: '40px' }}>
+      
+      {/* Header */}
+      <header style={{ backgroundColor: '#5d34a4', color: 'white', padding: '20px 30px' }}>
+        <Link href="/" style={{ color: 'white', textDecoration: 'none', fontSize: '16px' }}>
+          ← Voltar
         </Link>
-        <h1 style={{ margin: 0 }}>🎫 Meus Ingressos</h1>
-        <div style={{ width: '100px' }}></div>
+        <h1 style={{ margin: '10px 0 0 0', fontSize: '28px' }}>🎫 Meus Ingressos</h1>
       </header>
 
-      <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+      <div style={{ maxWidth: '1200px', margin: '30px auto', padding: '0 20px' }}>
         
-        {/* Seção de Ingressos Confirmados */}
-        <div style={{ 
-          backgroundColor: 'white', 
-          padding: '25px', 
-          borderRadius: '8px', 
-          marginBottom: '30px',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-        }}>
-          <h2 style={{ 
-            color: '#27ae60', 
-            margin: '0 0 20px 0',
-            fontSize: '22px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px'
-          }}>
-            ✅ Ingressos Confirmados
-            {ingressosConfirmados && ingressosConfirmados.length > 0 && (
-              <span style={{ 
-                backgroundColor: '#27ae60', 
-                color: 'white', 
-                padding: '5px 12px', 
-                borderRadius: '20px', 
-                fontSize: '14px' 
-              }}>
-                {ingressosConfirmados.length}
-              </span>
-            )}
-          </h2>
-
-          {errorConfirmados ? (
-            <div style={{ 
-              backgroundColor: '#fee', 
-              padding: '15px', 
-              borderRadius: '5px', 
-              color: '#c00' 
-            }}>
-              Erro ao carregar ingressos confirmados.
-            </div>
-          ) : ingressosConfirmados && ingressosConfirmados.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              {ingressosConfirmados.map((ingresso) => (
-                <div key={ingresso.id} style={{ 
-                  backgroundColor: '#f8f9fa', 
-                  padding: '20px', 
-                  borderRadius: '8px', 
-                  border: '2px solid #27ae60',
-                  position: 'relative'
-                }}>
-                  <div style={{ 
-                    position: 'absolute',
-                    top: '15px',
-                    right: '15px',
-                    backgroundColor: '#27ae60',
-                    color: 'white',
-                    padding: '5px 15px',
-                    borderRadius: '5px',
-                    fontSize: '12px',
-                    fontWeight: 'bold'
-                  }}>
-                    ✓ CONFIRMADO
-                  </div>
-
-                  <h3 style={{ margin: '0 0 15px 0', color: '#5d34a4', paddingRight: '120px' }}>
-                    {ingresso.eventos?.nome || 'Evento não encontrado'}
-                  </h3>
-                  
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
-                    <p style={{ margin: 0 }}>
-                      <strong>📅 Data do Evento:</strong><br/>
-                      {ingresso.eventos?.data ? new Date(ingresso.eventos.data).toLocaleDateString('pt-BR', {
-                        weekday: 'long',
-                        day: '2-digit',
-                        month: 'long',
-                        year: 'numeric'
-                      }) : 'Data não disponível'}
-                    </p>
-                    <p style={{ margin: 0 }}>
-                      <strong>🔢 Código do Ingresso:</strong><br/>
-                      <code style={{ 
-                        backgroundColor: '#e0e0e0', 
-                        padding: '4px 8px', 
-                        borderRadius: '4px',
-                        fontSize: '14px'
-                      }}>
-                        {ingresso.codigo_ingresso || 'N/A'}
-                      </code>
-                    </p>
-                  </div>
-
-                  {ingresso.eventos && (
-                    <Link 
-                      href={`/evento/${ingresso.eventos.id}`}
-                      style={{ 
-                        display: 'inline-block',
-                        backgroundColor: '#5d34a4',
-                        color: 'white',
-                        padding: '10px 20px',
-                        borderRadius: '5px',
-                        textDecoration: 'none',
-                        fontWeight: 'bold',
-                        fontSize: '14px'
-                      }}
-                    >
-                      Ver Detalhes do Evento →
-                    </Link>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div style={{ 
-              textAlign: 'center', 
-              padding: '30px',
-              color: '#666'
-            }}>
-              <p>Você ainda não possui ingressos confirmados.</p>
-            </div>
-          )}
-        </div>
-
-        {/* Seção de Compras Pendentes */}
-        {ingressosPendentes && ingressosPendentes.length > 0 && (
+        {ingressos.length === 0 ? (
+          // Nenhum ingresso
           <div style={{ 
             backgroundColor: 'white', 
-            padding: '25px', 
-            borderRadius: '8px',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-          }}>
-            <h2 style={{ 
-              color: '#f39c12', 
-              margin: '0 0 20px 0',
-              fontSize: '22px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px'
-            }}>
-              ⏳ Compras Pendentes
-              <span style={{ 
-                backgroundColor: '#f39c12', 
-                color: 'white', 
-                padding: '5px 12px', 
-                borderRadius: '20px', 
-                fontSize: '14px' 
-              }}>
-                {ingressosPendentes.length}
-              </span>
-            </h2>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              {ingressosPendentes.map((ingresso) => (
-                <div key={ingresso.id} style={{ 
-                  backgroundColor: '#fff9e6', 
-                  padding: '20px', 
-                  borderRadius: '8px', 
-                  border: '2px solid #f39c12',
-                  position: 'relative'
-                }}>
-                  <div style={{ 
-                    position: 'absolute',
-                    top: '15px',
-                    right: '15px',
-                    backgroundColor: '#f39c12',
-                    color: 'white',
-                    padding: '5px 15px',
-                    borderRadius: '5px',
-                    fontSize: '12px',
-                    fontWeight: 'bold'
-                  }}>
-                    ⏳ PENDENTE
-                  </div>
-
-                  <h3 style={{ margin: '0 0 15px 0', color: '#5d34a4', paddingRight: '120px' }}>
-                    {ingresso.eventos?.nome || 'Evento não encontrado'}
-                  </h3>
-                  
-                  <p style={{ margin: '0 0 15px 0', color: '#856404' }}>
-                    <strong>⚠️ Atenção:</strong> Esta compra não foi finalizada. Complete o pagamento para garantir seu ingresso.
-                  </p>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' }}>
-                    <p style={{ margin: 0 }}>
-                      <strong>📅 Data do Evento:</strong><br/>
-                      {ingresso.eventos?.data ? new Date(ingresso.eventos.data).toLocaleDateString('pt-BR') : 'N/A'}
-                    </p>
-                    <p style={{ margin: 0 }}>
-                      <strong>Status:</strong><br/>
-                      {ingresso.status}
-                    </p>
-                  </div>
-
-                  {ingresso.eventos && (
-                    <Link 
-                      href={`/evento/${ingresso.eventos.id}`}
-                      style={{ 
-                        display: 'inline-block',
-                        backgroundColor: '#f39c12',
-                        color: 'white',
-                        padding: '10px 20px',
-                        borderRadius: '5px',
-                        textDecoration: 'none',
-                        fontWeight: 'bold',
-                        fontSize: '14px'
-                      }}
-                    >
-                      Finalizar Compra →
-                    </Link>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Mensagem quando não há nenhum ingresso */}
-        {(!ingressosConfirmados || ingressosConfirmados.length === 0) && 
-         (!ingressosPendentes || ingressosPendentes.length === 0) && (
-          <div style={{ 
-            backgroundColor: 'white', 
-            padding: '50px 30px', 
-            borderRadius: '8px', 
+            padding: '60px 40px', 
+            borderRadius: '12px', 
             textAlign: 'center',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+            boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
           }}>
-            <div style={{ fontSize: '60px', marginBottom: '20px' }}>🎫</div>
-            <h3 style={{ color: '#5d34a4', margin: '0 0 15px 0' }}>
-              Nenhum ingresso encontrado
-            </h3>
-            <p style={{ color: '#666', marginBottom: '25px', fontSize: '16px' }}>
+            <div style={{ fontSize: '80px', marginBottom: '20px' }}>🎫</div>
+            <h2 style={{ color: '#333', marginBottom: '10px' }}>Nenhum ingresso encontrado</h2>
+            <p style={{ color: '#666', marginBottom: '30px' }}>
               Você ainda não comprou nenhum ingresso. Explore os eventos disponíveis!
             </p>
-            <Link 
-              href="/" 
-              style={{ 
-                display: 'inline-block',
-                backgroundColor: '#f1c40f', 
-                color: 'black', 
-                padding: '15px 35px', 
-                borderRadius: '5px', 
-                textDecoration: 'none',
+            <Link href="/">
+              <button style={{
+                padding: '15px 30px',
+                backgroundColor: '#5d34a4',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '16px',
                 fontWeight: 'bold',
-                fontSize: '16px'
-              }}
-            >
-              🎉 Explorar Eventos
+                cursor: 'pointer'
+              }}>
+                🔍 Explorar Eventos
+              </button>
             </Link>
+          </div>
+        ) : (
+          // Lista de ingressos
+          <div>
+            <div style={{ 
+              backgroundColor: '#d4edda', 
+              padding: '15px 20px', 
+              borderRadius: '8px',
+              marginBottom: '30px',
+              border: '1px solid #c3e6cb'
+            }}>
+              <p style={{ margin: 0, color: '#155724', fontSize: '14px' }}>
+                ✅ <strong>Ingressos Confirmados:</strong> {ingressos.length} ingresso(s)
+              </p>
+            </div>
+
+            <div style={{ display: 'grid', gap: '20px' }}>
+              {ingressos.map((ingresso, index) => (
+                <div key={ingresso.id} style={{
+                  backgroundColor: 'white',
+                  borderRadius: '12px',
+                  boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+                  overflow: 'hidden',
+                  display: 'grid',
+                  gridTemplateColumns: '300px 1fr',
+                  border: ingresso.validado ? '3px solid #dc3545' : '3px solid #27ae60'
+                }}>
+                  
+                  {/* QR Code */}
+                  <div style={{
+                    padding: '30px',
+                    backgroundColor: '#f8f9fa',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRight: '1px solid #e0e0e0'
+                  }}>
+                    <div style={{
+                      width: '250px',
+                      height: '250px',
+                      backgroundColor: 'white',
+                      padding: '10px',
+                      borderRadius: '8px',
+                      border: '2px solid #5d34a4'
+                    }}>
+                      <img 
+                        src={gerarQRCodeURL(ingresso.qr_code)} 
+                        alt="QR Code do Ingresso"
+                        style={{ width: '100%', height: '100%' }}
+                      />
+                    </div>
+                    
+                    {ingresso.validado ? (
+                      <div style={{
+                        marginTop: '15px',
+                        padding: '10px 20px',
+                        backgroundColor: '#dc3545',
+                        color: 'white',
+                        borderRadius: '6px',
+                        fontWeight: 'bold',
+                        fontSize: '14px'
+                      }}>
+                        ❌ JÁ UTILIZADO
+                      </div>
+                    ) : (
+                      <div style={{
+                        marginTop: '15px',
+                        padding: '10px 20px',
+                        backgroundColor: '#27ae60',
+                        color: 'white',
+                        borderRadius: '6px',
+                        fontWeight: 'bold',
+                        fontSize: '14px'
+                      }}>
+                        ✅ VÁLIDO
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Informações */}
+                  <div style={{ padding: '30px' }}>
+                    <div style={{ marginBottom: '20px' }}>
+                      <h2 style={{ 
+                        color: '#5d34a4', 
+                        margin: '0 0 10px 0', 
+                        fontSize: '24px' 
+                      }}>
+                        {ingresso.evento?.nome}
+                      </h2>
+                      <div style={{ fontSize: '14px', color: '#666' }}>
+                        Ingresso #{index + 1}
+                      </div>
+                    </div>
+
+                    <div style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: '15px',
+                      marginBottom: '20px'
+                    }}>
+                      <div>
+                        <div style={{ fontSize: '12px', color: '#999', marginBottom: '5px' }}>
+                          Tipo de Ingresso
+                        </div>
+                        <div style={{ fontSize: '16px', fontWeight: '600', color: '#333' }}>
+                          {ingresso.tipo_ingresso}
+                        </div>
+                      </div>
+
+                      {ingresso.assento && (
+                        <div>
+                          <div style={{ fontSize: '12px', color: '#999', marginBottom: '5px' }}>
+                            Assento
+                          </div>
+                          <div style={{ fontSize: '16px', fontWeight: '600', color: '#333' }}>
+                            {ingresso.assento}
+                          </div>
+                        </div>
+                      )}
+
+                      <div>
+                        <div style={{ fontSize: '12px', color: '#999', marginBottom: '5px' }}>
+                          📅 Data
+                        </div>
+                        <div style={{ fontSize: '16px', fontWeight: '600', color: '#333' }}>
+                          {ingresso.sessao?.data && new Date(ingresso.sessao.data).toLocaleDateString('pt-BR')}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div style={{ fontSize: '12px', color: '#999', marginBottom: '5px' }}>
+                          🕐 Horário
+                        </div>
+                        <div style={{ fontSize: '16px', fontWeight: '600', color: '#333' }}>
+                          {ingresso.sessao?.hora}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div style={{ fontSize: '12px', color: '#999', marginBottom: '5px' }}>
+                          📍 Local
+                        </div>
+                        <div style={{ fontSize: '16px', fontWeight: '600', color: '#333' }}>
+                          {ingresso.evento?.local}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div style={{ fontSize: '12px', color: '#999', marginBottom: '5px' }}>
+                          💰 Valor
+                        </div>
+                        <div style={{ fontSize: '16px', fontWeight: '600', color: '#27ae60' }}>
+                          R$ {parseFloat(ingresso.valor).toFixed(2)}
+                        </div>
+                      </div>
+                    </div>
+
+                    {ingresso.validado && (
+                      <div style={{
+                        padding: '15px',
+                        backgroundColor: '#f8d7da',
+                        borderRadius: '8px',
+                        border: '1px solid #f5c6cb',
+                        marginTop: '20px'
+                      }}>
+                        <div style={{ fontSize: '14px', color: '#721c24' }}>
+                          <strong>⚠️ Ingresso utilizado</strong><br />
+                          Validado em: {new Date(ingresso.validado_em).toLocaleString('pt-BR')}
+                        </div>
+                      </div>
+                    )}
+
+                    <div style={{
+                      marginTop: '20px',
+                      padding: '15px',
+                      backgroundColor: '#fff3cd',
+                      borderRadius: '8px',
+                      border: '1px solid #ffc107',
+                      fontSize: '13px',
+                      color: '#856404'
+                    }}>
+                      💡 <strong>Importante:</strong> Apresente este QR Code na entrada do evento. 
+                      Cada ingresso só pode ser validado uma vez.
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
