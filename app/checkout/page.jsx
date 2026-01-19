@@ -237,7 +237,7 @@ function CheckoutContent() {
         valor_total: calcularTotal(),
         cupom_id: cupomId || null,
         status: 'PENDENTE',
-        items: itensJson,
+        itens: itensJson,
         produtos: produtosJson.length > 0 ? produtosJson : null
       };
 
