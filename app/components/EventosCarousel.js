@@ -2,7 +2,9 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import FavoriteButton from './FavoriteButton';
+import './EventosCarousel.css';  // ← ADICIONE ESTA LINHA AQUI
 
+export default function EventosCarousel({ eventos, userId, favoritos = [] }) {
 export default function EventosCarousel({ eventos, userId, favoritos = [] }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
