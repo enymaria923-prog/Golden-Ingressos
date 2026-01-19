@@ -1,44 +1,37 @@
 'use client';
 
-import { useTheme } from './ThemeProvider';
+import { useEffect, useState } from 'react';
 
 export default function ThemeToggle() {
-  const { isDark, toggleTheme } = useTheme();
+  const [isDark, setIsDark] = useState(true); // Tema escuro por padrão
+
+  useEffect(() => {
+    // Verifica preferência salva
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'light') {
+      setIsDark(false);
+      document.documentElement.classList.remove('dark');
+    } else {
+      setIsDark(true);
+      document.documentElement.classList.add('dark');
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    if (isDark) {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+      setIsDark(false);
+    } else {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+      setIsDark(true);
+    }
+  };
 
   return (
-    <button
-      onClick={toggleTheme}
-      className="theme-toggle"
-      aria-label="Alternar tema"
-    >
+    <button onClick={toggleTheme} className="theme-toggle-btn" aria-label="Alternar tema">
       {isDark ? '☀️' : '🌙'}
-
-      <style jsx>{`
-        .theme-toggle {
-          background: rgba(255, 255, 255, 0.2);
-          border: 2px solid rgba(255, 255, 255, 0.3);
-          color: white;
-          width: 50px;
-          height: 50px;
-          border-radius: 50%;
-          font-size: 22px;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          backdrop-filter: blur(10px);
-        }
-
-        .theme-toggle:hover {
-          background: rgba(255, 255, 255, 0.3);
-          transform: rotate(20deg) scale(1.1);
-        }
-
-        .theme-toggle:active {
-          transform: rotate(20deg) scale(0.95);
-        }
-      `}</style>
     </button>
   );
 }
