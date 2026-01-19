@@ -7,7 +7,6 @@ export default function Categorias() {
     { nome: 'Shows', emoji: '🎵', url: '/busca?q=Shows' },
     { nome: 'Stand-up', emoji: '🎤', url: '/busca?q=Stand-up' },
     { nome: 'Festivais', emoji: '🎪', url: '/busca?q=Festivais' },
-    { nome: 'Online', emoji: '💻', url: '/busca?q=Online' },
   ];
   
   return (
