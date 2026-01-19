@@ -128,7 +128,7 @@
 }
 
 /* ==================== RESPONSIVE MOBILE ==================== */
-@media (max-width: 768px) {
+@media (max-width: 300px) {
   .carousel-container {
     border-radius: 8px;
     margin: 0 15px;
