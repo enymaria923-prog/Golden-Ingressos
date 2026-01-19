@@ -4,13 +4,13 @@ import UserDropdown from './components/UserDropdown';
 import SearchBar from './components/SearchBar';
 import EventosCarousel from './components/EventosCarousel';
 import FavoriteButton from './components/FavoriteButton';
-import './styles/home.css'; // ← ÚNICA LINHA ADICIONADA
+import ThemeToggle from './components/ThemeToggle';
+import './styles/home.css';
 
 // Componente do Cartão com botão de favoritar
 function CardEvento({ evento, userId, isFavorited }) {
   return (
     <div className="event-card">
-      {/* Botão de Favoritar */}
       <div className="favorite-btn-container">
         <FavoriteButton 
           eventoId={evento.id} 
@@ -21,7 +21,7 @@ function CardEvento({ evento, userId, isFavorited }) {
 
       <div className="event-image-container">
         <img 
-          src={evento.imagem_url || 'https://placehold.co/300x180/5d34a4/ffffff?text=EVENTO'} 
+          src={evento.imagem_url || 'https://placehold.co/400x220/5d34a4/ffffff?text=EVENTO'} 
           alt={evento.nome}
           className="event-image"
         />
@@ -29,13 +29,27 @@ function CardEvento({ evento, userId, isFavorited }) {
       
       <div className="event-content">
         <h3 className="event-title">{evento.nome}</h3>
-        <p className="event-info">{evento.categoria} | {new Date(evento.data).toLocaleDateString('pt-BR')}</p>
-        <p className="event-price"><strong>Preço: R$ {evento.preco}</strong></p>
-        <Link href={`/evento/${evento.id}`}>
-          <button className="btn-comprar">
-            Comprar Ingresso
-          </button>
-        </Link>
+        
+        <div className="event-meta">
+          <span className="event-category">{evento.categoria}</span>
+          <span className="event-date">
+            📅 {new Date(evento.data).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+          </span>
+        </div>
+        
+        <div className="event-location">
+          📍 {evento.cidade || evento.local || 'Local a definir'}
+        </div>
+        
+        <div className="event-price-section">
+          <div className="price-info">
+            <span className="price-label">A partir de</span>
+            <span className="price-value">R$ {evento.preco}</span>
+          </div>
+          <Link href={`/evento/${evento.id}`}>
+            <button className="btn-comprar">Comprar</button>
+          </Link>
+        </div>
       </div>
     </div>
   );
@@ -45,20 +59,17 @@ function CardEvento({ evento, userId, isFavorited }) {
 export default async function Index() {
   const supabase = createClient();
   
-  // Verifica se o usuário está logado
   const { data: { user } } = await supabase.auth.getUser();
   
-  // Data de hoje (início do dia)
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
   const dataHoje = hoje.toISOString().split('T')[0];
   
-  // Buscar apenas eventos aprovados e futuros
   const { data: eventos, error } = await supabase
     .from('eventos')
     .select('*')
     .eq('status', 'aprovado')
-    .gte('data', dataHoje) // Apenas eventos de hoje em diante
+    .gte('data', dataHoje)
     .order('data', { ascending: true });
 
   if (error) {
@@ -70,7 +81,6 @@ export default async function Index() {
     );
   }
 
-  // Buscar favoritos do usuário (se estiver logado)
   let favoritos = [];
   if (user) {
     const { data: favoritosData } = await supabase
@@ -83,7 +93,6 @@ export default async function Index() {
     }
   }
 
-  // Separar eventos em destaque (primeiros 5) e eventos regulares
   const eventosDestaque = eventos?.slice(0, 5) || [];
   const eventosRegulares = eventos || [];
 
@@ -91,32 +100,29 @@ export default async function Index() {
     <div className="page-home">
       <div className="container-principal">
         <header className="header-principal">
-          <h1 className="logo-golden">GOLDEN INGRESSOS</h1>
-          <p className="tagline">Encontre seu próximo evento inesquecível.</p>
+          <div className="header-content">
+            <h1 className="logo-golden">GOLDEN INGRESSOS</h1>
+            <ThemeToggle />
+          </div>
+          <p className="tagline">Encontre seu próximo evento inesquecível</p>
         </header>
         
-        {/* Barra de Pesquisa */}
         <SearchBar />
         
         <div className="action-buttons-container">
           <Link href="/publicar-evento">
-            <button className="btn-publicar">
-              Publicar Novo Evento
-            </button>
+            <button className="btn-publicar">Publicar Novo Evento</button>
           </Link>
           
           {user ? (
             <UserDropdown user={user} />
           ) : (
             <Link href="/login">
-              <button className="btn-entrar">
-                Entrar
-              </button>
+              <button className="btn-entrar">Entrar</button>
             </Link>
           )}
         </div>
 
-        {/* Carrossel de Eventos em Destaque */}
         {eventosDestaque.length > 0 && (
           <div className="secao-destaque">
             <h2 className="titulo-secao">🌟 Eventos em Destaque</h2>
@@ -124,7 +130,6 @@ export default async function Index() {
           </div>
         )}
 
-        {/* Lista de Todos os Eventos */}
         <h2 className="titulo-secao">📅 Todos os Eventos</h2>
         
         {eventosRegulares && eventosRegulares.length > 0 ? (
@@ -143,27 +148,17 @@ export default async function Index() {
         )}
       </div>
 
-      {/* RODAPÉ COM DOCUMENTAÇÕES */}
       <footer className="footer-principal">
         <div className="footer-grid">
-          
-          {/* Coluna 1: Marketplace */}
           <div className="footer-coluna">
             <h3 className="footer-titulo">🎭 Marketplace</h3>
             <ul className="footer-lista">
-              <li>
-                <Link href="/shows">O melhor marketplace para Shows</Link>
-              </li>
-              <li>
-                <Link href="/teatros">O melhor marketplace para Teatros</Link>
-              </li>
-              <li>
-                <Link href="/stand-up">O melhor marketplace para Stand-up</Link>
-              </li>
+              <li><Link href="/shows">O melhor marketplace para Shows</Link></li>
+              <li><Link href="/teatros">O melhor marketplace para Teatros</Link></li>
+              <li><Link href="/stand-up">O melhor marketplace para Stand-up</Link></li>
             </ul>
           </div>
 
-          {/* Coluna 2: Institucional */}
           <div className="footer-coluna">
             <h3 className="footer-titulo">📄 Institucional</h3>
             <ul className="footer-lista">
@@ -174,7 +169,6 @@ export default async function Index() {
             </ul>
           </div>
 
-          {/* Coluna 3: Suporte */}
           <div className="footer-coluna">
             <h3 className="footer-titulo">🆘 Suporte</h3>
             <ul className="footer-lista">
@@ -184,7 +178,6 @@ export default async function Index() {
             </ul>
           </div>
 
-          {/* Coluna 4: Contato */}
           <div className="footer-coluna">
             <h3 className="footer-titulo">📞 Contato</h3>
             <p className="footer-contato">
@@ -197,10 +190,8 @@ export default async function Index() {
               09:00 - 18:00
             </p>
           </div>
-
         </div>
 
-        {/* Linha de copyright */}
         <div className="footer-copyright">
           <p>© 2025 Golden Ingressos. Todos os direitos reservados.</p>
         </div>
