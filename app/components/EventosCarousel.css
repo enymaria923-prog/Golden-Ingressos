@@ -135,7 +135,7 @@
   }
 
   .carousel-slide {
-    height: 220px;
+    height: 180px;
   }
 
   .carousel-favorite {
@@ -144,32 +144,32 @@
   }
 
   .carousel-info {
-    padding: 16px;
+    padding: 12px;
   }
 
   .carousel-title {
-    font-size: 16px;
-    margin-bottom: 8px;
+    font-size: 14px;
+    margin-bottom: 6px;
     line-height: 1.2;
   }
 
   .carousel-meta {
-    gap: 4px;
-    margin-bottom: 8px;
+    gap: 3px;
+    margin-bottom: 6px;
   }
 
   .carousel-detail {
-    font-size: 11px;
+    font-size: 10px;
   }
 
   .carousel-price {
-    font-size: 15px;
+    font-size: 13px;
   }
 
   .carousel-btn {
-    width: 32px;
-    height: 32px;
-    font-size: 18px;
+    width: 30px;
+    height: 30px;
+    font-size: 16px;
   }
 
   .carousel-btn-prev {
@@ -181,49 +181,49 @@
   }
 
   .carousel-indicators {
-    bottom: 10px;
-    gap: 5px;
+    bottom: 8px;
+    gap: 4px;
   }
 
   .carousel-indicator {
-    width: 6px;
-    height: 6px;
+    width: 5px;
+    height: 5px;
   }
 
   .carousel-indicator.active {
-    width: 18px;
+    width: 15px;
   }
 }
 
 @media (max-width: 480px) {
   .carousel-slide {
-    height: 200px;
+    height: 160px;
   }
 
   .carousel-info {
-    padding: 12px;
+    padding: 10px;
   }
 
   .carousel-title {
-    font-size: 15px;
-    margin-bottom: 6px;
+    font-size: 13px;
+    margin-bottom: 5px;
   }
 
   .carousel-detail {
-    font-size: 10px;
+    font-size: 9px;
   }
 
   .carousel-price {
-    font-size: 14px;
+    font-size: 12px;
   }
 
   .carousel-btn {
-    width: 28px;
-    height: 28px;
-    font-size: 16px;
+    width: 26px;
+    height: 26px;
+    font-size: 14px;
   }
 
   .carousel-indicators {
-    bottom: 8px;
+    bottom: 6px;
   }
 }
