@@ -71,7 +71,7 @@ function PixPaymentContent() {
         .from('pedidos')
         .update({ 
           status: 'PAGO',
-          data_pagamento: new Date().toISOString()
+          data_pagame: new Date().toISOString()
         })
         .eq('id', pedidoId);
 
