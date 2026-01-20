@@ -132,11 +132,15 @@ function PixPaymentContent() {
           
           ingressosParaGerar.push({
             pedido_id: pedidoId,
+            evento_id: pedido.evento_id,
+            sessao_id: pedido.sessao_id,
+            ingresso_id: item.ingresso_id,
             tipo_ingresso: item.tipo,
             valor: item.valor_unitario,
             assento: item.assento || null,
             qr_code: qrCode,
-            validado: false
+            status: 'ATIVO',
+            data_compra: new Date().toISOString()
           });
         }
       });
