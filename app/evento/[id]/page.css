@@ -1,8 +1,8 @@
 /* ===================================
-   FORÇA TOTAL - SOBRESCREVE TUDO
+   FORÇA TOTAL - LAYOUT CORRETO
    =================================== */
 
-/* FUNDO AZUL - FORÇA BRUTA */
+/* FUNDO AZUL ESCURO */
 html {
   background: #16182b !important;
 }
@@ -19,10 +19,7 @@ body * {
   color: #ffffff !important;
 }
 
-body > div {
-  background: #16182b !important;
-}
-
+body > div,
 body > div > div {
   background: #16182b !important;
 }
@@ -45,8 +42,7 @@ header * {
 /* ===================================
    CONTAINER - CENTRALIZADO 900PX
    =================================== */
-body > div > div:first-child,
-body > div > div {
+body > div > div:first-child {
   max-width: 900px !important;
   margin: 0 auto !important;
   padding: 0 1.5rem !important;
@@ -54,74 +50,138 @@ body > div > div {
 }
 
 /* ===================================
-   IMAGEM DO BANNER
+   IMAGEM DO BANNER - RETANGULAR
    =================================== */
-body > div > div > div:nth-child(1) {
+body > div > div > div:nth-child(1),
+body > div > div > div:first-of-type {
   margin-top: 2rem !important;
-  margin-bottom: 2rem !important;
+  margin-bottom: 1.5rem !important;
   background: transparent !important;
+  text-align: center !important;
 }
 
+/* FORÇA IMAGEM RETANGULAR - SYMPLA/MAPLE STYLE */
 body > div > div > div:nth-child(1) img,
-img {
-  border-radius: 20px !important;
+body > div > div > div:first-of-type img,
+img[style*="objectFit"] {
+  width: 100% !important;
+  max-width: 900px !important;
+  height: auto !important;
+  min-height: 200px !important;
+  max-height: 400px !important;
+  aspect-ratio: 16/9 !important;
+  object-fit: cover !important;
+  border-radius: 16px !important;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
-  max-height: 450px !important;
 }
 
 /* ===================================
-   TÍTULO
+   TÍTULO DO EVENTO
    =================================== */
 h1 {
   text-align: center !important;
   color: #ffffff !important;
-  font-size: 3rem !important;
+  font-size: clamp(1.75rem, 5vw, 2.5rem) !important;
   font-weight: 800 !important;
-  margin: 2rem 0 1rem 0 !important;
+  margin: 1.5rem 0 1rem 0 !important;
   background: transparent !important;
+  line-height: 1.2 !important;
 }
 
 /* ===================================
-   DATA E HORA (ABAIXO DO TÍTULO)
+   DATA E HORA - LOGO ABAIXO DO TÍTULO
    =================================== */
 h1 + div {
   text-align: center !important;
   background: transparent !important;
-  margin-bottom: 3rem !important;
+  margin-bottom: 1.5rem !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.5rem !important;
+  align-items: center !important;
 }
 
 h1 + div span {
   color: #9b6dd6 !important;
   font-weight: 600 !important;
-  font-size: 1.125rem !important;
+  font-size: 1rem !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
 }
 
 /* ===================================
-   GRID - FORÇA LAYOUT VERTICAL (NÃO 2 COLUNAS)
+   ABOLIR GRID 2 COLUNAS - TUDO VERTICAL
    =================================== */
-body > div > div > div[style*="grid"],
 div[style*="gridTemplateColumns"] {
-  display: block !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0 !important;
   grid-template-columns: none !important;
   width: 100% !important;
   background: transparent !important;
 }
 
-div[style*="gridTemplateColumns"] > div {
-  width: 100% !important;
+/* ===================================
+   REORDENAR: LOCAL VEM ANTES DE "SOBRE"
+   =================================== */
+/* Card "Sobre o Evento" - vai para DEPOIS dos ingressos */
+div[style*="gridTemplateColumns"] > div:nth-child(1) {
+  order: 3 !important;
   margin-bottom: 1.5rem !important;
 }
 
+/* Card "Local" - vai para ANTES dos ingressos */
+div[style*="gridTemplateColumns"] > div:nth-child(2) {
+  order: 1 !important;
+  margin-bottom: 2rem !important;
+}
+
 /* ===================================
-   CARDS - FUNDO ESCURO AZULADO
+   CARD LOCAL - SIMPLIFICADO SEM BORDA
+   =================================== */
+div[style*="gridTemplateColumns"] > div:nth-child(2) {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 1.5rem 0 !important;
+  border-bottom: 1px solid #3d4163 !important;
+  border-radius: 0 !important;
+}
+
+div[style*="gridTemplateColumns"] > div:nth-child(2) h3 {
+  color: #9b6dd6 !important;
+  font-size: 1.5rem !important;
+  margin-bottom: 1rem !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+}
+
+div[style*="gridTemplateColumns"] > div:nth-child(2) p {
+  color: #b8b9c9 !important;
+  margin-bottom: 0.5rem !important;
+  font-size: 1rem !important;
+}
+
+div[style*="gridTemplateColumns"] > div:nth-child(2) p[style*="fontWeight: 'bold'"] {
+  color: #ffffff !important;
+  font-size: 1.125rem !important;
+  font-weight: 700 !important;
+}
+
+/* Ocultar seção de produtor do card Local (vai aparecer no final) */
+div[style*="gridTemplateColumns"] > div:nth-child(2) > div[style*="marginTop: '25px'"] {
+  display: none !important;
+}
+
+/* ===================================
+   CARDS NORMAIS - FUNDO ESCURO
    =================================== */
 div[style*="backgroundColor: 'white'"],
 div[style*='backgroundColor: "white"'],
-div[style*="backgroundColor:'white'"],
-div[style*="background-color: white"],
 div[style*="padding: '30px'"],
 div[style*="padding: '40px'"] {
-  background-color: #2a2d47 !important;
   background: #2a2d47 !important;
   border: 1px solid #3d4163 !important;
   border-radius: 16px !important;
@@ -138,20 +198,24 @@ h2 {
   color: #9b6dd6 !important;
   font-size: 1.75rem !important;
   font-weight: 700 !important;
-  margin-bottom: 1.5rem !important;
+  margin: 0 0 1.5rem 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
 }
 
 h3 {
   color: #9b6dd6 !important;
   font-size: 1.5rem !important;
   font-weight: 700 !important;
-  margin-bottom: 1.25rem !important;
+  margin: 0 0 1.25rem 0 !important;
 }
 
 h4 {
   color: #ffffff !important;
   font-size: 1.125rem !important;
   font-weight: 600 !important;
+  margin: 0 0 0.75rem 0 !important;
 }
 
 /* ===================================
@@ -171,7 +235,7 @@ p b {
 /* ===================================
    BADGES
    =================================== */
-span[style*="backgroundColor"] {
+span[style*="backgroundColor"][style*="borderRadius"] {
   background: rgba(124, 77, 189, 0.2) !important;
   color: #9b6dd6 !important;
   border: 1px solid #7c4dbd !important;
@@ -180,13 +244,14 @@ span[style*="backgroundColor"] {
 }
 
 /* ===================================
-   CUPONS - AMARELO
+   CUPONS
    =================================== */
 div[style*="#fff3cd"],
 div[style*="#d4edda"] {
   border-radius: 16px !important;
   padding: 2rem !important;
   margin-bottom: 2rem !important;
+  order: 2 !important;
 }
 
 div[style*="#fff3cd"] {
@@ -233,34 +298,28 @@ button {
   border: none !important;
 }
 
-button[style*="#5d34a4"],
-button[style*="5d34a4"] {
+button[style*="#5d34a4"] {
   background: linear-gradient(135deg, #7c4dbd, #9b6dd6) !important;
   color: white !important;
 }
 
-button[style*="#27ae60"],
-button[style*="27ae60"] {
+button[style*="#27ae60"] {
   background: linear-gradient(135deg, #27ae60, #2ecc71) !important;
   color: white !important;
 }
 
 button[style*="#f1c40f"],
-button[style*="#f39c12"],
-button[style*="f1c40f"],
-button[style*="f39c12"] {
+button[style*="#f39c12"] {
   background: linear-gradient(135deg, #f39c12, #f1c40f) !important;
   color: #000 !important;
 }
 
-button[style*="#dc3545"],
-button[style*="dc3545"] {
+button[style*="#dc3545"] {
   background: linear-gradient(135deg, #e74c3c, #dc3545) !important;
   color: white !important;
 }
 
-button[style*="#3498db"],
-button[style*="3498db"] {
+button[style*="#3498db"] {
   background: linear-gradient(135deg, #3498db, #5dade2) !important;
   color: white !important;
 }
@@ -299,6 +358,14 @@ select option {
 }
 
 /* ===================================
+   SEÇÃO INGRESSOS
+   =================================== */
+/* Força ordem: Ingressos vem depois do Local */
+body > div > div > div[style*="padding: '40px'"]:has(h2) {
+  order: 2 !important;
+}
+
+/* ===================================
    SETOR HEADER (ROXO)
    =================================== */
 div[style*="#5d34a4"] {
@@ -316,8 +383,7 @@ div[style*="#5d34a4"] div {
 /* ===================================
    BORDAS DOS SETORES
    =================================== */
-div[style*="border: '2px solid #e0e0e0'"],
-div[style*='border: "2px solid #e0e0e0"'] {
+div[style*="border: '2px solid #e0e0e0'"] {
   border: 1px solid #3d4163 !important;
   background: #2a2d47 !important;
   border-radius: 12px !important;
@@ -328,12 +394,12 @@ div[style*='border: "2px solid #e0e0e0"'] {
 /* ===================================
    TICKET ITEMS
    =================================== */
-div[style*="backgroundColor: '#fafafa'"],
-div[style*='backgroundColor: "#fafafa"'] {
+div[style*="backgroundColor: '#fafafa'"] {
   background: #1e2139 !important;
   border: 1px solid #3d4163 !important;
   border-radius: 12px !important;
   padding: 1.5rem !important;
+  margin-bottom: 1rem !important;
 }
 
 div[style*="backgroundColor: '#d4edda'"][style*="padding: '20px'"] {
@@ -358,8 +424,7 @@ div[style*="backgroundColor: '#f8f9fa'"] * {
 /* ===================================
    CARRINHO
    =================================== */
-div[style*="border: '3px solid #5d34a4'"],
-div[style*='border: "3px solid #5d34a4"'] {
+div[style*="border: '3px solid #5d34a4'"] {
   border: 2px solid #7c4dbd !important;
   background: #2a2d47 !important;
   border-radius: 16px !important;
@@ -369,10 +434,10 @@ div[style*='border: "3px solid #5d34a4"'] {
 /* ===================================
    GARANTIAS
    =================================== */
-div[style*="backgroundColor: '#e8f8f5'"],
-div[style*='backgroundColor: "#e8f8f5"'] {
+div[style*="backgroundColor: '#e8f8f5'"] {
   background: rgba(46, 204, 113, 0.1) !important;
   border: 1px solid #2ecc71 !important;
+  border-radius: 12px !important;
 }
 
 div[style*="#e8f8f5"] * {
@@ -393,39 +458,44 @@ div[style*="backgroundColor: '#f0f0f0'"] {
 }
 
 /* ===================================
-   CORES ESPECÍFICAS - FORÇA
+   CORES ESPECÍFICAS
    =================================== */
 *[style*="color: '#27ae60'"],
-*[style*='color: "#27ae60"'],
 *[style*="color: '#28a745'"] {
   color: #2ecc71 !important;
 }
 
-*[style*="color: '#999'"],
-*[style*='color: "#999"'] {
+*[style*="color: '#999'"] {
   color: #7a7b8f !important;
 }
 
-*[style*="color: '#666'"],
-*[style*='color: "#666"'] {
+*[style*="color: '#666'"] {
   color: #b8b9c9 !important;
 }
 
-*[style*="color: '#2c3e50'"],
-*[style*='color: "#2c3e50"'] {
+*[style*="color: '#2c3e50'"] {
   color: #ffffff !important;
 }
 
-*[style*="color: '#5d34a4'"],
-*[style*='color: "#5d34a4"'] {
+*[style*="color: '#5d34a4'"] {
   color: #9b6dd6 !important;
 }
 
 /* ===================================
-   PRODUTOR
+   PRODUTOR - VAI PARA O FINAL
    =================================== */
-div[style*="borderTop: '1px solid #eee'"] {
+div[style*="borderTop: '1px solid #eee'"],
+div[style*="paddingTop: '25px'"][style*="borderTop"] {
+  order: 999 !important;
+  margin-top: 2rem !important;
+  padding-top: 2rem !important;
   border-top: 1px solid #3d4163 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  border-bottom: none !important;
+  border-radius: 0 !important;
 }
 
 img[style*="borderRadius: '50%'"] {
@@ -499,19 +569,19 @@ img[style*="borderRadius: '50%'"] {
 /* ===================================
    RESPONSIVO
    =================================== */
-@media (max-width: 968px) {
-  body > div > div:first-child {
-    padding: 0 1.25rem !important;
-  }
-
-  h1 {
-    font-size: 2rem !important;
-  }
-}
-
 @media (max-width: 640px) {
   body > div > div:first-child {
     padding: 0 1rem !important;
+  }
+
+  /* IMAGEM RETANGULAR NO MOBILE */
+  body > div > div > div:nth-child(1) img,
+  body > div > div > div:first-of-type img {
+    height: auto !important;
+    min-height: 180px !important;
+    max-height: 250px !important;
+    aspect-ratio: 16/9 !important;
+    border-radius: 12px !important;
   }
 
   h1 {
@@ -519,8 +589,11 @@ img[style*="borderRadius: '50%'"] {
   }
 
   h1 + div {
-    flex-direction: column !important;
-    gap: 1rem !important;
+    gap: 0.375rem !important;
+  }
+
+  h1 + div span {
+    font-size: 0.95rem !important;
   }
 
   .theme-toggle {
@@ -528,5 +601,6 @@ img[style*="borderRadius: '50%'"] {
     height: 50px !important;
     bottom: 1rem !important;
     right: 1rem !important;
+    font-size: 1.25rem !important;
   }
 }
