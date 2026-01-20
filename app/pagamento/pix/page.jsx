@@ -135,11 +135,14 @@ function PixPaymentContent() {
             evento_id: pedido.evento_id,
             sessao_id: pedido.sessao_id,
             tipo_ingresso: item.tipo,
-            valor: item.valor_unitario,
+            valor: parseFloat(item.valor_unitario),
             assento: item.assento || null,
             qr_code: qrCode,
             status: 'ATIVO',
-            data_compra: new Date().toISOString()
+            data_compra: new Date().toISOString(),
+            comprador_nome: pedido.nome_comprador,
+            comprador_email: pedido.email_comprador,
+            comprador_cpf: pedido.cpf_comprador
           });
         }
       });
