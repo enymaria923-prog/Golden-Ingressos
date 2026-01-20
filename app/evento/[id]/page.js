@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import MapaAssentos from '../../../components/MapaAssentos';
 import { getTeatroConfig } from '../../../utils/teatros-config';
-import ThemeToggle from '../components/ThemeToggle';
+import ThemeToggle from '../../components/ThemeToggle';
 
 // 👇 IMPORTAR O CSS AQUI
 import './page.css';
