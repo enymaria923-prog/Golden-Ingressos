@@ -130,29 +130,17 @@ function PixPaymentContent() {
         for (let i = 0; i < quantidade; i++) {
           const qrCode = `INGRESSO-${pedidoId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
           
-          const novoIngresso = {
+          ingressosParaGerar.push({
             pedido_id: pedidoId,
+            evento_id: pedido.evento_id,
+            sessao_id: pedido.sessao_id,
             tipo_ingresso: item.tipo,
-            valor: parseFloat(item.valor_unitario),
+            valor: item.valor_unitario,
+            assento: item.assento || null,
             qr_code: qrCode,
             status: 'ATIVO',
             data_compra: new Date().toISOString()
-          };
-
-          // Adicionar campos opcionais apenas se existirem e forem UUIDs válidos
-          if (pedido.evento_id) {
-            novoIngresso.evento_id = pedido.evento_id;
-          }
-          
-          if (pedido.sessao_id) {
-            novoIngresso.sessao_id = pedido.sessao_id;
-          }
-
-          if (item.assento) {
-            novoIngresso.assento = item.assento;
-          }
-
-          ingressosParaGerar.push(novoIngresso);
+          });
         }
       });
 
