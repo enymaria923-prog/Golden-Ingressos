@@ -1,0 +1,1350 @@
+/* ===================================
+   VARIÁVEIS DE TEMA
+   =================================== */
+:root {
+  /* Tema Claro (padrão) */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f9fa;
+  --bg-tertiary: #e9ecef;
+  --text-primary: #1a1a1a;
+  --text-secondary: #6c757d;
+  --text-muted: #adb5bd;
+  --border-color: #dee2e6;
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --accent-primary: #5d34a4;
+  --accent-secondary: #7c4dbd;
+  --success: #27ae60;
+  --warning: #f39c12;
+  --danger: #dc3545;
+  --info: #3498db;
+}
+
+[data-theme="dark"] {
+  /* Tema Escuro */
+  --bg-primary: #1a1d29;
+  --bg-secondary: #242938;
+  --bg-tertiary: #2d3142;
+  --text-primary: #f8f9fa;
+  --text-secondary: #adb5bd;
+  --text-muted: #6c757d;
+  --border-color: #3d4152;
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --accent-primary: #7c4dbd;
+  --accent-secondary: #9b6dd6;
+  --success: #2ecc71;
+  --warning: #f1c40f;
+  --danger: #e74c3c;
+  --info: #3498db;
+}
+
+/* ===================================
+   RESET E BASE
+   =================================== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  line-height: 1.6;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* ===================================
+   HEADER
+   =================================== */
+header {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  padding: 1rem 2rem;
+  box-shadow: var(--shadow-md);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+header a {
+  color: white;
+  text-decoration: none;
+  font-size: 1rem;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: opacity 0.2s;
+}
+
+header a:hover {
+  opacity: 0.9;
+}
+
+/* ===================================
+   CONTAINER PRINCIPAL
+   =================================== */
+.page-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.25rem;
+}
+
+/* ===================================
+   IMAGEM DO EVENTO
+   =================================== */
+.event-banner {
+  margin-top: 2rem;
+  text-align: center;
+}
+
+.event-banner img {
+  width: 100%;
+  max-width: 1200px;
+  height: 400px;
+  object-fit: cover;
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg);
+  transition: transform 0.3s ease;
+}
+
+.event-banner img:hover {
+  transform: scale(1.01);
+}
+
+/* ===================================
+   TÍTULO E INFO DO EVENTO
+   =================================== */
+.event-title {
+  text-align: center;
+  font-size: clamp(2rem, 5vw, 2.75rem);
+  color: var(--text-primary);
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.event-meta {
+  text-align: center;
+  font-size: clamp(1rem, 2.5vw, 1.25rem);
+  color: var(--accent-primary);
+  font-weight: 600;
+  margin-bottom: 2.5rem;
+  display: flex;
+  justify-content: center;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.event-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ===================================
+   GRID LAYOUT PRINCIPAL
+   =================================== */
+.main-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 2rem;
+  margin-bottom: 3rem;
+}
+
+/* ===================================
+   CARDS ESTILO MODERNO
+   =================================== */
+.card {
+  background-color: var(--bg-primary);
+  padding: 2rem;
+  border-radius: 16px;
+  box-shadow: var(--shadow-md);
+  transition: box-shadow 0.3s ease, transform 0.2s ease;
+  border: 1px solid var(--border-color);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+.card h2, .card h3, .card h4 {
+  color: var(--accent-primary);
+  margin-bottom: 1.25rem;
+  font-weight: 700;
+}
+
+.card h2 {
+  font-size: clamp(1.5rem, 3vw, 1.75rem);
+}
+
+.card h3 {
+  font-size: clamp(1.25rem, 2.5vw, 1.5rem);
+}
+
+.card h4 {
+  font-size: 1.125rem;
+}
+
+.card p {
+  color: var(--text-secondary);
+  line-height: 1.8;
+  margin-bottom: 1rem;
+}
+
+/* ===================================
+   BADGES E TAGS
+   =================================== */
+.badge {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-top: 1rem;
+  background-color: var(--bg-tertiary);
+  color: var(--accent-primary);
+  transition: transform 0.2s;
+}
+
+.badge:hover {
+  transform: scale(1.05);
+}
+
+/* ===================================
+   SEÇÃO DE CUPONS
+   =================================== */
+.coupon-section {
+  background: linear-gradient(135deg, var(--warning), #f1c40f);
+  padding: 2rem;
+  border-radius: 16px;
+  box-shadow: var(--shadow-md);
+  margin-bottom: 2.5rem;
+  border: 2px solid rgba(241, 196, 15, 0.3);
+}
+
+.coupon-section.applied {
+  background: linear-gradient(135deg, var(--success), #2ecc71);
+  border-color: rgba(46, 204, 113, 0.3);
+}
+
+.coupon-section h3 {
+  color: rgba(0, 0, 0, 0.85);
+  text-align: center;
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+}
+
+.coupon-section p {
+  color: rgba(0, 0, 0, 0.7);
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.coupon-input-group {
+  display: flex;
+  gap: 0.75rem;
+  max-width: 500px;
+  margin: 0 auto 1rem;
+}
+
+.coupon-input-group input {
+  flex: 1;
+  padding: 0.875rem 1.25rem;
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  text-align: center;
+  background-color: white;
+  color: #333;
+  transition: border-color 0.2s;
+}
+
+.coupon-input-group input:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
+.coupon-input-group button {
+  padding: 0.875rem 2rem;
+  background-color: rgba(0, 0, 0, 0.15);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.coupon-input-group button:hover {
+  background-color: rgba(0, 0, 0, 0.25);
+  transform: translateY(-2px);
+}
+
+.coupon-message {
+  text-align: center;
+  color: rgba(0, 0, 0, 0.85);
+  margin-top: 0.75rem;
+  font-weight: 600;
+}
+
+/* ===================================
+   BOTÕES
+   =================================== */
+button, .btn {
+  padding: 0.875rem 1.75rem;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  display: inline-block;
+  text-align: center;
+}
+
+.btn-primary {
+  background-color: var(--accent-primary);
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: var(--accent-secondary);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-success {
+  background-color: var(--success);
+  color: white;
+}
+
+.btn-success:hover {
+  background-color: #229954;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-warning {
+  background-color: var(--warning);
+  color: #000;
+}
+
+.btn-warning:hover {
+  background-color: #e67e22;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-danger {
+  background-color: var(--danger);
+  color: white;
+}
+
+.btn-danger:hover {
+  background-color: #c0392b;
+}
+
+.btn-secondary {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.btn-secondary:hover {
+  background-color: var(--border-color);
+}
+
+button:disabled, .btn:disabled {
+  background-color: var(--bg-tertiary);
+  color: var(--text-muted);
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ===================================
+   SEÇÃO DE INGRESSOS
+   =================================== */
+.tickets-section {
+  background-color: var(--bg-primary);
+  padding: 3rem;
+  border-radius: 16px;
+  box-shadow: var(--shadow-md);
+  margin-bottom: 3rem;
+  border: 1px solid var(--border-color);
+}
+
+.tickets-section h2 {
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+.price-from {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 1rem;
+  margin-bottom: 2rem;
+}
+
+.price-from .amount {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--success);
+  margin: 0 0.5rem;
+}
+
+/* Setor */
+.sector {
+  margin-bottom: 2.5rem;
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.sector:hover {
+  border-color: var(--accent-primary);
+}
+
+.sector-header {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  color: white;
+  padding: 1rem 1.75rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.sector-status {
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 0.375rem 0.875rem;
+  border-radius: 15px;
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.sector-status.sold-out {
+  background-color: var(--danger);
+}
+
+.sector-status.last-tickets {
+  background-color: var(--warning);
+  color: #000;
+}
+
+.sector-body {
+  padding: 1.75rem;
+}
+
+/* Lote */
+.lote-header {
+  background-color: var(--bg-tertiary);
+  padding: 0.875rem 1.25rem;
+  border-radius: 10px;
+  margin-bottom: 1rem;
+  border-left: 4px solid #9b59b6;
+  font-weight: 700;
+  color: #8e44ad;
+}
+
+/* Ticket Item */
+.ticket-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  background-color: var(--bg-secondary);
+  border-radius: 10px;
+  margin-bottom: 1rem;
+  border: 1px solid var(--border-color);
+  flex-wrap: wrap;
+  gap: 1rem;
+  transition: all 0.2s;
+}
+
+.ticket-item:hover {
+  border-color: var(--accent-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.ticket-item.discounted {
+  background: linear-gradient(135deg, rgba(46, 204, 113, 0.1), rgba(39, 174, 96, 0.05));
+  border-color: var(--success);
+}
+
+.ticket-info {
+  flex: 1;
+  min-width: 200px;
+}
+
+.ticket-info h4 {
+  margin: 0 0 0.375rem 0;
+  font-size: 1.125rem;
+  color: var(--text-primary);
+}
+
+.ticket-info .discount-badge {
+  color: var(--success);
+  font-size: 0.875rem;
+  font-weight: 700;
+  margin-left: 0.625rem;
+}
+
+.ticket-info p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+.ticket-pricing {
+  text-align: right;
+  margin-right: 1.5rem;
+}
+
+.original-price {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  text-decoration: line-through;
+  margin-bottom: 0.25rem;
+}
+
+.price-breakdown {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.25rem;
+}
+
+.final-price {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--success);
+}
+
+.ticket-item.discounted .final-price {
+  color: var(--success);
+}
+
+.ticket-controls select {
+  padding: 0.75rem 1.25rem;
+  border: 2px solid var(--accent-primary);
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  min-width: 80px;
+  transition: all 0.2s;
+}
+
+.ticket-controls select:hover {
+  border-color: var(--accent-secondary);
+  box-shadow: var(--shadow-sm);
+}
+
+.ticket-controls select:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(93, 52, 164, 0.2);
+}
+
+/* ===================================
+   CARRINHO DE COMPRAS
+   =================================== */
+.cart-summary {
+  margin-top: 2rem;
+  padding: 2rem;
+  background-color: var(--bg-secondary);
+  border-radius: 12px;
+  border: 3px solid var(--accent-primary);
+}
+
+.cart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.cart-header h3 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.cart-header p {
+  margin: 0.375rem 0 0 0;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.cart-total {
+  text-align: right;
+}
+
+.cart-total-label {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.375rem;
+}
+
+.cart-total-amount {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--success);
+}
+
+.cart-products {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background-color: var(--bg-primary);
+  border-radius: 10px;
+}
+
+.cart-products h4 {
+  margin: 0 0 0.75rem 0;
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+.cart-product-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.625rem;
+}
+
+.cart-product-item span {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.cart-product-price {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.cart-product-price .price {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--success);
+}
+
+.cart-product-price button {
+  background-color: var(--danger);
+  color: white;
+  border: none;
+  padding: 0.25rem 0.625rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.checkout-btn {
+  width: 100%;
+  background-color: var(--success);
+  color: white;
+  border: none;
+  padding: 1.25rem;
+  border-radius: 12px;
+  font-size: 1.25rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: var(--shadow-md);
+}
+
+.checkout-btn:hover {
+  background-color: #229954;
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* ===================================
+   GARANTIAS
+   =================================== */
+.guarantees {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background-color: rgba(46, 204, 113, 0.1);
+  border-radius: 10px;
+  border: 1px solid var(--success);
+}
+
+.guarantees-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  text-align: center;
+}
+
+.guarantee-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.guarantee-item .icon {
+  font-size: 2rem;
+}
+
+.guarantee-item .text {
+  font-size: 0.875rem;
+  color: var(--success);
+  font-weight: 600;
+}
+
+/* ===================================
+   PRODUTOS DO EVENTO
+   =================================== */
+.products-section {
+  background-color: var(--bg-primary);
+  padding: 3rem;
+  border-radius: 16px;
+  box-shadow: var(--shadow-md);
+  margin-bottom: 3rem;
+  border: 1px solid var(--border-color);
+}
+
+.products-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 2rem;
+}
+
+.product-card {
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.3s;
+  background-color: var(--bg-primary);
+  position: relative;
+}
+
+.product-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-5px);
+}
+
+.product-badge {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 15px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  z-index: 1;
+}
+
+.product-badge.last {
+  background-color: var(--warning);
+  color: #000;
+}
+
+.product-badge.sold-out {
+  background-color: var(--danger);
+  color: white;
+}
+
+.product-image {
+  width: 100%;
+  height: 200px;
+  background-color: var(--bg-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.product-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.product-image span {
+  font-size: 3rem;
+}
+
+.product-details {
+  padding: 1.5rem;
+}
+
+.product-details h3 {
+  margin: 0 0 0.75rem 0;
+  font-size: 1.125rem;
+  color: var(--text-primary);
+}
+
+.product-details p {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+  line-height: 1.6;
+}
+
+.product-price-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.product-price {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--success);
+}
+
+.product-size {
+  background-color: var(--bg-tertiary);
+  color: var(--info);
+  padding: 0.25rem 0.875rem;
+  border-radius: 15px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.product-availability {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+}
+
+.product-details button {
+  width: 100%;
+}
+
+/* ===================================
+   MAPA DE ASSENTOS
+   =================================== */
+.seats-flow {
+  margin-top: 2rem;
+}
+
+.flow-step {
+  margin-bottom: 2rem;
+}
+
+.flow-step h3 {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.sessions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.session-card {
+  padding: 1.25rem;
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  background-color: var(--bg-primary);
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.session-card:hover {
+  border-color: var(--accent-primary);
+  background-color: var(--bg-secondary);
+}
+
+.session-card.selected {
+  border-color: var(--accent-primary);
+  background-color: rgba(93, 52, 164, 0.1);
+  border-width: 3px;
+  font-weight: 700;
+}
+
+.session-card .session-number {
+  font-size: 1.125rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+}
+
+.session-card .session-info {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.sectors-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+}
+
+.sector-card {
+  padding: 2rem;
+  border: 2px solid var(--accent-primary);
+  border-radius: 12px;
+  background-color: var(--bg-primary);
+  cursor: pointer;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--accent-primary);
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.sector-card:hover {
+  background-color: rgba(93, 52, 164, 0.1);
+  transform: scale(1.02);
+}
+
+.flow-actions {
+  text-align: center;
+  margin-top: 1.5rem;
+}
+
+.seat-selection-info {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.seat-selection-info p {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.seat-selection-info strong {
+  color: var(--accent-primary);
+}
+
+.seats-container {
+  background-color: var(--bg-secondary);
+  padding: 2rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+}
+
+.seat-type-selection {
+  margin-top: 2rem;
+}
+
+.seat-assignment {
+  padding: 1.75rem;
+  background-color: var(--bg-secondary);
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  border: 2px solid var(--border-color);
+}
+
+.seat-assignment.has-type {
+  border-color: var(--success);
+}
+
+.seat-assignment h4 {
+  margin: 0 0 1rem 0;
+  font-size: 1.25rem;
+  color: var(--text-primary);
+}
+
+.ticket-types-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.ticket-type-option {
+  padding: 1.5rem;
+  border: 2px solid var(--border-color);
+  border-radius: 10px;
+  background-color: var(--bg-primary);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s;
+}
+
+.ticket-type-option:hover {
+  border-color: var(--accent-primary);
+}
+
+.ticket-type-option.selected {
+  border-color: var(--success);
+  background-color: rgba(46, 204, 113, 0.1);
+  border-width: 3px;
+}
+
+.ticket-type-option .type-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.ticket-type-option .type-price {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--success);
+}
+
+.ticket-type-option .selected-badge {
+  margin-top: 0.75rem;
+  color: var(--success);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.continue-btn {
+  margin-top: 2rem;
+  text-align: center;
+}
+
+.continue-btn button {
+  background-color: var(--warning);
+  color: #000;
+  font-size: 1.25rem;
+  padding: 1.25rem 4rem;
+  box-shadow: var(--shadow-md);
+}
+
+.continue-btn button:hover {
+  background-color: #e67e22;
+}
+
+/* ===================================
+   PRODUTOR
+   =================================== */
+.producer-section {
+  margin-top: 1.75rem;
+  padding-top: 1.75rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.producer-section h4 {
+  color: var(--accent-primary);
+  font-size: 1rem;
+  margin-bottom: 1rem;
+}
+
+.producer-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.producer-avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--accent-primary);
+}
+
+.producer-details {
+  flex: 1;
+}
+
+.producer-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.producer-section button {
+  width: 100%;
+  background-color: var(--accent-primary);
+  color: white;
+  padding: 0.75rem;
+  font-size: 0.875rem;
+}
+
+/* ===================================
+   IMAGENS DA DESCRIÇÃO
+   =================================== */
+.description-images {
+  margin-top: 2rem;
+}
+
+.description-image-block {
+  margin-bottom: 2rem;
+}
+
+.description-text {
+  font-size: 1rem;
+  line-height: 1.8;
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+  white-space: pre-wrap;
+}
+
+.description-image-block img {
+  width: 100%;
+  max-height: 500px;
+  object-fit: contain;
+  border-radius: 10px;
+  margin-bottom: 1rem;
+}
+
+/* ===================================
+   BOTÃO COMPRAR PRINCIPAL
+   =================================== */
+.main-buy-button {
+  text-align: center;
+  margin: 2rem 0;
+}
+
+.main-buy-button button {
+  padding: 1.75rem 5rem;
+  background-color: var(--success);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 1.5rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: var(--shadow-lg);
+  transition: all 0.3s;
+}
+
+.main-buy-button button:hover {
+  background-color: #229954;
+  transform: scale(1.05);
+}
+
+/* ===================================
+   TOGGLE TEMA (Adicional)
+   =================================== */
+.theme-toggle {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  color: white;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  box-shadow: var(--shadow-lg);
+  z-index: 1000;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.theme-toggle:hover {
+  transform: scale(1.1) rotate(15deg);
+}
+
+/* ===================================
+   RESPONSIVIDADE
+   =================================== */
+
+/* Tablet */
+@media (max-width: 968px) {
+  .main-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .event-banner img {
+    height: 300px;
+  }
+
+  .tickets-section {
+    padding: 2rem;
+  }
+
+  .guarantees-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .ticket-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .ticket-pricing {
+    margin-right: 0;
+  }
+
+  .cart-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .cart-total {
+    text-align: left;
+  }
+
+  .products-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1.5rem;
+  }
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+  header {
+    padding: 1rem;
+  }
+
+  .event-banner {
+    margin-top: 1rem;
+  }
+
+  .event-banner img {
+    height: 200px;
+    border-radius: 12px;
+  }
+
+  .event-title {
+    font-size: 1.75rem;
+    margin-top: 1.5rem;
+  }
+
+  .event-meta {
+    font-size: 0.95rem;
+    gap: 1rem;
+    flex-direction: column;
+  }
+
+  .card {
+    padding: 1.5rem;
+  }
+
+  .tickets-section,
+  .products-section {
+    padding: 1.5rem;
+  }
+
+  .sector-header {
+    padding: 1rem;
+    font-size: 1.125rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .sector-body {
+    padding: 1rem;
+  }
+
+  .ticket-item {
+    padding: 1.25rem;
+  }
+
+  .ticket-info h4 {
+    font-size: 1rem;
+  }
+
+  .final-price {
+    font-size: 1.25rem;
+  }
+
+  .coupon-section {
+    padding: 1.5rem;
+  }
+
+  .coupon-input-group {
+    flex-direction: column;
+  }
+
+  .coupon-input-group input,
+  .coupon-input-group button {
+    width: 100%;
+  }
+
+  .cart-summary {
+    padding: 1.5rem;
+  }
+
+  .cart-total-amount {
+    font-size: 1.75rem;
+  }
+
+  .checkout-btn {
+    padding: 1rem;
+    font-size: 1.125rem;
+  }
+
+  .guarantees {
+    padding: 1rem;
+  }
+
+  .guarantees-grid {
+    gap: 1rem;
+  }
+
+  .guarantee-item .icon {
+    font-size: 1.75rem;
+  }
+
+  .guarantee-item .text {
+    font-size: 0.8125rem;
+  }
+
+  .products-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sessions-grid,
+  .sectors-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ticket-types-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .main-buy-button button {
+    padding: 1.25rem 3rem;
+    font-size: 1.25rem;
+  }
+
+  .theme-toggle {
+    bottom: 1rem;
+    right: 1rem;
+    width: 50px;
+    height: 50px;
+    font-size: 1.25rem;
+  }
+}
+
+/* Extra pequeno */
+@media (max-width: 375px) {
+  .page-container {
+    padding: 0 1rem;
+  }
+
+  .event-title {
+    font-size: 1.5rem;
+  }
+
+  .card {
+    padding: 1.25rem;
+  }
+
+  .tickets-section,
+  .products-section {
+    padding: 1.25rem;
+  }
+}
