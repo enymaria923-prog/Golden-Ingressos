@@ -7,14 +7,17 @@ import Link from 'next/link';
 import MapaAssentos from '../../../components/MapaAssentos';
 import { getTeatroConfig } from '../../../utils/teatros-config';
 
+// 👇 IMPORTAR O CSS AQUI
+import './page.css';
+
 function ProdutorInfo({ produtorId }) {
   const supabase = createClient();
   const [produtor, setProdutor] = useState(null);
-
+  
   useEffect(() => {
     carregarProdutor();
   }, [produtorId]);
-
+  
   const carregarProdutor = async () => {
     const { data } = await supabase
       .from('produtores')
