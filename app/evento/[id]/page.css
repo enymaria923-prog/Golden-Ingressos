@@ -42,55 +42,66 @@
 }
 
 /* ===================================
-   RESET E BASE - SOBRESCREVE INLINE STYLES
+   RESET GLOBAL - FORÇA TEMA
    =================================== */
 * {
-  box-sizing: border-box;
+  box-sizing: border-box !important;
 }
 
-body {
+html, body {
+  margin: 0 !important;
+  padding: 0 !important;
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif !important;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: var(--bg-secondary) !important;
-  color: var(--text-primary) !important;
-  line-height: 1.6;
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
+/* FORÇA COR DE TEXTO EM TODOS OS ELEMENTOS */
+div, p, span, h1, h2, h3, h4, h5, h6, a {
+  color: var(--text-primary) !important;
+}
+
 /* ===================================
-   HEADER - SOBRESCREVE INLINE
+   HEADER - FORÇA ESTILO
    =================================== */
-body > div > header {
+header {
   background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)) !important;
   padding: 1rem 2rem !important;
   box-shadow: var(--shadow-md) !important;
-  position: sticky;
-  top: 0;
-  z-index: 100;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 100 !important;
   margin-bottom: 0 !important;
 }
 
-body > div > header a {
+header a {
   color: white !important;
-  text-decoration: none;
+  text-decoration: none !important;
   font-size: 1rem !important;
-  font-weight: 500;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  transition: opacity 0.2s;
+  font-weight: 500 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  transition: opacity 0.2s !important;
 }
 
-body > div > header a:hover {
-  opacity: 0.9;
+header a:hover {
+  opacity: 0.9 !important;
 }
 
 /* ===================================
    CONTAINER PRINCIPAL
    =================================== */
+body > div,
 body > div > div {
+  background-color: var(--bg-secondary) !important;
+}
+
+body > div > div:first-child {
   max-width: 1200px !important;
   margin: 0 auto !important;
   padding: 0 1.25rem !important;
@@ -102,6 +113,7 @@ body > div > div {
 body > div > div > div:first-of-type {
   margin-top: 2rem !important;
   text-align: center !important;
+  background-color: transparent !important;
 }
 
 body > div > div > div:first-of-type img {
@@ -111,30 +123,31 @@ body > div > div > div:first-of-type img {
   object-fit: cover !important;
   border-radius: 16px !important;
   box-shadow: var(--shadow-lg) !important;
-  transition: transform 0.3s ease;
+  transition: transform 0.3s ease !important;
 }
 
 body > div > div > div:first-of-type img:hover {
-  transform: scale(1.01);
+  transform: scale(1.01) !important;
 }
 
 /* ===================================
    TÍTULO DO EVENTO
    =================================== */
-body > div > div > h1 {
+h1 {
   text-align: center !important;
   font-size: clamp(2rem, 5vw, 2.75rem) !important;
   color: var(--text-primary) !important;
   margin-top: 2rem !important;
   margin-bottom: 0.75rem !important;
   font-weight: 800 !important;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.02em !important;
+  background-color: transparent !important;
 }
 
 /* ===================================
-   META INFO DO EVENTO
+   META INFO (DATA, HORA, SESSÕES)
    =================================== */
-body > div > div > div[style*="fontSize: '20px'"] {
+h1 + div {
   text-align: center !important;
   font-size: clamp(1rem, 2.5vw, 1.25rem) !important;
   color: var(--accent-primary) !important;
@@ -144,103 +157,143 @@ body > div > div > div[style*="fontSize: '20px'"] {
   justify-content: center !important;
   gap: 2rem !important;
   flex-wrap: wrap !important;
+  background-color: transparent !important;
+}
+
+h1 + div span {
+  color: var(--accent-primary) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
 }
 
 /* ===================================
    GRID LAYOUT - SOBRE + LOCAL
    =================================== */
-body > div > div > div[style*="gridTemplateColumns: '2fr 1fr'"] {
+body > div > div > div[style*="grid"],
+div[style*="gridTemplateColumns"] {
   display: grid !important;
   grid-template-columns: 2fr 1fr !important;
   gap: 2rem !important;
   margin-bottom: 3rem !important;
+  background-color: transparent !important;
 }
 
 /* ===================================
-   CARDS - SOBRESCREVE backgroundColor: 'white'
+   CARDS BRANCOS - FORÇA ESTILO CORRETO
    =================================== */
-div[style*="backgroundColor: 'white'"],
-div[style*='backgroundColor: "white"'],
-div[style*="backgroundColor:'white'"] {
+div[style*="backgroundColor"][style*="white"],
+div[style*="padding: '30px'"],
+div[style*="padding: '40px'"],
+div[style*="borderRadius: '12px'"] {
   background-color: var(--bg-primary) !important;
   border: 1px solid var(--border-color) !important;
   box-shadow: var(--shadow-md) !important;
-  transition: box-shadow 0.3s ease, transform 0.2s ease;
-}
-
-div[style*="backgroundColor: 'white'"]:hover,
-div[style*='backgroundColor: "white"']:hover {
-  box-shadow: var(--shadow-lg) !important;
-  transform: translateY(-2px);
-}
-
-/* Cards com padding */
-div[style*="backgroundColor: 'white'"][style*="padding: '30px'"],
-div[style*="backgroundColor: 'white'"][style*="padding: '40px'"] {
-  padding: 2rem !important;
   border-radius: 16px !important;
+  padding: 2rem !important;
+  transition: box-shadow 0.3s ease, transform 0.2s ease !important;
+}
+
+div[style*="backgroundColor"][style*="white"]:hover {
+  box-shadow: var(--shadow-lg) !important;
+  transform: translateY(-2px) !important;
 }
 
 /* ===================================
-   TÍTULOS NOS CARDS
+   TÍTULOS DENTRO DOS CARDS
    =================================== */
-div[style*="backgroundColor: 'white'"] h2,
-div[style*="backgroundColor: 'white'"] h3,
-div[style*="backgroundColor: 'white'"] h4 {
+h2, h3, h4 {
   color: var(--accent-primary) !important;
   font-weight: 700 !important;
+  margin-bottom: 1.25rem !important;
 }
 
-div[style*="backgroundColor: 'white'"] h2 {
+h2 {
   font-size: clamp(1.5rem, 3vw, 1.75rem) !important;
   margin-top: 0 !important;
 }
 
-div[style*="backgroundColor: 'white'"] h3 {
+h3 {
   font-size: clamp(1.25rem, 2.5vw, 1.5rem) !important;
 }
 
-div[style*="backgroundColor: 'white'"] p {
+h4 {
+  font-size: 1.125rem !important;
+}
+
+/* ===================================
+   PARÁGRAFOS E TEXTOS
+   =================================== */
+p {
   color: var(--text-secondary) !important;
   line-height: 1.8 !important;
+  margin-bottom: 1rem !important;
+}
+
+/* Textos específicos de local */
+div[style*="fontSize: '18px'"] p,
+div[style*="fontSize: '15px'"] p,
+div[style*="fontSize: '14px'"] p {
+  color: var(--text-secondary) !important;
+  font-weight: 500 !important;
+}
+
+/* Nome do local em destaque */
+p[style*="fontSize: '18px'"][style*="fontWeight: 'bold'"] {
+  color: var(--text-primary) !important;
+  font-weight: 700 !important;
 }
 
 /* ===================================
    SEÇÃO DE CUPONS
    =================================== */
-div[style*="backgroundColor: '#fff3cd'"],
-div[style*="backgroundColor: '#d4edda'"] {
+div[style*="#fff3cd"],
+div[style*="#d4edda"] {
   border-radius: 16px !important;
   box-shadow: var(--shadow-md) !important;
   margin-bottom: 2.5rem !important;
   padding: 2rem !important;
 }
 
-div[style*="backgroundColor: '#fff3cd'"] {
-  background: linear-gradient(135deg, var(--warning), #f1c40f) !important;
+div[style*="#fff3cd"] {
+  background: linear-gradient(135deg, #f39c12, #f1c40f) !important;
   border: 2px solid rgba(241, 196, 15, 0.3) !important;
 }
 
-div[style*="backgroundColor: '#d4edda'"] {
+div[style*="#fff3cd"] h3,
+div[style*="#fff3cd"] p {
+  color: rgba(0, 0, 0, 0.85) !important;
+}
+
+div[style*="#d4edda"] {
   background: linear-gradient(135deg, var(--success), #2ecc71) !important;
   border: 2px solid rgba(46, 204, 113, 0.3) !important;
 }
 
+div[style*="#d4edda"] h3,
+div[style*="#d4edda"] p {
+  color: rgba(0, 0, 0, 0.85) !important;
+}
+
 /* Input de cupom */
-div[style*="backgroundColor: '#fff3cd'"] input,
-div[style*="backgroundColor: '#d4edda'"] input {
-  flex: 1 !important;
-  padding: 0.875rem 1.25rem !important;
-  border: 2px solid rgba(255, 255, 255, 0.8) !important;
-  border-radius: 10px !important;
-  font-size: 1rem !important;
-  font-weight: 700 !important;
+input[type="text"] {
   background-color: white !important;
   color: #333 !important;
+  border: 2px solid rgba(255, 255, 255, 0.8) !important;
+  border-radius: 10px !important;
+  padding: 0.875rem 1.25rem !important;
+  font-size: 1rem !important;
+  font-weight: 700 !important;
+  transition: border-color 0.2s !important;
+}
+
+input[type="text"]:focus {
+  outline: none !important;
+  border-color: var(--accent-primary) !important;
 }
 
 /* ===================================
-   BOTÕES - SOBRESCREVE TODOS
+   BOTÕES - SOBRESCREVE TUDO
    =================================== */
 button {
   border: none !important;
@@ -248,64 +301,55 @@ button {
   font-weight: 700 !important;
   cursor: pointer !important;
   transition: all 0.2s ease !important;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-sm) !important;
+  padding: 0.875rem 1.75rem !important;
+  font-size: 1rem !important;
 }
 
 button:hover:not(:disabled) {
-  transform: translateY(-2px);
+  transform: translateY(-2px) !important;
   box-shadow: var(--shadow-md) !important;
 }
 
 button:disabled {
   cursor: not-allowed !important;
-  opacity: 0.6;
+  opacity: 0.6 !important;
 }
 
 /* Botões roxos (accent) */
-button[style*="backgroundColor: '#5d34a4'"],
-button[style*='backgroundColor: "#5d34a4"'] {
+button[style*="#5d34a4"] {
   background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)) !important;
   color: white !important;
 }
 
-button[style*="backgroundColor: '#5d34a4'"]:hover:not(:disabled) {
-  filter: brightness(1.1);
-}
-
 /* Botões verdes (success) */
-button[style*="backgroundColor: '#27ae60'"],
-button[style*='backgroundColor: "#27ae60"'] {
+button[style*="#27ae60"] {
   background: linear-gradient(135deg, var(--success), #2ecc71) !important;
   color: white !important;
 }
 
-button[style*="backgroundColor: '#27ae60'"]:hover:not(:disabled) {
-  background: linear-gradient(135deg, #229954, #27ae60) !important;
-}
-
 /* Botões amarelos (warning) */
-button[style*="backgroundColor: '#f1c40f'"],
-button[style*="backgroundColor: '#f39c12'"] {
-  background: linear-gradient(135deg, var(--warning), #f1c40f) !important;
+button[style*="#f1c40f"],
+button[style*="#f39c12"] {
+  background: linear-gradient(135deg, #f39c12, #f1c40f) !important;
   color: #000 !important;
 }
 
 /* Botões vermelhos (danger) */
-button[style*="backgroundColor: '#dc3545'"],
-button[style*='backgroundColor: "#dc3545"'] {
+button[style*="#dc3545"] {
   background-color: var(--danger) !important;
   color: white !important;
 }
 
 /* Botões cinzas */
-button[style*="backgroundColor: '#95a5a6'"],
-button[style*="backgroundColor: '#ccc'"] {
+button[style*="#95a5a6"],
+button[style*="#ccc"] {
   background-color: var(--bg-tertiary) !important;
-  color: var(--text-secondary) !important;
+  color: var(--text-primary) !important;
 }
 
 /* Botão azul (info) */
-button[style*="backgroundColor: '#3498db'"] {
+button[style*="#3498db"] {
   background: linear-gradient(135deg, var(--info), #5dade2) !important;
   color: white !important;
 }
@@ -329,58 +373,77 @@ select:hover {
   box-shadow: var(--shadow-sm) !important;
 }
 
-select:focus {
-  outline: none !important;
-  box-shadow: 0 0 0 3px rgba(93, 52, 164, 0.2) !important;
+select option {
+  background-color: var(--bg-primary) !important;
+  color: var(--text-primary) !important;
 }
 
 /* ===================================
-   SETOR DE INGRESSOS
+   SETOR DE INGRESSOS - HEADER ROXO
    =================================== */
-div[style*="backgroundColor: '#5d34a4'"] {
+div[style*="#5d34a4"][style*="color: 'white'"] {
   background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)) !important;
   color: white !important;
   border-radius: 10px 10px 0 0 !important;
 }
 
-/* Tickets com destaque de desconto */
-div[style*="backgroundColor: '#d4edda'"][style*="padding: '20px'"] {
-  background: linear-gradient(135deg, rgba(46, 204, 113, 0.1), rgba(39, 174, 96, 0.05)) !important;
-  border-color: var(--success) !important;
+div[style*="#5d34a4"] * {
+  color: white !important;
+}
+
+/* ===================================
+   TICKETS COM DESCONTO
+   =================================== */
+div[style*="#d4edda"][style*="padding: '20px'"] {
+  background: linear-gradient(135deg, rgba(46, 204, 113, 0.15), rgba(39, 174, 96, 0.08)) !important;
+  border: 2px solid var(--success) !important;
   border-radius: 10px !important;
 }
 
 /* ===================================
    BADGES E TAGS
    =================================== */
-span[style*="backgroundColor: '#e8f4f8'"],
-span[style*="backgroundColor: '#fff3cd'"],
-span[style*="backgroundColor: '#ffc107'"],
-span[style*="backgroundColor: '#dc3545'"] {
+span[style*="backgroundColor"][style*="borderRadius"] {
   border-radius: 20px !important;
   padding: 0.5rem 1rem !important;
   font-weight: 600 !important;
-  transition: transform 0.2s;
-  display: inline-block;
+  transition: transform 0.2s !important;
+  display: inline-block !important;
 }
 
-span[style*="backgroundColor: '#e8f4f8'"]:hover {
-  transform: scale(1.05);
+span[style*="#e8f4f8"] {
+  background-color: rgba(52, 152, 219, 0.15) !important;
+  color: var(--info) !important;
+}
+
+span[style*="#fff3cd"],
+span[style*="#ffc107"] {
+  background-color: var(--warning) !important;
+  color: #000 !important;
+}
+
+span[style*="#dc3545"] {
+  background-color: var(--danger) !important;
+  color: white !important;
 }
 
 /* ===================================
-   GARANTIAS (Footer dos cards)
+   GARANTIAS
    =================================== */
-div[style*="backgroundColor: '#e8f8f5'"] {
+div[style*="#e8f8f5"] {
   background-color: rgba(46, 204, 113, 0.1) !important;
   border: 1px solid var(--success) !important;
   border-radius: 10px !important;
 }
 
+div[style*="#e8f8f5"] * {
+  color: var(--success) !important;
+}
+
 /* ===================================
    PRODUTOS
    =================================== */
-div[style*="border: '1px solid #e0e0e0'"][style*="borderRadius: '10px'"] {
+div[style*="border: '1px solid #e0e0e0'"] {
   border: 1px solid var(--border-color) !important;
   border-radius: 12px !important;
   background-color: var(--bg-primary) !important;
@@ -394,7 +457,7 @@ div[style*="border: '1px solid #e0e0e0'"]:hover {
 }
 
 /* ===================================
-   CARRINHO DE COMPRAS
+   CARRINHO
    =================================== */
 div[style*="border: '3px solid #5d34a4'"] {
   border: 3px solid var(--accent-primary) !important;
@@ -404,12 +467,66 @@ div[style*="border: '3px solid #5d34a4'"] {
 }
 
 /* ===================================
+   PREÇOS E VALORES
+   =================================== */
+div[style*="color: '#27ae60'"],
+span[style*="color: '#27ae60'"] {
+  color: var(--success) !important;
+}
+
+div[style*="color: '#999'"],
+span[style*="color: '#999'"],
+p[style*="color: '#999'"] {
+  color: var(--text-muted) !important;
+}
+
+div[style*="color: '#666'"],
+span[style*="color: '#666'"],
+p[style*="color: '#666'"] {
+  color: var(--text-secondary) !important;
+}
+
+div[style*="color: '#2c3e50'"],
+span[style*="color: '#2c3e50'"],
+p[style*="color: '#2c3e50'"] {
+  color: var(--text-primary) !important;
+}
+
+/* ===================================
+   TOGGLE DE TEMA
+   =================================== */
+.theme-toggle {
+  position: fixed !important;
+  bottom: 2rem !important;
+  right: 2rem !important;
+  width: 60px !important;
+  height: 60px !important;
+  border-radius: 50% !important;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)) !important;
+  color: white !important;
+  border: none !important;
+  font-size: 1.5rem !important;
+  cursor: pointer !important;
+  box-shadow: var(--shadow-lg) !important;
+  z-index: 1000 !important;
+  transition: all 0.3s !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+}
+
+.theme-toggle:hover {
+  transform: scale(1.1) rotate(15deg) !important;
+}
+
+/* ===================================
    RESPONSIVIDADE
    =================================== */
 
 /* Tablet */
 @media (max-width: 968px) {
-  body > div > div > div[style*="gridTemplateColumns: '2fr 1fr'"] {
+  div[style*="gridTemplateColumns"] {
     grid-template-columns: 1fr !important;
     gap: 1.5rem !important;
   }
@@ -418,14 +535,14 @@ div[style*="border: '3px solid #5d34a4'"] {
     height: 300px !important;
   }
 
-  div[style*="backgroundColor: 'white'"][style*="padding: '40px'"] {
+  div[style*="padding: '40px'"] {
     padding: 2rem !important;
   }
 }
 
 /* Mobile */
 @media (max-width: 640px) {
-  body > div > header {
+  header {
     padding: 1rem !important;
   }
 
@@ -438,19 +555,19 @@ div[style*="border: '3px solid #5d34a4'"] {
     border-radius: 12px !important;
   }
 
-  body > div > div > h1 {
+  h1 {
     font-size: 1.75rem !important;
     margin-top: 1.5rem !important;
   }
 
-  body > div > div > div[style*="fontSize: '20px'"] {
+  h1 + div {
     font-size: 0.95rem !important;
     gap: 1rem !important;
     flex-direction: column !important;
   }
 
-  div[style*="backgroundColor: 'white'"][style*="padding: '30px'"],
-  div[style*="backgroundColor: 'white'"][style*="padding: '40px'"] {
+  div[style*="padding: '30px'"],
+  div[style*="padding: '40px'"] {
     padding: 1.5rem !important;
   }
 
@@ -459,41 +576,12 @@ div[style*="border: '3px solid #5d34a4'"] {
     padding: 1.25rem 3rem !important;
     font-size: 1.25rem !important;
   }
-}
 
-/* ===================================
-   TOGGLE DE TEMA (ADICIONAR NO COMPONENTE)
-   =================================== */
-.theme-toggle {
-  position: fixed;
-  bottom: 2rem;
-  right: 2rem;
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)) !important;
-  color: white !important;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  box-shadow: var(--shadow-lg) !important;
-  z-index: 1000;
-  transition: all 0.3s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.theme-toggle:hover {
-  transform: scale(1.1) rotate(15deg) !important;
-}
-
-@media (max-width: 640px) {
   .theme-toggle {
-    bottom: 1rem;
-    right: 1rem;
-    width: 50px;
-    height: 50px;
-    font-size: 1.25rem;
+    bottom: 1rem !important;
+    right: 1rem !important;
+    width: 50px !important;
+    height: 50px !important;
+    font-size: 1.25rem !important;
   }
 }
