@@ -128,21 +128,21 @@ function PixPaymentContent() {
         console.log(`🎟️ Gerando ${quantidade} ingresso(s) do tipo: ${item.tipo}`);
         
         for (let i = 0; i < quantidade; i++) {
-          const qrCode = `INGRESSO-${pedidoId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          const qrCode = `INGRESSO-${pedidoId}-${item.ingresso_id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
           
           ingressosParaGerar.push({
             pedido_id: pedidoId,
             evento_id: pedido.evento_id,
             sessao_id: pedido.sessao_id,
+            ingresso_id: item.ingresso_id,
             tipo_ingresso: item.tipo,
-            valor: parseFloat(item.valor_unitario),
-            assento: item.assento || null,
-            qr_code: qrCode,
-            status: 'ATIVO',
-            data_compra: new Date().toISOString(),
+            valor: item.valor_unitario,
             comprador_nome: pedido.nome_comprador,
             comprador_email: pedido.email_comprador,
-            comprador_cpf: pedido.cpf_comprador
+            comprador_cpf: pedido.cpf_comprador,
+            assento: item.assento || null,
+            qr_code: qrCode,
+            status: 'ATIVO'
           });
         }
       });
@@ -163,6 +163,79 @@ function PixPaymentContent() {
 
         console.log('🎉 Ingressos gerados com sucesso:', ingressosGerados);
       }
+
+      // ✅ ATUALIZAR ESTOQUE DE INGRESSOS
+      console.log('📊 Atualizando estoque...');
+      
+      for (const item of itens) {
+        const quantidade = item.quantidade || 1;
+        const ingressoId = item.ingresso_id;
+
+        // Buscar dados do ingresso
+        const { data: ingressoOriginal } = await supabase
+          .from('ingressos')
+          .select('*, lote_id')
+          .eq('id', ingressoId)
+          .single();
+
+        if (ingressoOriginal) {
+          // Atualizar vendidos do ingresso
+          const { error: updateIngressoError } = await supabase
+            .from('ingressos')
+            .update({ 
+              vendidos: (ingressoOriginal.vendidos || 0) + quantidade 
+            })
+            .eq('id', ingressoId);
+
+          if (updateIngressoError) {
+            console.error('❌ Erro ao atualizar estoque do ingresso:', updateIngressoError);
+          } else {
+            console.log(`✅ Ingresso ${ingressoId}: +${quantidade} vendidos`);
+          }
+
+          // Se tem lote, atualizar o lote também
+          if (ingressoOriginal.lote_id) {
+            const { data: lote } = await supabase
+              .from('lotes')
+              .select('quantidade_vendida')
+              .eq('id', ingressoOriginal.lote_id)
+              .single();
+
+            if (lote) {
+              await supabase
+                .from('lotes')
+                .update({ 
+                  quantidade_vendida: (lote.quantidade_vendida || 0) + quantidade 
+                })
+                .eq('id', ingressoOriginal.lote_id);
+
+              console.log(`✅ Lote ${ingressoOriginal.lote_id}: +${quantidade} vendidos`);
+            }
+          }
+        }
+      }
+
+      // Atualizar total de ingressos vendidos do evento
+      const totalVendidosAgora = itens.reduce((acc, item) => acc + (item.quantidade || 1), 0);
+      
+      const { data: eventoAtual } = await supabase
+        .from('eventos')
+        .select('ingressos_vendidos')
+        .eq('id', pedido.evento_id)
+        .single();
+
+      if (eventoAtual) {
+        await supabase
+          .from('eventos')
+          .update({ 
+            ingressos_vendidos: (eventoAtual.ingressos_vendidos || 0) + totalVendidosAgora 
+          })
+          .eq('id', pedido.evento_id);
+
+        console.log(`✅ Evento: +${totalVendidosAgora} ingressos vendidos`);
+      }
+
+      console.log('📊 Estoque atualizado com sucesso!');
 
       // Redirecionar
       console.log('🚀 Redirecionando para meus-ingressos...');
