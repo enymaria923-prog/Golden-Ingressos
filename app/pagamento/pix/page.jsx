@@ -1,370 +1,356 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import { createClient } from '../../../utils/supabase/client';
+import { useState, useEffect } from 'react';
+import { createClient } from '../utils/supabase/client';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
-function PixPaymentContent() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
+export default function MeusIngressosPage() {
   const supabase = createClient();
+  const router = useRouter();
 
-  const [copiado, setCopiado] = useState(false);
-  const [temporizador, setTemporizador] = useState(300);
-  const [verificando, setVerificando] = useState(false);
-
-  const pedidoId = searchParams.get('pedido_id');
-  const valor = searchParams.get('valor');
-  const nome = searchParams.get('nome');
-
-  const codigoPix = `00020126580014BR.GOV.BCB.PIX0136${pedidoId}${Math.random().toString(36).substring(7)}520400005303986540${valor}5802BR5925${nome}6009SAO PAULO62070503***6304${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+  const [loading, setLoading] = useState(true);
+  const [ingressos, setIngressos] = useState([]);
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setTemporizador((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
+    carregarIngressos();
   }, []);
 
-  const formatarTempo = (segundos) => {
-    const minutos = Math.floor(segundos / 60);
-    const segs = segundos % 60;
-    return `${minutos.toString().padStart(2, '0')}:${segs.toString().padStart(2, '0')}`;
-  };
-
-  const copiarCodigo = () => {
-    navigator.clipboard.writeText(codigoPix);
-    setCopiado(true);
-    setTimeout(() => setCopiado(false), 3000);
-  };
-
-  const simularPagamento = async () => {
-    setVerificando(true);
-
+  const carregarIngressos = async () => {
     try {
-      console.log('🔄 Iniciando simulação de pagamento...');
-      
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      setLoading(true);
 
-      // Buscar pedido
-      const { data: pedido, error: pedidoErro } = await supabase
+      // Verificar autenticação
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        router.push('/login');
+        return;
+      }
+
+      setUser(user);
+
+      // Buscar pedidos pagos do usuário
+      const { data: pedidos, error: pedidosError } = await supabase
         .from('pedidos')
+        .select('id, evento_id, sessao_id, status')
+        .eq('user_id', user.id)
+        .eq('status', 'PAGO');
+
+      if (pedidosError) throw pedidosError;
+
+      if (!pedidos || pedidos.length === 0) {
+        setIngressos([]);
+        setLoading(false);
+        return;
+      }
+
+      const pedidosIds = pedidos.map(p => p.id);
+
+      // Buscar ingressos
+      const { data: ingressosData, error: ingressosError } = await supabase
+        .from('ingressos_vendidos')
         .select('*')
-        .eq('id', pedidoId)
-        .single();
+        .in('pedido_id', pedidosIds)
+        .order('created_at', { ascending: false });
 
-      if (pedidoErro) {
-        console.error('❌ Erro ao buscar pedido:', pedidoErro);
-        throw pedidoErro;
-      }
+      if (ingressosError) throw ingressosError;
 
-      console.log('📦 Pedido encontrado:', pedido);
+      // Buscar informações dos eventos
+      const eventosIds = [...new Set(pedidos.map(p => p.evento_id))];
+      const sessoesIds = [...new Set(pedidos.map(p => p.sessao_id))];
 
-      // Criar registro de pagamento
-      const { error: pagamentoError } = await supabase
-        .from('pagamentos')
-        .insert([{
-          pedido_id: pedidoId,
-          valor: parseFloat(valor),
-          forma_pagamento: 'pix',
-          pago: true,
-          pago_em: new Date().toISOString()
-        }]);
+      const { data: eventos } = await supabase
+        .from('eventos')
+        .select('id, nome, local, imagem')
+        .in('id', eventosIds);
 
-      if (pagamentoError) {
-        console.error('❌ Erro ao criar pagamento:', pagamentoError);
-        throw pagamentoError;
-      }
+      const { data: sessoes } = await supabase
+        .from('sessoes')
+        .select('id, data, hora')
+        .in('id', sessoesIds);
 
-      console.log('💰 Pagamento criado!');
+      // Combinar dados
+      const ingressosCompletos = ingressosData.map(ingresso => {
+        const pedido = pedidos.find(p => p.id === ingresso.pedido_id);
+        const evento = eventos?.find(e => e.id === pedido.evento_id);
+        const sessao = sessoes?.find(s => s.id === pedido.sessao_id);
 
-      // Atualizar status do pedido
-      const { error: pedidoError } = await supabase
-        .from('pedidos')
-        .update({ 
-          status: 'PAGO',
-          data_pagamento: new Date().toISOString()
-        })
-        .eq('id', pedidoId);
-
-      if (pedidoError) {
-        console.error('❌ Erro ao atualizar pedido:', pedidoError);
-        throw pedidoError;
-      }
-
-      console.log('✅ Pedido atualizado para PAGO!');
-
-      // Processar itens e gerar ingressos
-      let itens = [];
-      
-      if (pedido.itens) {
-        // Verificar se é string ou objeto
-        if (typeof pedido.itens === 'string') {
-          itens = JSON.parse(pedido.itens);
-        } else {
-          itens = pedido.itens;
-        }
-      }
-
-      console.log('🎫 Itens do pedido:', itens);
-
-      if (!Array.isArray(itens) || itens.length === 0) {
-        console.error('❌ Nenhum item encontrado no pedido!');
-        throw new Error('Nenhum item encontrado no pedido');
-      }
-
-      // Gerar ingressos individuais
-      const ingressosParaGerar = [];
-
-      itens.forEach((item, index) => {
-        const quantidade = item.quantidade || 1;
-        console.log(`🎟️ Gerando ${quantidade} ingresso(s) do tipo: ${item.tipo}`);
-        
-        for (let i = 0; i < quantidade; i++) {
-          const qrCode = `INGRESSO-${pedidoId}-${item.ingresso_id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-          
-          ingressosParaGerar.push({
-            pedido_id: pedidoId,
-            tipo_ingresso: item.tipo,
-            valor: item.valor_unitario,
-            assento: item.assento || null,
-            qr_code: qrCode,
-            validado: false
-          });
-        }
+        return {
+          ...ingresso,
+          evento,
+          sessao
+        };
       });
 
-      console.log(`📝 Total de ingressos a gerar: ${ingressosParaGerar.length}`);
-      console.log('📋 Ingressos:', ingressosParaGerar);
-
-      if (ingressosParaGerar.length > 0) {
-        const { data: ingressosGerados, error: ingressosError } = await supabase
-          .from('ingressos_vendidos')
-          .insert(ingressosParaGerar)
-          .select();
-
-        if (ingressosError) {
-          console.error('❌ Erro ao gerar ingressos:', ingressosError);
-          throw ingressosError;
-        }
-
-        console.log('🎉 Ingressos gerados com sucesso:', ingressosGerados);
-      }
-
-      // Redirecionar
-      console.log('🚀 Redirecionando para meus-ingressos...');
-      router.push('/meus-ingressos');
+      setIngressos(ingressosCompletos);
 
     } catch (error) {
-      console.error('❌ Erro ao simular pagamento:', error);
-      alert('Erro ao processar pagamento: ' + error.message);
+      console.error('Erro ao carregar ingressos:', error);
+      alert('Erro ao carregar ingressos: ' + error.message);
     } finally {
-      setVerificando(false);
+      setLoading(false);
     }
   };
 
+  const gerarQRCodeURL = (texto) => {
+    return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(texto)}`;
+  };
+
+  if (loading) {
+    return (
+      <div style={{ fontFamily: 'sans-serif', padding: '50px', textAlign: 'center' }}>
+        <h2>🔄 Carregando seus ingressos...</h2>
+      </div>
+    );
+  }
+
   return (
-    <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '40px 20px' }}>
-      <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+    <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', paddingBottom: '40px' }}>
+      
+      {/* Header */}
+      <header style={{ backgroundColor: '#5d34a4', color: 'white', padding: '20px 30px' }}>
+        <Link href="/" style={{ color: 'white', textDecoration: 'none', fontSize: '16px' }}>
+          ← Voltar
+        </Link>
+        <h1 style={{ margin: '10px 0 0 0', fontSize: '28px' }}>🎫 Meus Ingressos</h1>
+      </header>
+
+      <div style={{ maxWidth: '1200px', margin: '30px auto', padding: '0 20px' }}>
         
-        <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', textAlign: 'center' }}>
-          
-          <div style={{ marginBottom: '30px' }}>
-            <div style={{ fontSize: '48px', marginBottom: '15px' }}>📱</div>
-            <h1 style={{ color: '#5d34a4', margin: '0 0 10px 0', fontSize: '32px' }}>Pagamento via PIX</h1>
-            <p style={{ color: '#666', fontSize: '16px', margin: 0 }}>Escaneie o QR Code ou copie o código</p>
-          </div>
-
+        {ingressos.length === 0 ? (
+          // Nenhum ingresso
           <div style={{ 
-            backgroundColor: '#f0e6ff', 
-            padding: '20px', 
+            backgroundColor: 'white', 
+            padding: '60px 40px', 
             borderRadius: '12px', 
-            marginBottom: '30px',
-            border: '2px solid #5d34a4'
+            textAlign: 'center',
+            boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
           }}>
-            <div style={{ fontSize: '14px', color: '#666', marginBottom: '5px' }}>Valor a pagar</div>
-            <div style={{ fontSize: '36px', fontWeight: 'bold', color: '#27ae60' }}>
-              R$ {valor}
-            </div>
-          </div>
-
-          <div style={{
-            width: '250px',
-            height: '250px',
-            margin: '0 auto 30px',
-            backgroundColor: 'white',
-            border: '3px solid #5d34a4',
-            borderRadius: '12px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '100px'
-          }}>
-            <div style={{ textAlign: 'center' }}>
-              <div>🎫</div>
-              <div style={{ fontSize: '12px', marginTop: '10px', color: '#666' }}>QR Code Simulado</div>
-            </div>
-          </div>
-
-          <div style={{ marginBottom: '30px' }}>
-            <label style={{ 
-              display: 'block', 
-              fontSize: '14px', 
-              fontWeight: '600', 
-              color: '#333', 
-              marginBottom: '10px',
-              textAlign: 'left'
-            }}>
-              Código PIX Copia e Cola:
-            </label>
-            <div style={{ 
-              position: 'relative',
-              backgroundColor: '#f8f9fa',
-              border: '2px solid #e0e0e0',
-              borderRadius: '8px',
-              padding: '15px',
-              wordBreak: 'break-all',
-              fontSize: '12px',
-              color: '#333',
-              fontFamily: 'monospace',
-              textAlign: 'left',
-              maxHeight: '100px',
-              overflowY: 'auto'
-            }}>
-              {codigoPix}
-            </div>
-            <button
-              onClick={copiarCodigo}
-              style={{
-                width: '100%',
-                marginTop: '15px',
-                padding: '15px',
-                backgroundColor: copiado ? '#27ae60' : '#5d34a4',
+            <div style={{ fontSize: '80px', marginBottom: '20px' }}>🎫</div>
+            <h2 style={{ color: '#333', marginBottom: '10px' }}>Nenhum ingresso encontrado</h2>
+            <p style={{ color: '#666', marginBottom: '30px' }}>
+              Você ainda não comprou nenhum ingresso. Explore os eventos disponíveis!
+            </p>
+            <Link href="/">
+              <button style={{
+                padding: '15px 30px',
+                backgroundColor: '#5d34a4',
                 color: 'white',
                 border: 'none',
                 borderRadius: '8px',
                 fontSize: '16px',
                 fontWeight: 'bold',
-                cursor: 'pointer',
-                transition: 'all 0.3s'
-              }}
-            >
-              {copiado ? '✅ Código Copiado!' : '📋 Copiar Código PIX'}
-            </button>
+                cursor: 'pointer'
+              }}>
+                🔍 Explorar Eventos
+              </button>
+            </Link>
           </div>
-
-          <div style={{ 
-            padding: '15px', 
-            backgroundColor: temporizador < 60 ? '#fff3cd' : '#f0e6ff',
-            borderRadius: '8px',
-            marginBottom: '30px'
-          }}>
-            <div style={{ fontSize: '14px', color: '#666', marginBottom: '5px' }}>
-              Tempo restante para pagamento
-            </div>
+        ) : (
+          // Lista de ingressos
+          <div>
             <div style={{ 
-              fontSize: '24px', 
-              fontWeight: 'bold', 
-              color: temporizador < 60 ? '#dc3545' : '#5d34a4'
-            }}>
-              ⏱️ {formatarTempo(temporizador)}
-            </div>
-          </div>
-
-          <div style={{ 
-            textAlign: 'left', 
-            padding: '20px', 
-            backgroundColor: '#f8f9fa', 
-            borderRadius: '8px',
-            marginBottom: '30px'
-          }}>
-            <h3 style={{ fontSize: '16px', color: '#333', marginTop: 0 }}>Como pagar:</h3>
-            <ol style={{ fontSize: '14px', color: '#666', paddingLeft: '20px', margin: 0 }}>
-              <li style={{ marginBottom: '10px' }}>Abra o app do seu banco</li>
-              <li style={{ marginBottom: '10px' }}>Escolha a opção PIX</li>
-              <li style={{ marginBottom: '10px' }}>Escaneie o QR Code ou cole o código</li>
-              <li style={{ marginBottom: '10px' }}>Confirme o pagamento</li>
-            </ol>
-          </div>
-
-          <div style={{
-            padding: '20px',
-            backgroundColor: '#fff3cd',
-            borderRadius: '8px',
-            border: '2px dashed #ffc107',
-            marginBottom: '20px'
-          }}>
-            <div style={{ fontSize: '14px', color: '#856404', marginBottom: '10px', fontWeight: 'bold' }}>
-              ⚠️ AMBIENTE DE TESTE
-            </div>
-            <button
-              onClick={simularPagamento}
-              disabled={verificando}
-              style={{
-                width: '100%',
-                padding: '15px',
-                backgroundColor: verificando ? '#95a5a6' : '#ffc107',
-                color: '#333',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '16px',
-                fontWeight: 'bold',
-                cursor: verificando ? 'not-allowed' : 'pointer'
-              }}
-            >
-              {verificando ? '⏳ Verificando pagamento...' : '✅ Simular Pagamento Aprovado'}
-            </button>
-          </div>
-
-          <button
-            onClick={() => router.back()}
-            style={{
-              width: '100%',
-              padding: '15px',
-              backgroundColor: 'white',
-              color: '#dc3545',
-              border: '2px solid #dc3545',
+              backgroundColor: '#d4edda', 
+              padding: '15px 20px', 
               borderRadius: '8px',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              cursor: 'pointer'
-            }}
-          >
-            ❌ Cancelar Pedido
-          </button>
+              marginBottom: '30px',
+              border: '1px solid #c3e6cb'
+            }}>
+              <p style={{ margin: 0, color: '#155724', fontSize: '14px' }}>
+                ✅ <strong>Ingressos Confirmados:</strong> {ingressos.length} ingresso(s)
+              </p>
+            </div>
 
-        </div>
+            <div style={{ display: 'grid', gap: '20px' }}>
+              {ingressos.map((ingresso, index) => (
+                <div key={ingresso.id} style={{
+                  backgroundColor: 'white',
+                  borderRadius: '12px',
+                  boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+                  overflow: 'hidden',
+                  display: 'grid',
+                  gridTemplateColumns: '300px 1fr',
+                  border: ingresso.status === 'USADO' ? '3px solid #dc3545' : ingresso.status === 'CANCELADO' ? '3px solid #6c757d' : '3px solid #27ae60'
+                }}>
+                  
+                  {/* QR Code */}
+                  <div style={{
+                    padding: '30px',
+                    backgroundColor: '#f8f9fa',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRight: '1px solid #e0e0e0'
+                  }}>
+                    <div style={{
+                      width: '250px',
+                      height: '250px',
+                      backgroundColor: 'white',
+                      padding: '10px',
+                      borderRadius: '8px',
+                      border: '2px solid #5d34a4'
+                    }}>
+                      <img 
+                        src={gerarQRCodeURL(ingresso.qr_code)} 
+                        alt="QR Code do Ingresso"
+                        style={{ width: '100%', height: '100%' }}
+                      />
+                    </div>
+                    
+                    {ingresso.status === 'USADO' ? (
+                      <div style={{
+                        marginTop: '15px',
+                        padding: '10px 20px',
+                        backgroundColor: '#dc3545',
+                        color: 'white',
+                        borderRadius: '6px',
+                        fontWeight: 'bold',
+                        fontSize: '14px'
+                      }}>
+                        ❌ JÁ UTILIZADO
+                      </div>
+                    ) : ingresso.status === 'CANCELADO' ? (
+                      <div style={{
+                        marginTop: '15px',
+                        padding: '10px 20px',
+                        backgroundColor: '#6c757d',
+                        color: 'white',
+                        borderRadius: '6px',
+                        fontWeight: 'bold',
+                        fontSize: '14px'
+                      }}>
+                        🚫 CANCELADO
+                      </div>
+                    ) : (
+                      <div style={{
+                        marginTop: '15px',
+                        padding: '10px 20px',
+                        backgroundColor: '#27ae60',
+                        color: 'white',
+                        borderRadius: '6px',
+                        fontWeight: 'bold',
+                        fontSize: '14px'
+                      }}>
+                        ✅ VÁLIDO
+                      </div>
+                    )}
+                  </div>
 
-        <div style={{ 
-          marginTop: '20px', 
-          textAlign: 'center',
-          fontSize: '12px',
-          color: '#999'
-        }}>
-          <p>🔒 Pagamento seguro via PIX</p>
-          <p>⚡ Confirmação instantânea após o pagamento</p>
-        </div>
+                  {/* Informações */}
+                  <div style={{ padding: '30px' }}>
+                    <div style={{ marginBottom: '20px' }}>
+                      <h2 style={{ 
+                        color: '#5d34a4', 
+                        margin: '0 0 10px 0', 
+                        fontSize: '24px' 
+                      }}>
+                        {ingresso.evento?.nome}
+                      </h2>
+                      <div style={{ fontSize: '14px', color: '#666' }}>
+                        Ingresso #{index + 1}
+                      </div>
+                    </div>
 
+                    <div style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: '15px',
+                      marginBottom: '20px'
+                    }}>
+                      <div>
+                        <div style={{ fontSize: '12px', color: '#999', marginBottom: '5px' }}>
+                          Tipo de Ingresso
+                        </div>
+                        <div style={{ fontSize: '16px', fontWeight: '600', color: '#333' }}>
+                          {ingresso.tipo_ingresso}
+                        </div>
+                      </div>
+
+                      {ingresso.assento && (
+                        <div>
+                          <div style={{ fontSize: '12px', color: '#999', marginBottom: '5px' }}>
+                            Assento
+                          </div>
+                          <div style={{ fontSize: '16px', fontWeight: '600', color: '#333' }}>
+                            {ingresso.assento}
+                          </div>
+                        </div>
+                      )}
+
+                      <div>
+                        <div style={{ fontSize: '12px', color: '#999', marginBottom: '5px' }}>
+                          📅 Data
+                        </div>
+                        <div style={{ fontSize: '16px', fontWeight: '600', color: '#333' }}>
+                          {ingresso.sessao?.data && new Date(ingresso.sessao.data).toLocaleDateString('pt-BR')}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div style={{ fontSize: '12px', color: '#999', marginBottom: '5px' }}>
+                          🕐 Horário
+                        </div>
+                        <div style={{ fontSize: '16px', fontWeight: '600', color: '#333' }}>
+                          {ingresso.sessao?.hora}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div style={{ fontSize: '12px', color: '#999', marginBottom: '5px' }}>
+                          📍 Local
+                        </div>
+                        <div style={{ fontSize: '16px', fontWeight: '600', color: '#333' }}>
+                          {ingresso.evento?.local}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div style={{ fontSize: '12px', color: '#999', marginBottom: '5px' }}>
+                          💰 Valor
+                        </div>
+                        <div style={{ fontSize: '16px', fontWeight: '600', color: '#27ae60' }}>
+                          R$ {parseFloat(ingresso.valor).toFixed(2)}
+                        </div>
+                      </div>
+                    </div>
+
+                    {ingresso.status === 'USADO' && (
+                      <div style={{
+                        padding: '15px',
+                        backgroundColor: '#f8d7da',
+                        borderRadius: '8px',
+                        border: '1px solid #f5c6cb',
+                        marginTop: '20px'
+                      }}>
+                        <div style={{ fontSize: '14px', color: '#721c24' }}>
+                          <strong>⚠️ Ingresso utilizado</strong><br />
+                          Usado em: {new Date(ingresso.data_compra).toLocaleString('pt-BR')}
+                        </div>
+                      </div>
+                    )}
+
+                    <div style={{
+                      marginTop: '20px',
+                      padding: '15px',
+                      backgroundColor: '#fff3cd',
+                      borderRadius: '8px',
+                      border: '1px solid #ffc107',
+                      fontSize: '13px',
+                      color: '#856404'
+                    }}>
+                      💡 <strong>Importante:</strong> Apresente este QR Code na entrada do evento. 
+                      Cada ingresso só pode ser validado uma vez.
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
-  );
-}
-
-export default function PixPaymentPage() {
-  return (
-    <Suspense fallback={
-      <div style={{ fontFamily: 'sans-serif', padding: '50px', textAlign: 'center' }}>
-        <h2>🔄 Carregando...</h2>
-      </div>
-    }>
-      <PixPaymentContent />
-    </Suspense>
   );
 }
