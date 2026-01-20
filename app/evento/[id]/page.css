@@ -1,288 +1,171 @@
 /* ===================================
-   FORÇA TOTAL - LAYOUT CORRETO
+   RESET ABSOLUTO - LIMPA TUDO
    =================================== */
-
-/* FUNDO AZUL ESCURO */
-html {
-  background: #16182b !important;
+* {
+  box-sizing: border-box !important;
 }
 
-body {
-  background: #16182b !important;
-  color: #ffffff !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif !important;
-}
-
+html,
+html *,
+body,
 body * {
+  background-color: #16182b !important;
   color: #ffffff !important;
 }
 
-body > div,
-body > div > div {
+/* Remove TODOS os estilos inline de background */
+div[style],
+section[style],
+main[style] {
+  background-color: #16182b !important;
   background: #16182b !important;
 }
 
 /* ===================================
-   HEADER ROXO
+   HEADER
    =================================== */
-header,
-body > div > header {
+header {
   background: linear-gradient(135deg, #7c4dbd, #9b6dd6) !important;
   padding: 1rem 2rem !important;
-  margin: 0 !important;
 }
 
-header a,
 header * {
+  background: transparent !important;
   color: white !important;
 }
 
 /* ===================================
-   CONTAINER - CENTRALIZADO 900PX
+   CONTAINER PRINCIPAL
    =================================== */
-body > div > div:first-child {
+body > div,
+body > div > div,
+body > div > div > div {
+  background: #16182b !important;
   max-width: 900px !important;
   margin: 0 auto !important;
-  padding: 0 1.5rem !important;
-  background: #16182b !important;
+  padding: 0 1rem !important;
 }
 
 /* ===================================
-   IMAGEM DO BANNER - RETANGULAR
+   FORÇA LAYOUT VERTICAL - SEM GRID
    =================================== */
-body > div > div > div:nth-child(1),
-body > div > div > div:first-of-type {
-  margin-top: 2rem !important;
-  margin-bottom: 1.5rem !important;
-  background: transparent !important;
-  text-align: center !important;
+div[style*="display"] {
+  display: flex !important;
+  flex-direction: column !important;
 }
 
-/* FORÇA IMAGEM RETANGULAR - SYMPLA/MAPLE STYLE */
-body > div > div > div:nth-child(1) img,
-body > div > div > div:first-of-type img,
-img[style*="objectFit"] {
+div[style*="grid"] {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* ===================================
+   IMAGEM - RETANGULAR 16:9
+   =================================== */
+img {
   width: 100% !important;
-  max-width: 900px !important;
   height: auto !important;
   min-height: 200px !important;
-  max-height: 400px !important;
+  max-height: 350px !important;
   aspect-ratio: 16/9 !important;
   object-fit: cover !important;
   border-radius: 16px !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
+  margin: 2rem 0 1.5rem 0 !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6) !important;
 }
 
 /* ===================================
-   TÍTULO DO EVENTO
+   TÍTULO
    =================================== */
 h1 {
-  text-align: center !important;
-  color: #ffffff !important;
-  font-size: clamp(1.75rem, 5vw, 2.5rem) !important;
-  font-weight: 800 !important;
-  margin: 1.5rem 0 1rem 0 !important;
   background: transparent !important;
-  line-height: 1.2 !important;
+  color: #ffffff !important;
+  text-align: center !important;
+  font-size: 2rem !important;
+  font-weight: 800 !important;
+  margin: 1rem 0 !important;
+  padding: 0 !important;
 }
 
 /* ===================================
-   DATA E HORA - LOGO ABAIXO DO TÍTULO
+   DATA E HORA
    =================================== */
 h1 + div {
-  text-align: center !important;
   background: transparent !important;
-  margin-bottom: 1.5rem !important;
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 0.5rem !important;
-  align-items: center !important;
+  text-align: center !important;
+  margin-bottom: 2rem !important;
+  padding: 0 !important;
 }
 
 h1 + div span {
-  color: #9b6dd6 !important;
-  font-weight: 600 !important;
-  font-size: 1rem !important;
-  display: flex !important;
-  align-items: center !important;
-  gap: 0.5rem !important;
-}
-
-/* ===================================
-   ABOLIR GRID 2 COLUNAS - TUDO VERTICAL
-   =================================== */
-div[style*="gridTemplateColumns"] {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 0 !important;
-  grid-template-columns: none !important;
-  width: 100% !important;
   background: transparent !important;
-}
-
-/* ===================================
-   REORDENAR: LOCAL VEM ANTES DE "SOBRE"
-   =================================== */
-/* Card "Sobre o Evento" - vai para DEPOIS dos ingressos */
-div[style*="gridTemplateColumns"] > div:nth-child(1) {
-  order: 3 !important;
-  margin-bottom: 1.5rem !important;
-}
-
-/* Card "Local" - vai para ANTES dos ingressos */
-div[style*="gridTemplateColumns"] > div:nth-child(2) {
-  order: 1 !important;
-  margin-bottom: 2rem !important;
-}
-
-/* ===================================
-   CARD LOCAL - SIMPLIFICADO SEM BORDA
-   =================================== */
-div[style*="gridTemplateColumns"] > div:nth-child(2) {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  padding: 1.5rem 0 !important;
-  border-bottom: 1px solid #3d4163 !important;
-  border-radius: 0 !important;
-}
-
-div[style*="gridTemplateColumns"] > div:nth-child(2) h3 {
   color: #9b6dd6 !important;
-  font-size: 1.5rem !important;
-  margin-bottom: 1rem !important;
-  display: flex !important;
-  align-items: center !important;
-  gap: 0.5rem !important;
-}
-
-div[style*="gridTemplateColumns"] > div:nth-child(2) p {
-  color: #b8b9c9 !important;
-  margin-bottom: 0.5rem !important;
   font-size: 1rem !important;
-}
-
-div[style*="gridTemplateColumns"] > div:nth-child(2) p[style*="fontWeight: 'bold'"] {
-  color: #ffffff !important;
-  font-size: 1.125rem !important;
-  font-weight: 700 !important;
-}
-
-/* Ocultar seção de produtor do card Local (vai aparecer no final) */
-div[style*="gridTemplateColumns"] > div:nth-child(2) > div[style*="marginTop: '25px'"] {
-  display: none !important;
+  display: block !important;
+  margin: 0.25rem 0 !important;
 }
 
 /* ===================================
-   CARDS NORMAIS - FUNDO ESCURO
+   ESCONDE CARDS BRANCOS E REAPLICA
    =================================== */
-div[style*="backgroundColor: 'white'"],
-div[style*='backgroundColor: "white"'],
-div[style*="padding: '30px'"],
-div[style*="padding: '40px'"] {
+div[style*="white"] {
   background: #2a2d47 !important;
   border: 1px solid #3d4163 !important;
   border-radius: 16px !important;
-  padding: 2rem !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
-  width: 100% !important;
+  padding: 1.5rem !important;
   margin-bottom: 1.5rem !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
 }
 
 /* ===================================
-   TÍTULOS DOS CARDS
+   LOCAL - SEM CARD
    =================================== */
-h2 {
+div[style*="white"]:has(h3) {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-bottom: 1px solid #3d4163 !important;
+  border-radius: 0 !important;
+  padding: 1.5rem 0 2rem 0 !important;
+}
+
+/* ===================================
+   TÍTULOS
+   =================================== */
+h2,
+h3,
+h4 {
+  background: transparent !important;
   color: #9b6dd6 !important;
-  font-size: 1.75rem !important;
   font-weight: 700 !important;
-  margin: 0 0 1.5rem 0 !important;
-  display: flex !important;
-  align-items: center !important;
-  gap: 0.5rem !important;
+  margin-bottom: 1rem !important;
+}
+
+h2 {
+  font-size: 1.75rem !important;
 }
 
 h3 {
-  color: #9b6dd6 !important;
   font-size: 1.5rem !important;
-  font-weight: 700 !important;
-  margin: 0 0 1.25rem 0 !important;
 }
 
 h4 {
-  color: #ffffff !important;
   font-size: 1.125rem !important;
-  font-weight: 600 !important;
-  margin: 0 0 0.75rem 0 !important;
+  color: #ffffff !important;
 }
 
 /* ===================================
-   TEXTOS
+   PARÁGRAFOS
    =================================== */
 p {
+  background: transparent !important;
   color: #b8b9c9 !important;
-  line-height: 1.8 !important;
-  font-size: 1rem !important;
+  line-height: 1.7 !important;
+  margin-bottom: 0.75rem !important;
 }
 
-p strong,
-p b {
+p[style*="bold"] {
   color: #ffffff !important;
-}
-
-/* ===================================
-   BADGES
-   =================================== */
-span[style*="backgroundColor"][style*="borderRadius"] {
-  background: rgba(124, 77, 189, 0.2) !important;
-  color: #9b6dd6 !important;
-  border: 1px solid #7c4dbd !important;
-  border-radius: 20px !important;
-  padding: 0.5rem 1rem !important;
-}
-
-/* ===================================
-   CUPONS
-   =================================== */
-div[style*="#fff3cd"],
-div[style*="#d4edda"] {
-  border-radius: 16px !important;
-  padding: 2rem !important;
-  margin-bottom: 2rem !important;
-  order: 2 !important;
-}
-
-div[style*="#fff3cd"] {
-  background: linear-gradient(135deg, #f39c12, #f1c40f) !important;
-}
-
-div[style*="#fff3cd"] *,
-div[style*="#fff3cd"] h3,
-div[style*="#fff3cd"] p {
-  color: #000000 !important;
-}
-
-div[style*="#d4edda"] {
-  background: linear-gradient(135deg, #27ae60, #2ecc71) !important;
-}
-
-div[style*="#d4edda"] *,
-div[style*="#d4edda"] h3,
-div[style*="#d4edda"] p {
-  color: #ffffff !important;
-}
-
-/* ===================================
-   INPUTS
-   =================================== */
-input {
-  background: white !important;
-  color: #333 !important;
-  border: none !important;
-  border-radius: 12px !important;
-  padding: 1rem 1.5rem !important;
   font-weight: 700 !important;
 }
 
@@ -293,51 +176,34 @@ button {
   border-radius: 12px !important;
   font-weight: 700 !important;
   padding: 1rem 2rem !important;
-  cursor: pointer !important;
-  transition: all 0.2s !important;
   border: none !important;
+  cursor: pointer !important;
 }
 
-button[style*="#5d34a4"] {
+button[style*="5d34a4"] {
   background: linear-gradient(135deg, #7c4dbd, #9b6dd6) !important;
   color: white !important;
 }
 
-button[style*="#27ae60"] {
+button[style*="27ae60"] {
   background: linear-gradient(135deg, #27ae60, #2ecc71) !important;
   color: white !important;
 }
 
-button[style*="#f1c40f"],
-button[style*="#f39c12"] {
+button[style*="f1c40f"],
+button[style*="f39c12"] {
   background: linear-gradient(135deg, #f39c12, #f1c40f) !important;
   color: #000 !important;
 }
 
-button[style*="#dc3545"] {
+button[style*="dc3545"] {
   background: linear-gradient(135deg, #e74c3c, #dc3545) !important;
   color: white !important;
 }
 
-button[style*="#3498db"] {
-  background: linear-gradient(135deg, #3498db, #5dade2) !important;
-  color: white !important;
-}
-
-button[style*="#95a5a6"],
-button[style*="#ccc"],
-button:disabled {
-  background: #3d4163 !important;
-  color: #7a7b8f !important;
-}
-
 button * {
+  background: transparent !important;
   color: inherit !important;
-}
-
-button:hover:not(:disabled) {
-  transform: translateY(-2px) !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
 }
 
 /* ===================================
@@ -349,7 +215,6 @@ select {
   border: 2px solid #3d4163 !important;
   border-radius: 12px !important;
   padding: 0.875rem 1.25rem !important;
-  font-weight: 600 !important;
 }
 
 select option {
@@ -358,43 +223,68 @@ select option {
 }
 
 /* ===================================
-   SEÇÃO INGRESSOS
+   INPUT
    =================================== */
-/* Força ordem: Ingressos vem depois do Local */
-body > div > div > div[style*="padding: '40px'"]:has(h2) {
-  order: 2 !important;
+input {
+  background: white !important;
+  color: #333 !important;
+  border: none !important;
+  border-radius: 12px !important;
+  padding: 1rem 1.5rem !important;
 }
 
 /* ===================================
-   SETOR HEADER (ROXO)
+   CUPONS
    =================================== */
-div[style*="#5d34a4"] {
-  background: linear-gradient(135deg, #7c4dbd, #9b6dd6) !important;
+div[style*="fff3cd"] {
+  background: linear-gradient(135deg, #f39c12, #f1c40f) !important;
+  border: none !important;
+  border-radius: 16px !important;
+  padding: 2rem !important;
+  margin-bottom: 2rem !important;
+}
+
+div[style*="fff3cd"] * {
+  background: transparent !important;
+  color: #000 !important;
+}
+
+div[style*="d4edda"]:not([style*="padding: '20px'"]) {
+  background: linear-gradient(135deg, #27ae60, #2ecc71) !important;
+  border: none !important;
+}
+
+div[style*="d4edda"] * {
+  background: transparent !important;
   color: white !important;
+}
+
+/* ===================================
+   SETOR INGRESSOS
+   =================================== */
+div[style*="5d34a4"][style*="padding"] {
+  background: linear-gradient(135deg, #7c4dbd, #9b6dd6) !important;
   border-radius: 12px 12px 0 0 !important;
 }
 
-div[style*="#5d34a4"] *,
-div[style*="#5d34a4"] span,
-div[style*="#5d34a4"] div {
+div[style*="5d34a4"] * {
+  background: transparent !important;
   color: white !important;
 }
 
 /* ===================================
-   BORDAS DOS SETORES
+   BORDAS
    =================================== */
-div[style*="border: '2px solid #e0e0e0'"] {
-  border: 1px solid #3d4163 !important;
+div[style*="border"][style*="e0e0e0"] {
   background: #2a2d47 !important;
+  border: 1px solid #3d4163 !important;
   border-radius: 12px !important;
-  overflow: hidden !important;
-  margin-bottom: 1.5rem !important;
 }
 
 /* ===================================
-   TICKET ITEMS
+   TICKETS
    =================================== */
-div[style*="backgroundColor: '#fafafa'"] {
+div[style*="fafafa"] {
   background: #1e2139 !important;
   border: 1px solid #3d4163 !important;
   border-radius: 12px !important;
@@ -402,31 +292,30 @@ div[style*="backgroundColor: '#fafafa'"] {
   margin-bottom: 1rem !important;
 }
 
-div[style*="backgroundColor: '#d4edda'"][style*="padding: '20px'"] {
+div[style*="d4edda"][style*="padding: '20px'"] {
   background: rgba(46, 204, 113, 0.15) !important;
   border: 1px solid #2ecc71 !important;
-  border-radius: 12px !important;
 }
 
 /* ===================================
-   LOTE HEADER
+   LOTE
    =================================== */
-div[style*="backgroundColor: '#f8f9fa'"][style*="borderLeft"] {
+div[style*="f8f9fa"] {
   background: rgba(124, 77, 189, 0.1) !important;
   border-left: 4px solid #7c4dbd !important;
-  border-radius: 8px !important;
 }
 
-div[style*="backgroundColor: '#f8f9fa'"] * {
+div[style*="f8f9fa"] * {
+  background: transparent !important;
   color: #9b6dd6 !important;
 }
 
 /* ===================================
    CARRINHO
    =================================== */
-div[style*="border: '3px solid #5d34a4'"] {
-  border: 2px solid #7c4dbd !important;
+div[style*="border"][style*="5d34a4"] {
   background: #2a2d47 !important;
+  border: 2px solid #7c4dbd !important;
   border-radius: 16px !important;
   padding: 2rem !important;
 }
@@ -434,72 +323,72 @@ div[style*="border: '3px solid #5d34a4'"] {
 /* ===================================
    GARANTIAS
    =================================== */
-div[style*="backgroundColor: '#e8f8f5'"] {
+div[style*="e8f8f5"] {
   background: rgba(46, 204, 113, 0.1) !important;
   border: 1px solid #2ecc71 !important;
-  border-radius: 12px !important;
 }
 
-div[style*="#e8f8f5"] * {
+div[style*="e8f8f5"] * {
+  background: transparent !important;
   color: #2ecc71 !important;
 }
 
 /* ===================================
    PRODUTOS
    =================================== */
-div[style*="border: '1px solid #e0e0e0'"] {
-  border: 1px solid #3d4163 !important;
-  background: #2a2d47 !important;
-  border-radius: 16px !important;
-}
-
-div[style*="backgroundColor: '#f0f0f0'"] {
+div[style*="f0f0f0"] {
   background: #1e2139 !important;
 }
 
 /* ===================================
-   CORES ESPECÍFICAS
+   BADGES
    =================================== */
-*[style*="color: '#27ae60'"],
-*[style*="color: '#28a745'"] {
-  color: #2ecc71 !important;
-}
-
-*[style*="color: '#999'"] {
-  color: #7a7b8f !important;
-}
-
-*[style*="color: '#666'"] {
-  color: #b8b9c9 !important;
-}
-
-*[style*="color: '#2c3e50'"] {
-  color: #ffffff !important;
-}
-
-*[style*="color: '#5d34a4'"] {
+span[style*="backgroundColor"] {
+  background: rgba(124, 77, 189, 0.2) !important;
   color: #9b6dd6 !important;
+  border: 1px solid #7c4dbd !important;
+  border-radius: 20px !important;
+  padding: 0.5rem 1rem !important;
 }
 
 /* ===================================
-   PRODUTOR - VAI PARA O FINAL
+   CORES FORÇADAS
    =================================== */
-div[style*="borderTop: '1px solid #eee'"],
-div[style*="paddingTop: '25px'"][style*="borderTop"] {
-  order: 999 !important;
-  margin-top: 2rem !important;
-  padding-top: 2rem !important;
-  border-top: 1px solid #3d4163 !important;
+*[style*="27ae60"],
+*[style*="28a745"] {
+  color: #2ecc71 !important;
+}
+
+*[style*="999"] {
+  color: #7a7b8f !important;
+}
+
+*[style*="666"] {
+  color: #b8b9c9 !important;
+}
+
+*[style*="2c3e50"] {
+  color: #ffffff !important;
+}
+
+/* ===================================
+   PRODUTOR
+   =================================== */
+div[style*="borderTop"][style*="eee"] {
   background: transparent !important;
-  box-shadow: none !important;
+  border-top: 1px solid #3d4163 !important;
   border-left: none !important;
   border-right: none !important;
   border-bottom: none !important;
   border-radius: 0 !important;
+  box-shadow: none !important;
+  padding-top: 2rem !important;
+  margin-top: 2rem !important;
 }
 
-img[style*="borderRadius: '50%'"] {
+img[style*="50%"] {
   border: 2px solid #7c4dbd !important;
+  background: transparent !important;
 }
 
 /* ===================================
@@ -532,22 +421,15 @@ img[style*="borderRadius: '50%'"] {
 /* ===================================
    TEMA CLARO
    =================================== */
-[data-theme="light"] body {
-  background: #f5f6fa !important;
-}
-
-[data-theme="light"] body > div,
-[data-theme="light"] body > div > div {
-  background: #f5f6fa !important;
-}
-
-[data-theme="light"] * {
+[data-theme="light"] html,
+[data-theme="light"] html *,
+[data-theme="light"] body,
+[data-theme="light"] body * {
+  background-color: #f5f6fa !important;
   color: #1a1a1a !important;
 }
 
-[data-theme="light"] div[style*="backgroundColor: 'white'"],
-[data-theme="light"] div[style*="padding: '30px'"],
-[data-theme="light"] div[style*="padding: '40px'"] {
+[data-theme="light"] div[style*="white"] {
   background: white !important;
   border-color: #e1e4e8 !important;
 }
@@ -561,39 +443,18 @@ img[style*="borderRadius: '50%'"] {
   color: #6c757d !important;
 }
 
-[data-theme="light"] select {
-  background: white !important;
-  color: #1a1a1a !important;
-}
-
 /* ===================================
-   RESPONSIVO
+   MOBILE
    =================================== */
 @media (max-width: 640px) {
-  body > div > div:first-child {
-    padding: 0 1rem !important;
-  }
-
-  /* IMAGEM RETANGULAR NO MOBILE */
-  body > div > div > div:nth-child(1) img,
-  body > div > div > div:first-of-type img {
-    height: auto !important;
+  img {
     min-height: 180px !important;
     max-height: 250px !important;
-    aspect-ratio: 16/9 !important;
-    border-radius: 12px !important;
+    margin: 1.5rem 0 1rem 0 !important;
   }
 
   h1 {
     font-size: 1.75rem !important;
-  }
-
-  h1 + div {
-    gap: 0.375rem !important;
-  }
-
-  h1 + div span {
-    font-size: 0.95rem !important;
   }
 
   .theme-toggle {
@@ -601,6 +462,5 @@ img[style*="borderRadius: '50%'"] {
     height: 50px !important;
     bottom: 1rem !important;
     right: 1rem !important;
-    font-size: 1.25rem !important;
   }
 }
