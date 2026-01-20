@@ -8,7 +8,7 @@ import MapaAssentos from '../../../components/MapaAssentos';
 import { getTeatroConfig } from '../../../utils/teatros-config';
 
 // 👇 IMPORTAR O CSS AQUI
-import './page.css';
+import './evento/[id]/page.css';
 
 function ProdutorInfo({ produtorId }) {
   const supabase = createClient();
