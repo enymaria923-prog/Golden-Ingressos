@@ -45,13 +45,6 @@ function PixPaymentContent() {
     setTimeout(() => setCopiado(false), 3000);
   };
 
-  // Função para validar se é um UUID válido
-  const isValidUUID = (uuid) => {
-    if (!uuid) return false;
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    return uuidRegex.test(uuid);
-  };
-
   const simularPagamento = async () => {
     setVerificando(true);
 
@@ -146,20 +139,13 @@ function PixPaymentContent() {
             data_compra: new Date().toISOString()
           };
 
-          // Adicionar evento_id SOMENTE se for UUID válido
-          if (isValidUUID(pedido.evento_id)) {
+          // Adicionar campos opcionais apenas se existirem e forem UUIDs válidos
+          if (pedido.evento_id) {
             novoIngresso.evento_id = pedido.evento_id;
-            console.log('✅ evento_id válido:', pedido.evento_id);
-          } else {
-            console.log('⚠️ evento_id inválido, será ignorado:', pedido.evento_id);
           }
           
-          // Adicionar sessao_id SOMENTE se for UUID válido
-          if (isValidUUID(pedido.sessao_id)) {
+          if (pedido.sessao_id) {
             novoIngresso.sessao_id = pedido.sessao_id;
-            console.log('✅ sessao_id válido:', pedido.sessao_id);
-          } else {
-            console.log('⚠️ sessao_id inválido, será ignorado:', pedido.sessao_id);
           }
 
           if (item.assento) {
