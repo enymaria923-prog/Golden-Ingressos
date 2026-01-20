@@ -10,14 +10,13 @@ function PixPaymentContent() {
   const supabase = createClient();
 
   const [copiado, setCopiado] = useState(false);
-  const [temporizador, setTemporizador] = useState(300); // 5 minutos
+  const [temporizador, setTemporizador] = useState(300);
   const [verificando, setVerificando] = useState(false);
 
   const pedidoId = searchParams.get('pedido_id');
   const valor = searchParams.get('valor');
   const nome = searchParams.get('nome');
 
-  // QR Code simulado (código PIX fictício)
   const codigoPix = `00020126580014BR.GOV.BCB.PIX0136${pedidoId}${Math.random().toString(36).substring(7)}520400005303986540${valor}5802BR5925${nome}6009SAO PAULO62070503***6304${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
   useEffect(() => {
@@ -50,8 +49,23 @@ function PixPaymentContent() {
     setVerificando(true);
 
     try {
-      // Aguardar 2 segundos para simular verificação
+      console.log('🔄 Iniciando simulação de pagamento...');
+      
       await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Buscar pedido
+      const { data: pedido, error: pedidoErro } = await supabase
+        .from('pedidos')
+        .select('*')
+        .eq('id', pedidoId)
+        .single();
+
+      if (pedidoErro) {
+        console.error('❌ Erro ao buscar pedido:', pedidoErro);
+        throw pedidoErro;
+      }
+
+      console.log('📦 Pedido encontrado:', pedido);
 
       // Criar registro de pagamento
       const { error: pagamentoError } = await supabase
@@ -64,7 +78,12 @@ function PixPaymentContent() {
           pago_em: new Date().toISOString()
         }]);
 
-      if (pagamentoError) throw pagamentoError;
+      if (pagamentoError) {
+        console.error('❌ Erro ao criar pagamento:', pagamentoError);
+        throw pagamentoError;
+      }
+
+      console.log('💰 Pagamento criado!');
 
       // Atualizar status do pedido
       const { error: pedidoError } = await supabase
@@ -75,13 +94,76 @@ function PixPaymentContent() {
         })
         .eq('id', pedidoId);
 
-      if (pedidoError) throw pedidoError;
+      if (pedidoError) {
+        console.error('❌ Erro ao atualizar pedido:', pedidoError);
+        throw pedidoError;
+      }
 
-      // Redirecionar para meus ingressos
+      console.log('✅ Pedido atualizado para PAGO!');
+
+      // Processar itens e gerar ingressos
+      let itens = [];
+      
+      if (pedido.itens) {
+        // Verificar se é string ou objeto
+        if (typeof pedido.itens === 'string') {
+          itens = JSON.parse(pedido.itens);
+        } else {
+          itens = pedido.itens;
+        }
+      }
+
+      console.log('🎫 Itens do pedido:', itens);
+
+      if (!Array.isArray(itens) || itens.length === 0) {
+        console.error('❌ Nenhum item encontrado no pedido!');
+        throw new Error('Nenhum item encontrado no pedido');
+      }
+
+      // Gerar ingressos individuais
+      const ingressosParaGerar = [];
+
+      itens.forEach((item, index) => {
+        const quantidade = item.quantidade || 1;
+        console.log(`🎟️ Gerando ${quantidade} ingresso(s) do tipo: ${item.tipo}`);
+        
+        for (let i = 0; i < quantidade; i++) {
+          const qrCode = `INGRESSO-${pedidoId}-${item.ingresso_id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          
+          ingressosParaGerar.push({
+            pedido_id: pedidoId,
+            tipo_ingresso: item.tipo,
+            valor: item.valor_unitario,
+            assento: item.assento || null,
+            qr_code: qrCode,
+            validado: false
+          });
+        }
+      });
+
+      console.log(`📝 Total de ingressos a gerar: ${ingressosParaGerar.length}`);
+      console.log('📋 Ingressos:', ingressosParaGerar);
+
+      if (ingressosParaGerar.length > 0) {
+        const { data: ingressosGerados, error: ingressosError } = await supabase
+          .from('ingressos_vendidos')
+          .insert(ingressosParaGerar)
+          .select();
+
+        if (ingressosError) {
+          console.error('❌ Erro ao gerar ingressos:', ingressosError);
+          throw ingressosError;
+        }
+
+        console.log('🎉 Ingressos gerados com sucesso:', ingressosGerados);
+      }
+
+      // Redirecionar
+      console.log('🚀 Redirecionando para meus-ingressos...');
       router.push('/meus-ingressos');
 
     } catch (error) {
-      console.error('Erro ao simular pagamento:', error);
+      console.error('❌ Erro ao simular pagamento:', error);
       alert('Erro ao processar pagamento: ' + error.message);
     } finally {
       setVerificando(false);
@@ -92,17 +174,14 @@ function PixPaymentContent() {
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '40px 20px' }}>
       <div style={{ maxWidth: '600px', margin: '0 auto' }}>
         
-        {/* Card Principal */}
         <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', textAlign: 'center' }}>
           
-          {/* Cabeçalho */}
           <div style={{ marginBottom: '30px' }}>
             <div style={{ fontSize: '48px', marginBottom: '15px' }}>📱</div>
             <h1 style={{ color: '#5d34a4', margin: '0 0 10px 0', fontSize: '32px' }}>Pagamento via PIX</h1>
             <p style={{ color: '#666', fontSize: '16px', margin: 0 }}>Escaneie o QR Code ou copie o código</p>
           </div>
 
-          {/* Valor */}
           <div style={{ 
             backgroundColor: '#f0e6ff', 
             padding: '20px', 
@@ -116,7 +195,6 @@ function PixPaymentContent() {
             </div>
           </div>
 
-          {/* QR Code Simulado */}
           <div style={{
             width: '250px',
             height: '250px',
@@ -135,7 +213,6 @@ function PixPaymentContent() {
             </div>
           </div>
 
-          {/* Código PIX */}
           <div style={{ marginBottom: '30px' }}>
             <label style={{ 
               display: 'block', 
@@ -183,7 +260,6 @@ function PixPaymentContent() {
             </button>
           </div>
 
-          {/* Temporizador */}
           <div style={{ 
             padding: '15px', 
             backgroundColor: temporizador < 60 ? '#fff3cd' : '#f0e6ff',
@@ -202,7 +278,6 @@ function PixPaymentContent() {
             </div>
           </div>
 
-          {/* Instruções */}
           <div style={{ 
             textAlign: 'left', 
             padding: '20px', 
@@ -219,7 +294,6 @@ function PixPaymentContent() {
             </ol>
           </div>
 
-          {/* Botão de Simulação (APENAS PARA TESTE) */}
           <div style={{
             padding: '20px',
             backgroundColor: '#fff3cd',
@@ -249,7 +323,6 @@ function PixPaymentContent() {
             </button>
           </div>
 
-          {/* Botão Cancelar */}
           <button
             onClick={() => router.back()}
             style={{
@@ -269,7 +342,6 @@ function PixPaymentContent() {
 
         </div>
 
-        {/* Avisos */}
         <div style={{ 
           marginTop: '20px', 
           textAlign: 'center',
