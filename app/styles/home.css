@@ -327,15 +327,15 @@ body {
 }
 
 .event-content {
-  padding: 14px;
+  padding: 18px;
 }
 
 .event-title {
-  margin: 0 0 10px 0;
+  margin: 0 0 12px 0;
   color: var(--text-primary);
-  font-size: 20px;
-  font-weight: 800;
-  line-height: 1.2;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.3;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -345,33 +345,33 @@ body {
 
 .event-meta {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
   flex-wrap: wrap;
 }
 
 .event-category {
   background: var(--category-bg);
   color: var(--text-primary);
-  padding: 4px 10px;
+  padding: 5px 12px;
   border-radius: 16px;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .event-date {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-secondary);
   font-weight: 500;
 }
 
 .event-location {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-secondary);
-  margin-bottom: 10px;
+  margin-bottom: 16px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -382,19 +382,19 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-top: 10px;
+  padding-top: 14px;
   border-top: 1px solid var(--border-color);
-  gap: 10px;
+  gap: 12px;
 }
 
 .price-info {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
 }
 
 .price-label {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-secondary);
   text-transform: uppercase;
   font-weight: 600;
@@ -402,7 +402,7 @@ body {
 }
 
 .price-value {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 800;
   color: var(--price-color);
   line-height: 1;
@@ -494,7 +494,7 @@ body {
   }
 
   .logo-golden {
-    font-size: 28px;
+    font-size: 24px;
     letter-spacing: 1.5px;
   }
   
@@ -557,42 +557,41 @@ body {
   }
   
   .event-title {
-    font-size: 18px;
-    min-height: 44px;
-    margin-bottom: 8px;
-    font-weight: 800;
+    font-size: 16px;
+    min-height: 40px;
+    margin-bottom: 10px;
   }
 
   .event-meta {
-    gap: 6px;
-    margin-bottom: 8px;
+    gap: 8px;
+    margin-bottom: 10px;
   }
 
   .event-category {
-    padding: 3px 8px;
-    font-size: 9px;
+    padding: 4px 10px;
+    font-size: 10px;
   }
 
   .event-date {
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .event-location {
-    font-size: 11px;
-    margin-bottom: 8px;
+    font-size: 12px;
+    margin-bottom: 12px;
   }
 
   .event-price-section {
-    padding-top: 8px;
-    gap: 8px;
+    padding-top: 12px;
+    gap: 10px;
   }
 
   .price-label {
-    font-size: 9px;
+    font-size: 10px;
   }
 
   .price-value {
-    font-size: 17px;
+    font-size: 18px;
   }
 
   .btn-comprar {
