@@ -34,6 +34,26 @@ export default function EmitirCortesiasPage() {
     carregarDados();
   }, [eventoId]);
 
+  // Auto-selecionar quando houver apenas uma opção
+  useEffect(() => {
+    if (sessoes.length === 1 && !sessaoSelecionada) {
+      setSessaoSelecionada(sessoes[0].id);
+    }
+  }, [sessoes]);
+
+  useEffect(() => {
+    if (setoresFiltrados.length === 1 && !setorSelecionado) {
+      setSetorSelecionado(setoresFiltrados[0].nome);
+    }
+  }, [setoresFiltrados]);
+
+  useEffect(() => {
+    const tipos = tiposFiltrados();
+    if (tipos.length === 1 && !tipoSelecionado) {
+      setTipoSelecionado(tipos[0].id);
+    }
+  }, [setorSelecionado, loteSelecionado]);
+
   const carregarDados = async () => {
     try {
       // Carregar evento
@@ -255,7 +275,7 @@ export default function EmitirCortesiasPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             
             {/* Sessão */}
-            {sessoes.length > 1 && (
+            {sessoes.length > 1 ? (
               <div>
                 <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>
                   🎬 Sessão *
@@ -284,10 +304,20 @@ export default function EmitirCortesiasPage() {
                   ))}
                 </select>
               </div>
+            ) : sessoes.length === 1 && (
+              <div style={{
+                padding: '12px',
+                backgroundColor: '#e8f5e9',
+                borderRadius: '8px',
+                fontSize: '14px',
+                color: '#2e7d32'
+              }}>
+                ✓ Sessão: {sessoes[0].numero ? `Sessão ${sessoes[0].numero}` : 'Sessão Principal'} - {new Date(sessoes[0].data).toLocaleDateString('pt-BR')} às {sessoes[0].hora}
+              </div>
             )}
 
             {/* Setor */}
-            {sessaoSelecionada && setoresFiltrados.length > 0 && (
+            {sessaoSelecionada && setoresFiltrados.length > 1 ? (
               <div>
                 <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>
                   🏟️ Setor *
@@ -314,6 +344,16 @@ export default function EmitirCortesiasPage() {
                     </option>
                   ))}
                 </select>
+              </div>
+            ) : sessaoSelecionada && setoresFiltrados.length === 1 && (
+              <div style={{
+                padding: '12px',
+                backgroundColor: '#e8f5e9',
+                borderRadius: '8px',
+                fontSize: '14px',
+                color: '#2e7d32'
+              }}>
+                ✓ Setor: {setoresFiltrados[0].nome}
               </div>
             )}
 
@@ -348,7 +388,7 @@ export default function EmitirCortesiasPage() {
             )}
 
             {/* Tipo de Ingresso */}
-            {setorSelecionado && (
+            {setorSelecionado && tiposFiltrados().length > 1 ? (
               <div>
                 <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>
                   🎫 Tipo de Ingresso *
@@ -374,6 +414,16 @@ export default function EmitirCortesiasPage() {
                     );
                   })}
                 </select>
+              </div>
+            ) : setorSelecionado && tiposFiltrados().length === 1 && (
+              <div style={{
+                padding: '12px',
+                backgroundColor: '#e8f5e9',
+                borderRadius: '8px',
+                fontSize: '14px',
+                color: '#2e7d32'
+              }}>
+                ✓ Tipo: {tiposFiltrados()[0].tipo} - R$ {parseFloat(tiposFiltrados()[0].valor).toFixed(2)}
               </div>
             )}
 
