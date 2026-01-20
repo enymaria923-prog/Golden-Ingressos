@@ -866,6 +866,25 @@ export default function EventoDetalhesPage() {
             </Link>
           </div>
         )}
+<Link 
+  href={`/produtor/evento/${eventoId}/emitir-cortesias`}
+  style={{
+    flex: 1,
+    backgroundColor: '#27ae60',
+    color: 'white',
+    padding: '15px',
+    border: 'none',
+    borderRadius: '8px',
+    fontWeight: 'bold',
+    fontSize: '16px',
+    cursor: 'pointer',
+    textDecoration: 'none',
+    display: 'block',
+    textAlign: 'center'
+  }}
+>
+  🎁 Emitir Cortesias
+</Link>
 
         {/* DETALHAMENTO DE INGRESSOS POR SESSÃO */}
         <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', marginBottom: '25px' }}>
