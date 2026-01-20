@@ -1,589 +1,439 @@
 /* ===================================
-   VARIÁVEIS DE TEMA - BASEADO NO MAPLE
+   FORÇA TOTAL - SOBRESCREVE TUDO
    =================================== */
-:root {
-  /* Tema Escuro (padrão) - Azul como o Maple */
-  --bg-primary: #1e2139;
-  --bg-secondary: #16182b;
-  --bg-card: #2a2d47;
-  --text-primary: #ffffff;
-  --text-secondary: #b8b9c9;
-  --text-muted: #7a7b8f;
-  --border-color: #3d4163;
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
-  --accent-primary: #7c4dbd;
-  --accent-secondary: #9b6dd6;
-  --success: #2ecc71;
-  --warning: #f1c40f;
-  --danger: #e74c3c;
-  --info: #3498db;
+
+/* FUNDO AZUL - FORÇA BRUTA */
+html {
+  background: #16182b !important;
 }
 
-[data-theme="light"] {
-  /* Tema Claro (opcional) */
-  --bg-primary: #ffffff;
-  --bg-secondary: #f5f6fa;
-  --bg-card: #ffffff;
-  --text-primary: #1a1a1a;
-  --text-secondary: #6c757d;
-  --text-muted: #adb5bd;
-  --border-color: #e1e4e8;
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
-  --accent-primary: #5d34a4;
-  --accent-secondary: #7c4dbd;
-  --success: #27ae60;
-  --warning: #f39c12;
-  --danger: #dc3545;
-  --info: #3498db;
-}
-
-/* ===================================
-   RESET GLOBAL
-   =================================== */
-* {
-  box-sizing: border-box !important;
-}
-
-html, body {
+body {
+  background: #16182b !important;
+  color: #ffffff !important;
   margin: 0 !important;
   padding: 0 !important;
-  background-color: var(--bg-secondary) !important;
-  color: var(--text-primary) !important;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif !important;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif !important;
+}
+
+body * {
+  color: #ffffff !important;
+}
+
+body > div {
+  background: #16182b !important;
+}
+
+body > div > div {
+  background: #16182b !important;
 }
 
 /* ===================================
-   HEADER - GRADIENTE ROXO
+   HEADER ROXO
    =================================== */
-header {
-  background: linear-gradient(135deg, #7c4dbd 0%, #9b6dd6 100%) !important;
+header,
+body > div > header {
+  background: linear-gradient(135deg, #7c4dbd, #9b6dd6) !important;
   padding: 1rem 2rem !important;
-  box-shadow: var(--shadow-md) !important;
-  position: sticky !important;
-  top: 0 !important;
-  z-index: 100 !important;
-  margin-bottom: 0 !important;
+  margin: 0 !important;
 }
 
-header a {
+header a,
+header * {
   color: white !important;
-  text-decoration: none !important;
-  font-size: 1rem !important;
-  font-weight: 500 !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 0.5rem !important;
-  transition: opacity 0.2s !important;
-}
-
-header a:hover {
-  opacity: 0.9 !important;
 }
 
 /* ===================================
-   CONTAINER PRINCIPAL - CENTRALIZADO
+   CONTAINER - CENTRALIZADO 900PX
    =================================== */
-body > div,
-body > div > div:first-child {
-  background-color: var(--bg-secondary) !important;
-}
-
-body > div > div:first-child {
+body > div > div:first-child,
+body > div > div {
   max-width: 900px !important;
   margin: 0 auto !important;
   padding: 0 1.5rem !important;
+  background: #16182b !important;
 }
 
 /* ===================================
-   IMAGEM DO EVENTO - TOPO
+   IMAGEM DO BANNER
    =================================== */
-body > div > div > div:first-of-type {
-  margin-top: 2.5rem !important;
+body > div > div > div:nth-child(1) {
+  margin-top: 2rem !important;
   margin-bottom: 2rem !important;
-  text-align: center !important;
-  background-color: transparent !important;
+  background: transparent !important;
 }
 
-body > div > div > div:first-of-type img {
-  width: 100% !important;
-  max-width: 900px !important;
-  height: 450px !important;
-  object-fit: cover !important;
+body > div > div > div:nth-child(1) img,
+img {
   border-radius: 20px !important;
-  box-shadow: var(--shadow-lg) !important;
-  transition: transform 0.3s ease !important;
-}
-
-body > div > div > div:first-of-type img:hover {
-  transform: scale(1.02) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
+  max-height: 450px !important;
 }
 
 /* ===================================
-   TÍTULO DO EVENTO
+   TÍTULO
    =================================== */
 h1 {
   text-align: center !important;
-  font-size: clamp(2.25rem, 5vw, 3rem) !important;
-  color: var(--text-primary) !important;
-  margin: 2rem 0 1rem 0 !important;
+  color: #ffffff !important;
+  font-size: 3rem !important;
   font-weight: 800 !important;
-  letter-spacing: -0.03em !important;
-  background-color: transparent !important;
-  line-height: 1.2 !important;
+  margin: 2rem 0 1rem 0 !important;
+  background: transparent !important;
 }
 
 /* ===================================
-   META INFO (DATA, HORA) - CENTRALIZADA
+   DATA E HORA (ABAIXO DO TÍTULO)
    =================================== */
 h1 + div {
   text-align: center !important;
-  font-size: 1.125rem !important;
-  color: var(--accent-secondary) !important;
-  font-weight: 600 !important;
+  background: transparent !important;
   margin-bottom: 3rem !important;
-  display: flex !important;
-  justify-content: center !important;
-  align-items: center !important;
-  gap: 2rem !important;
-  flex-wrap: wrap !important;
-  background-color: transparent !important;
 }
 
 h1 + div span {
-  color: var(--accent-secondary) !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 0.5rem !important;
+  color: #9b6dd6 !important;
+  font-weight: 600 !important;
+  font-size: 1.125rem !important;
 }
 
 /* ===================================
-   ABOLIR GRID 2 COLUNAS - LAYOUT VERTICAL
+   GRID - FORÇA LAYOUT VERTICAL (NÃO 2 COLUNAS)
    =================================== */
+body > div > div > div[style*="grid"],
 div[style*="gridTemplateColumns"] {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 1.5rem !important;
-  margin-bottom: 2rem !important;
-  background-color: transparent !important;
-  grid-template-columns: unset !important;
+  display: block !important;
+  grid-template-columns: none !important;
+  width: 100% !important;
+  background: transparent !important;
+}
+
+div[style*="gridTemplateColumns"] > div {
+  width: 100% !important;
+  margin-bottom: 1.5rem !important;
 }
 
 /* ===================================
-   CARDS - ESTILO MAPLE (ESCURO COM BORDA)
+   CARDS - FUNDO ESCURO AZULADO
    =================================== */
-div[style*="backgroundColor"][style*="white"],
+div[style*="backgroundColor: 'white'"],
+div[style*='backgroundColor: "white"'],
+div[style*="backgroundColor:'white'"],
+div[style*="background-color: white"],
 div[style*="padding: '30px'"],
-div[style*="padding: '40px'"],
-div[style*="borderRadius: '12px'"] {
-  background-color: var(--bg-card) !important;
-  border: 1px solid var(--border-color) !important;
-  box-shadow: var(--shadow-sm) !important;
+div[style*="padding: '40px'"] {
+  background-color: #2a2d47 !important;
+  background: #2a2d47 !important;
+  border: 1px solid #3d4163 !important;
   border-radius: 16px !important;
   padding: 2rem !important;
-  transition: all 0.3s ease !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
   width: 100% !important;
-}
-
-div[style*="backgroundColor"][style*="white"]:hover {
-  box-shadow: var(--shadow-md) !important;
-  border-color: var(--accent-primary) !important;
+  margin-bottom: 1.5rem !important;
 }
 
 /* ===================================
-   TÍTULOS DENTRO DOS CARDS
+   TÍTULOS DOS CARDS
    =================================== */
 h2 {
-  color: var(--accent-primary) !important;
-  font-weight: 700 !important;
+  color: #9b6dd6 !important;
   font-size: 1.75rem !important;
-  margin: 0 0 1.5rem 0 !important;
-  display: flex !important;
-  align-items: center !important;
-  gap: 0.5rem !important;
+  font-weight: 700 !important;
+  margin-bottom: 1.5rem !important;
 }
 
 h3 {
-  color: var(--accent-primary) !important;
-  font-weight: 700 !important;
+  color: #9b6dd6 !important;
   font-size: 1.5rem !important;
-  margin: 0 0 1.25rem 0 !important;
-  display: flex !important;
-  align-items: center !important;
-  gap: 0.5rem !important;
+  font-weight: 700 !important;
+  margin-bottom: 1.25rem !important;
 }
 
 h4 {
-  color: var(--text-primary) !important;
-  font-weight: 600 !important;
+  color: #ffffff !important;
   font-size: 1.125rem !important;
-  margin: 0 0 0.75rem 0 !important;
+  font-weight: 600 !important;
 }
 
 /* ===================================
-   PARÁGRAFOS E TEXTOS
+   TEXTOS
    =================================== */
 p {
-  color: var(--text-secondary) !important;
+  color: #b8b9c9 !important;
   line-height: 1.8 !important;
-  margin-bottom: 1rem !important;
   font-size: 1rem !important;
 }
 
-/* SOBRE O EVENTO - Descrição */
-div[style*="backgroundColor"][style*="white"]:first-of-type p {
-  color: var(--text-secondary) !important;
-  line-height: 1.9 !important;
-}
-
-/* LOCAL - Informações */
-p[style*="fontSize: '18px'"][style*="fontWeight: 'bold'"] {
-  color: var(--text-primary) !important;
-  font-weight: 700 !important;
-  font-size: 1.25rem !important;
-  margin-bottom: 0.5rem !important;
-}
-
-p[style*="fontSize: '15px'"],
-p[style*="fontSize: '14px'"] {
-  color: var(--text-secondary) !important;
-  font-size: 0.95rem !important;
-  margin-bottom: 0.375rem !important;
+p strong,
+p b {
+  color: #ffffff !important;
 }
 
 /* ===================================
-   BADGES E TAGS
+   BADGES
    =================================== */
-span[style*="backgroundColor"][style*="borderRadius"] {
-  background-color: rgba(124, 77, 189, 0.15) !important;
-  color: var(--accent-secondary) !important;
-  border: 1px solid var(--accent-primary) !important;
+span[style*="backgroundColor"] {
+  background: rgba(124, 77, 189, 0.2) !important;
+  color: #9b6dd6 !important;
+  border: 1px solid #7c4dbd !important;
   border-radius: 20px !important;
   padding: 0.5rem 1rem !important;
-  font-weight: 600 !important;
-  transition: all 0.2s !important;
-  display: inline-block !important;
-  margin-top: 1rem !important;
-}
-
-span[style*="backgroundColor"][style*="borderRadius"]:hover {
-  background-color: rgba(124, 77, 189, 0.25) !important;
-  transform: translateY(-2px) !important;
 }
 
 /* ===================================
-   SEÇÃO DE CUPONS - AMARELO VIBRANTE
+   CUPONS - AMARELO
    =================================== */
 div[style*="#fff3cd"],
 div[style*="#d4edda"] {
   border-radius: 16px !important;
-  box-shadow: var(--shadow-md) !important;
-  margin-bottom: 2rem !important;
   padding: 2rem !important;
-  border: none !important;
+  margin-bottom: 2rem !important;
 }
 
 div[style*="#fff3cd"] {
-  background: linear-gradient(135deg, #f39c12 0%, #f1c40f 100%) !important;
+  background: linear-gradient(135deg, #f39c12, #f1c40f) !important;
 }
 
+div[style*="#fff3cd"] *,
 div[style*="#fff3cd"] h3,
-div[style*="#fff3cd"] p,
-div[style*="#fff3cd"] div {
-  color: rgba(0, 0, 0, 0.9) !important;
+div[style*="#fff3cd"] p {
+  color: #000000 !important;
 }
 
 div[style*="#d4edda"] {
-  background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%) !important;
+  background: linear-gradient(135deg, #27ae60, #2ecc71) !important;
 }
 
+div[style*="#d4edda"] *,
 div[style*="#d4edda"] h3,
-div[style*="#d4edda"] p,
-div[style*="#d4edda"] div {
-  color: white !important;
+div[style*="#d4edda"] p {
+  color: #ffffff !important;
 }
 
-/* Input de cupom */
-input[type="text"] {
-  background-color: white !important;
+/* ===================================
+   INPUTS
+   =================================== */
+input {
+  background: white !important;
   color: #333 !important;
   border: none !important;
   border-radius: 12px !important;
   padding: 1rem 1.5rem !important;
-  font-size: 1rem !important;
   font-weight: 700 !important;
-  transition: all 0.2s !important;
-  box-shadow: var(--shadow-sm) !important;
-}
-
-input[type="text"]:focus {
-  outline: none !important;
-  box-shadow: 0 0 0 3px rgba(124, 77, 189, 0.3) !important;
 }
 
 /* ===================================
-   BOTÕES - MODERNOS E VIBRANTES
+   BOTÕES
    =================================== */
 button {
-  border: none !important;
   border-radius: 12px !important;
   font-weight: 700 !important;
-  cursor: pointer !important;
-  transition: all 0.2s ease !important;
-  box-shadow: var(--shadow-sm) !important;
   padding: 1rem 2rem !important;
-  font-size: 1rem !important;
+  cursor: pointer !important;
+  transition: all 0.2s !important;
+  border: none !important;
+}
+
+button[style*="#5d34a4"],
+button[style*="5d34a4"] {
+  background: linear-gradient(135deg, #7c4dbd, #9b6dd6) !important;
+  color: white !important;
+}
+
+button[style*="#27ae60"],
+button[style*="27ae60"] {
+  background: linear-gradient(135deg, #27ae60, #2ecc71) !important;
+  color: white !important;
+}
+
+button[style*="#f1c40f"],
+button[style*="#f39c12"],
+button[style*="f1c40f"],
+button[style*="f39c12"] {
+  background: linear-gradient(135deg, #f39c12, #f1c40f) !important;
+  color: #000 !important;
+}
+
+button[style*="#dc3545"],
+button[style*="dc3545"] {
+  background: linear-gradient(135deg, #e74c3c, #dc3545) !important;
+  color: white !important;
+}
+
+button[style*="#3498db"],
+button[style*="3498db"] {
+  background: linear-gradient(135deg, #3498db, #5dade2) !important;
+  color: white !important;
+}
+
+button[style*="#95a5a6"],
+button[style*="#ccc"],
+button:disabled {
+  background: #3d4163 !important;
+  color: #7a7b8f !important;
+}
+
+button * {
+  color: inherit !important;
 }
 
 button:hover:not(:disabled) {
   transform: translateY(-2px) !important;
-  box-shadow: var(--shadow-md) !important;
-}
-
-button:active:not(:disabled) {
-  transform: translateY(0) !important;
-}
-
-button:disabled {
-  cursor: not-allowed !important;
-  opacity: 0.5 !important;
-  filter: grayscale(0.5) !important;
-}
-
-/* Botões roxos (accent) */
-button[style*="#5d34a4"] {
-  background: linear-gradient(135deg, #7c4dbd 0%, #9b6dd6 100%) !important;
-  color: white !important;
-}
-
-button[style*="#5d34a4"]:hover:not(:disabled) {
-  background: linear-gradient(135deg, #8b5acc 0%, #aa7ce5 100%) !important;
-}
-
-/* Botões verdes (success) */
-button[style*="#27ae60"] {
-  background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%) !important;
-  color: white !important;
-}
-
-button[style*="#27ae60"]:hover:not(:disabled) {
-  background: linear-gradient(135deg, #2ecc71 0%, #3ddc81 100%) !important;
-}
-
-/* Botões amarelos (warning) */
-button[style*="#f1c40f"],
-button[style*="#f39c12"] {
-  background: linear-gradient(135deg, #f39c12 0%, #f1c40f 100%) !important;
-  color: #000 !important;
-  font-weight: 800 !important;
-}
-
-/* Botões vermelhos (danger) */
-button[style*="#dc3545"] {
-  background: linear-gradient(135deg, #e74c3c 0%, #dc3545 100%) !important;
-  color: white !important;
-}
-
-/* Botões cinzas */
-button[style*="#95a5a6"],
-button[style*="#ccc"] {
-  background-color: var(--bg-tertiary) !important;
-  color: var(--text-secondary) !important;
-}
-
-/* Botão azul (info) */
-button[style*="#3498db"] {
-  background: linear-gradient(135deg, #3498db 0%, #5dade2 100%) !important;
-  color: white !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
 }
 
 /* ===================================
-   SELECT DROPDOWNS
+   SELECT
    =================================== */
 select {
-  background-color: var(--bg-card) !important;
-  color: var(--text-primary) !important;
-  border: 2px solid var(--border-color) !important;
+  background: #2a2d47 !important;
+  color: #ffffff !important;
+  border: 2px solid #3d4163 !important;
   border-radius: 12px !important;
   padding: 0.875rem 1.25rem !important;
   font-weight: 600 !important;
-  cursor: pointer !important;
-  transition: all 0.2s !important;
-}
-
-select:hover {
-  border-color: var(--accent-primary) !important;
-}
-
-select:focus {
-  outline: none !important;
-  border-color: var(--accent-primary) !important;
-  box-shadow: 0 0 0 3px rgba(124, 77, 189, 0.2) !important;
 }
 
 select option {
-  background-color: var(--bg-card) !important;
-  color: var(--text-primary) !important;
+  background: #2a2d47 !important;
+  color: #ffffff !important;
 }
 
 /* ===================================
-   INGRESSOS - ESTILO MAPLE
+   SETOR HEADER (ROXO)
    =================================== */
-div[style*="backgroundColor: 'white'"][style*="padding: '40px'"] {
-  background-color: var(--bg-card) !important;
-}
-
-/* Header do Setor - Roxo */
-div[style*="#5d34a4"][style*="color: 'white'"] {
-  background: linear-gradient(135deg, #7c4dbd 0%, #9b6dd6 100%) !important;
+div[style*="#5d34a4"] {
+  background: linear-gradient(135deg, #7c4dbd, #9b6dd6) !important;
   color: white !important;
   border-radius: 12px 12px 0 0 !important;
-  padding: 1.25rem 1.5rem !important;
 }
 
-div[style*="#5d34a4"] * {
+div[style*="#5d34a4"] *,
+div[style*="#5d34a4"] span,
+div[style*="#5d34a4"] div {
   color: white !important;
 }
 
-/* Setor Container */
-div[style*="border: '2px solid #e0e0e0'"] {
-  border: 1px solid var(--border-color) !important;
+/* ===================================
+   BORDAS DOS SETORES
+   =================================== */
+div[style*="border: '2px solid #e0e0e0'"],
+div[style*='border: "2px solid #e0e0e0"'] {
+  border: 1px solid #3d4163 !important;
+  background: #2a2d47 !important;
   border-radius: 12px !important;
   overflow: hidden !important;
-  background-color: var(--bg-card) !important;
   margin-bottom: 1.5rem !important;
 }
 
-/* Ticket Item */
+/* ===================================
+   TICKET ITEMS
+   =================================== */
 div[style*="backgroundColor: '#fafafa'"],
-div[style*="backgroundColor: '#d4edda'"][style*="padding: '20px'"] {
-  background-color: var(--bg-primary) !important;
-  border: 1px solid var(--border-color) !important;
+div[style*='backgroundColor: "#fafafa"'] {
+  background: #1e2139 !important;
+  border: 1px solid #3d4163 !important;
   border-radius: 12px !important;
   padding: 1.5rem !important;
-  margin-bottom: 1rem !important;
-  transition: all 0.2s !important;
 }
 
-div[style*="backgroundColor: '#fafafa'"]:hover,
-div[style*="backgroundColor: '#d4edda'"]:hover {
-  border-color: var(--accent-primary) !important;
-  box-shadow: var(--shadow-sm) !important;
-}
-
-/* Ticket com desconto */
 div[style*="backgroundColor: '#d4edda'"][style*="padding: '20px'"] {
-  background: linear-gradient(135deg, rgba(46, 204, 113, 0.1) 0%, rgba(39, 174, 96, 0.05) 100%) !important;
-  border-color: var(--success) !important;
+  background: rgba(46, 204, 113, 0.15) !important;
+  border: 1px solid #2ecc71 !important;
+  border-radius: 12px !important;
 }
 
-/* Lote header */
-div[style*="#f8f9fa"][style*="borderLeft"] {
-  background-color: rgba(124, 77, 189, 0.1) !important;
-  border-left: 4px solid var(--accent-primary) !important;
+/* ===================================
+   LOTE HEADER
+   =================================== */
+div[style*="backgroundColor: '#f8f9fa'"][style*="borderLeft"] {
+  background: rgba(124, 77, 189, 0.1) !important;
+  border-left: 4px solid #7c4dbd !important;
   border-radius: 8px !important;
-  padding: 1rem 1.25rem !important;
-  margin-bottom: 1rem !important;
+}
+
+div[style*="backgroundColor: '#f8f9fa'"] * {
+  color: #9b6dd6 !important;
 }
 
 /* ===================================
    CARRINHO
    =================================== */
-div[style*="border: '3px solid #5d34a4'"] {
-  border: 2px solid var(--accent-primary) !important;
-  background-color: var(--bg-card) !important;
+div[style*="border: '3px solid #5d34a4'"],
+div[style*='border: "3px solid #5d34a4"'] {
+  border: 2px solid #7c4dbd !important;
+  background: #2a2d47 !important;
   border-radius: 16px !important;
-  box-shadow: var(--shadow-md) !important;
   padding: 2rem !important;
 }
 
 /* ===================================
    GARANTIAS
    =================================== */
-div[style*="#e8f8f5"] {
-  background-color: rgba(46, 204, 113, 0.1) !important;
-  border: 1px solid var(--success) !important;
-  border-radius: 12px !important;
-  padding: 1.5rem !important;
+div[style*="backgroundColor: '#e8f8f5'"],
+div[style*='backgroundColor: "#e8f8f5"'] {
+  background: rgba(46, 204, 113, 0.1) !important;
+  border: 1px solid #2ecc71 !important;
 }
 
 div[style*="#e8f8f5"] * {
-  color: var(--success) !important;
+  color: #2ecc71 !important;
 }
 
 /* ===================================
    PRODUTOS
    =================================== */
-div[style*="border: '1px solid #e0e0e0'"][style*="overflow: 'hidden'"] {
-  border: 1px solid var(--border-color) !important;
+div[style*="border: '1px solid #e0e0e0'"] {
+  border: 1px solid #3d4163 !important;
+  background: #2a2d47 !important;
   border-radius: 16px !important;
-  background-color: var(--bg-card) !important;
-  box-shadow: var(--shadow-sm) !important;
-  transition: all 0.3s !important;
-  overflow: hidden !important;
 }
 
-div[style*="border: '1px solid #e0e0e0'"]:hover {
-  box-shadow: var(--shadow-md) !important;
-  transform: translateY(-5px) !important;
-  border-color: var(--accent-primary) !important;
+div[style*="backgroundColor: '#f0f0f0'"] {
+  background: #1e2139 !important;
 }
 
 /* ===================================
-   PRODUTOR - MELHOR VISUAL
+   CORES ESPECÍFICAS - FORÇA
    =================================== */
-div[style*="paddingTop: '25px'"][style*="borderTop"] {
-  margin-top: 2rem !important;
-  padding-top: 2rem !important;
-  border-top: 1px solid var(--border-color) !important;
+*[style*="color: '#27ae60'"],
+*[style*='color: "#27ae60"'],
+*[style*="color: '#28a745'"] {
+  color: #2ecc71 !important;
+}
+
+*[style*="color: '#999'"],
+*[style*='color: "#999"'] {
+  color: #7a7b8f !important;
+}
+
+*[style*="color: '#666'"],
+*[style*='color: "#666"'] {
+  color: #b8b9c9 !important;
+}
+
+*[style*="color: '#2c3e50'"],
+*[style*='color: "#2c3e50"'] {
+  color: #ffffff !important;
+}
+
+*[style*="color: '#5d34a4'"],
+*[style*='color: "#5d34a4"'] {
+  color: #9b6dd6 !important;
+}
+
+/* ===================================
+   PRODUTOR
+   =================================== */
+div[style*="borderTop: '1px solid #eee'"] {
+  border-top: 1px solid #3d4163 !important;
 }
 
 img[style*="borderRadius: '50%'"] {
-  border: 2px solid var(--accent-primary) !important;
-  box-shadow: var(--shadow-sm) !important;
+  border: 2px solid #7c4dbd !important;
 }
 
 /* ===================================
-   CORES ESPECÍFICAS
-   =================================== */
-div[style*="color: '#27ae60'"],
-span[style*="color: '#27ae60'"] {
-  color: var(--success) !important;
-}
-
-div[style*="color: '#28a745'"],
-span[style*="color: '#28a745'"] {
-  color: var(--success) !important;
-}
-
-div[style*="color: '#999'"],
-span[style*="color: '#999'"],
-p[style*="color: '#999'"] {
-  color: var(--text-muted) !important;
-}
-
-div[style*="color: '#666'"],
-span[style*="color: '#666'"],
-p[style*="color: '#666'"] {
-  color: var(--text-secondary) !important;
-}
-
-div[style*="color: '#2c3e50'"],
-span[style*="color: '#2c3e50'"],
-p[style*="color: '#2c3e50'"],
-h4[style*="color: '#2c3e50'"] {
-  color: var(--text-primary) !important;
-}
-
-/* ===================================
-   TOGGLE DE TEMA
+   TOGGLE TEMA
    =================================== */
 .theme-toggle {
   position: fixed !important;
@@ -592,14 +442,13 @@ h4[style*="color: '#2c3e50'"] {
   width: 60px !important;
   height: 60px !important;
   border-radius: 50% !important;
-  background: linear-gradient(135deg, #7c4dbd 0%, #9b6dd6 100%) !important;
+  background: linear-gradient(135deg, #7c4dbd, #9b6dd6) !important;
   color: white !important;
   border: none !important;
   font-size: 1.5rem !important;
   cursor: pointer !important;
-  box-shadow: var(--shadow-lg) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
   z-index: 1000 !important;
-  transition: all 0.3s !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -608,21 +457,51 @@ h4[style*="color: '#2c3e50'"] {
 
 .theme-toggle:hover {
   transform: scale(1.1) rotate(20deg) !important;
-  box-shadow: 0 8px 40px rgba(124, 77, 189, 0.4) !important;
 }
 
 /* ===================================
-   RESPONSIVIDADE
+   TEMA CLARO
    =================================== */
+[data-theme="light"] body {
+  background: #f5f6fa !important;
+}
 
-/* Tablet */
+[data-theme="light"] body > div,
+[data-theme="light"] body > div > div {
+  background: #f5f6fa !important;
+}
+
+[data-theme="light"] * {
+  color: #1a1a1a !important;
+}
+
+[data-theme="light"] div[style*="backgroundColor: 'white'"],
+[data-theme="light"] div[style*="padding: '30px'"],
+[data-theme="light"] div[style*="padding: '40px'"] {
+  background: white !important;
+  border-color: #e1e4e8 !important;
+}
+
+[data-theme="light"] h2,
+[data-theme="light"] h3 {
+  color: #5d34a4 !important;
+}
+
+[data-theme="light"] p {
+  color: #6c757d !important;
+}
+
+[data-theme="light"] select {
+  background: white !important;
+  color: #1a1a1a !important;
+}
+
+/* ===================================
+   RESPONSIVO
+   =================================== */
 @media (max-width: 968px) {
   body > div > div:first-child {
     padding: 0 1.25rem !important;
-  }
-
-  body > div > div > div:first-of-type img {
-    height: 350px !important;
   }
 
   h1 {
@@ -630,60 +509,24 @@ h4[style*="color: '#2c3e50'"] {
   }
 }
 
-/* Mobile */
 @media (max-width: 640px) {
-  header {
-    padding: 1rem !important;
-  }
-
   body > div > div:first-child {
     padding: 0 1rem !important;
   }
 
-  body > div > div > div:first-of-type {
-    margin-top: 1.5rem !important;
-  }
-
-  body > div > div > div:first-of-type img {
-    height: 250px !important;
-    border-radius: 16px !important;
-  }
-
   h1 {
     font-size: 1.75rem !important;
-    margin: 1.5rem 0 0.75rem 0 !important;
   }
 
   h1 + div {
-    font-size: 1rem !important;
-    gap: 1rem !important;
     flex-direction: column !important;
-    margin-bottom: 2rem !important;
-  }
-
-  div[style*="padding: '30px'"],
-  div[style*="padding: '40px'"] {
-    padding: 1.5rem !important;
-  }
-
-  h2 {
-    font-size: 1.5rem !important;
-  }
-
-  h3 {
-    font-size: 1.25rem !important;
-  }
-
-  button {
-    padding: 0.875rem 1.5rem !important;
-    font-size: 0.95rem !important;
+    gap: 1rem !important;
   }
 
   .theme-toggle {
-    bottom: 1rem !important;
-    right: 1rem !important;
     width: 50px !important;
     height: 50px !important;
-    font-size: 1.25rem !important;
+    bottom: 1rem !important;
+    right: 1rem !important;
   }
 }
