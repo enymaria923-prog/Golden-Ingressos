@@ -7,8 +7,6 @@ import FavoriteButton from './components/FavoriteButton';
 import ThemeToggle from './components/ThemeToggle';
 import Categorias from './components/categorias';
 import './styles/home.css';
-import './components/EventosCarousel.css';  // ← ADICIONE ESTA LINHA AQUI
-import './components/SearchBar.css';  // ← E ESTA TAMBÉM
 
 // Componente do Cartão com botão de favoritar
 function CardEvento({ evento, userId, isFavorited }) {
