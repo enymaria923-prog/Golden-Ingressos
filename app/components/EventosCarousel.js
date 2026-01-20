@@ -2,11 +2,21 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import FavoriteButton from './FavoriteButton';
-import './EventosCarousel.css';  // ← ADICIONE ESTA LINHA AQUI
 
 export default function EventosCarousel({ eventos, userId, favoritos = [] }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detecta se é mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Auto-play do carrossel
   useEffect(() => {
@@ -14,7 +24,7 @@ export default function EventosCarousel({ eventos, userId, favoritos = [] }) {
 
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % eventos.length);
-    }, 5000); // Muda a cada 5 segundos
+    }, 5000);
 
     return () => clearInterval(interval);
   }, [isAutoPlaying, eventos.length]);
@@ -51,14 +61,14 @@ export default function EventosCarousel({ eventos, userId, favoritos = [] }) {
       <Link href={`/evento/${currentEvento.id}`} style={{ textDecoration: 'none' }}>
         <div style={{ 
           position: 'relative',
-          height: '500px',
+          height: isMobile ? '200px' : '500px',
           background: `linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.6)), url(${currentEvento.imagem_url || 'https://placehold.co/1000x500/5d34a4/ffffff?text=EVENTO'})`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           cursor: 'pointer'
         }}>
           {/* Botão de Favoritar */}
-          <div style={{ position: 'absolute', top: '20px', right: '20px', zIndex: 10 }}>
+          <div style={{ position: 'absolute', top: isMobile ? '10px' : '20px', right: isMobile ? '10px' : '20px', zIndex: 10 }}>
             <FavoriteButton 
               eventoId={currentEvento.id}
               userId={userId}
@@ -72,31 +82,33 @@ export default function EventosCarousel({ eventos, userId, favoritos = [] }) {
             bottom: '0',
             left: '0',
             right: '0',
-            padding: '40px',
+            padding: isMobile ? '12px' : '40px',
             color: 'white'
           }}>
             <h2 style={{ 
-              fontSize: '36px', 
-              margin: '0 0 15px 0',
-              textShadow: '2px 2px 4px rgba(0,0,0,0.8)'
+              fontSize: isMobile ? '15px' : '36px', 
+              margin: '0 0 8px 0',
+              textShadow: '2px 2px 4px rgba(0,0,0,0.8)',
+              lineHeight: '1.2'
             }}>
               {currentEvento.nome}
             </h2>
-            <div style={{ fontSize: '18px', marginBottom: '10px' }}>
+            <div style={{ fontSize: isMobile ? '11px' : '18px', marginBottom: isMobile ? '4px' : '10px' }}>
               📅 {new Date(currentEvento.data).toLocaleDateString('pt-BR', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
               })}
             </div>
-            <div style={{ fontSize: '18px', marginBottom: '10px' }}>
-              📍 {currentEvento.local}
+            <div style={{ fontSize: isMobile ? '11px' : '18px', marginBottom: isMobile ? '4px' : '10px' }}>
+              📍 {currentEvento.local || currentEvento.cidade}
             </div>
-            <div style={{ fontSize: '18px', marginBottom: '15px' }}>
-              🎭 {currentEvento.categoria}
-            </div>
-            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#f1c40f' }}>
+            {!isMobile && (
+              <div style={{ fontSize: '18px', marginBottom: '15px' }}>
+                🎭 {currentEvento.categoria}
+              </div>
+            )}
+            <div style={{ fontSize: isMobile ? '14px' : '24px', fontWeight: 'bold', color: '#f1c40f' }}>
               A partir de R$ {currentEvento.preco}
             </div>
           </div>
@@ -104,7 +116,7 @@ export default function EventosCarousel({ eventos, userId, favoritos = [] }) {
       </Link>
 
       {/* Botões de Navegação */}
-      {eventos.length > 1 && (
+      {eventos.length > 1 && !isMobile && (
         <>
           <button
             onClick={goToPrev}
@@ -159,11 +171,11 @@ export default function EventosCarousel({ eventos, userId, favoritos = [] }) {
       {eventos.length > 1 && (
         <div style={{
           position: 'absolute',
-          bottom: '20px',
+          bottom: isMobile ? '10px' : '20px',
           left: '50%',
           transform: 'translateX(-50%)',
           display: 'flex',
-          gap: '10px',
+          gap: isMobile ? '6px' : '10px',
           zIndex: 10
         }}>
           {eventos.map((_, index) => (
@@ -171,9 +183,9 @@ export default function EventosCarousel({ eventos, userId, favoritos = [] }) {
               key={index}
               onClick={() => goToSlide(index)}
               style={{
-                width: index === currentIndex ? '30px' : '12px',
-                height: '12px',
-                borderRadius: '6px',
+                width: index === currentIndex ? (isMobile ? '18px' : '30px') : (isMobile ? '6px' : '12px'),
+                height: isMobile ? '6px' : '12px',
+                borderRadius: isMobile ? '3px' : '6px',
                 border: 'none',
                 backgroundColor: index === currentIndex ? '#f1c40f' : 'rgba(255, 255, 255, 0.6)',
                 cursor: 'pointer',
