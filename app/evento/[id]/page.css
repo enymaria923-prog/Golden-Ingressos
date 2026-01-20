@@ -1,18 +1,18 @@
 /* ===================================
-   VARIÁVEIS DE TEMA
+   VARIÁVEIS DE TEMA - BASEADO NO MAPLE
    =================================== */
 :root {
-  /* Tema Escuro (padrão) */
-  --bg-primary: #1a1d29;
-  --bg-secondary: #242938;
-  --bg-tertiary: #2d3142;
-  --text-primary: #f8f9fa;
-  --text-secondary: #adb5bd;
-  --text-muted: #6c757d;
-  --border-color: #3d4152;
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+  /* Tema Escuro (padrão) - Azul como o Maple */
+  --bg-primary: #1e2139;
+  --bg-secondary: #16182b;
+  --bg-card: #2a2d47;
+  --text-primary: #ffffff;
+  --text-secondary: #b8b9c9;
+  --text-muted: #7a7b8f;
+  --border-color: #3d4163;
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
   --accent-primary: #7c4dbd;
   --accent-secondary: #9b6dd6;
   --success: #2ecc71;
@@ -24,15 +24,15 @@
 [data-theme="light"] {
   /* Tema Claro (opcional) */
   --bg-primary: #ffffff;
-  --bg-secondary: #f8f9fa;
-  --bg-tertiary: #e9ecef;
+  --bg-secondary: #f5f6fa;
+  --bg-card: #ffffff;
   --text-primary: #1a1a1a;
   --text-secondary: #6c757d;
   --text-muted: #adb5bd;
-  --border-color: #dee2e6;
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.08);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --border-color: #e1e4e8;
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
   --accent-primary: #5d34a4;
   --accent-secondary: #7c4dbd;
   --success: #27ae60;
@@ -42,7 +42,7 @@
 }
 
 /* ===================================
-   RESET GLOBAL - FORÇA TEMA
+   RESET GLOBAL
    =================================== */
 * {
   box-sizing: border-box !important;
@@ -60,16 +60,11 @@ html, body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* FORÇA COR DE TEXTO EM TODOS OS ELEMENTOS */
-div, p, span, h1, h2, h3, h4, h5, h6, a {
-  color: var(--text-primary) !important;
-}
-
 /* ===================================
-   HEADER - FORÇA ESTILO
+   HEADER - GRADIENTE ROXO
    =================================== */
 header {
-  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)) !important;
+  background: linear-gradient(135deg, #7c4dbd 0%, #9b6dd6 100%) !important;
   padding: 1rem 2rem !important;
   box-shadow: var(--shadow-md) !important;
   position: sticky !important;
@@ -94,40 +89,41 @@ header a:hover {
 }
 
 /* ===================================
-   CONTAINER PRINCIPAL
+   CONTAINER PRINCIPAL - CENTRALIZADO
    =================================== */
 body > div,
-body > div > div {
+body > div > div:first-child {
   background-color: var(--bg-secondary) !important;
 }
 
 body > div > div:first-child {
-  max-width: 1200px !important;
+  max-width: 900px !important;
   margin: 0 auto !important;
-  padding: 0 1.25rem !important;
+  padding: 0 1.5rem !important;
 }
 
 /* ===================================
-   IMAGEM DO EVENTO
+   IMAGEM DO EVENTO - TOPO
    =================================== */
 body > div > div > div:first-of-type {
-  margin-top: 2rem !important;
+  margin-top: 2.5rem !important;
+  margin-bottom: 2rem !important;
   text-align: center !important;
   background-color: transparent !important;
 }
 
 body > div > div > div:first-of-type img {
   width: 100% !important;
-  max-width: 1200px !important;
-  height: 400px !important;
+  max-width: 900px !important;
+  height: 450px !important;
   object-fit: cover !important;
-  border-radius: 16px !important;
+  border-radius: 20px !important;
   box-shadow: var(--shadow-lg) !important;
   transition: transform 0.3s ease !important;
 }
 
 body > div > div > div:first-of-type img:hover {
-  transform: scale(1.01) !important;
+  transform: scale(1.02) !important;
 }
 
 /* ===================================
@@ -135,90 +131,100 @@ body > div > div > div:first-of-type img:hover {
    =================================== */
 h1 {
   text-align: center !important;
-  font-size: clamp(2rem, 5vw, 2.75rem) !important;
+  font-size: clamp(2.25rem, 5vw, 3rem) !important;
   color: var(--text-primary) !important;
-  margin-top: 2rem !important;
-  margin-bottom: 0.75rem !important;
+  margin: 2rem 0 1rem 0 !important;
   font-weight: 800 !important;
-  letter-spacing: -0.02em !important;
+  letter-spacing: -0.03em !important;
   background-color: transparent !important;
+  line-height: 1.2 !important;
 }
 
 /* ===================================
-   META INFO (DATA, HORA, SESSÕES)
+   META INFO (DATA, HORA) - CENTRALIZADA
    =================================== */
 h1 + div {
   text-align: center !important;
-  font-size: clamp(1rem, 2.5vw, 1.25rem) !important;
-  color: var(--accent-primary) !important;
+  font-size: 1.125rem !important;
+  color: var(--accent-secondary) !important;
   font-weight: 600 !important;
-  margin-bottom: 2.5rem !important;
+  margin-bottom: 3rem !important;
   display: flex !important;
   justify-content: center !important;
+  align-items: center !important;
   gap: 2rem !important;
   flex-wrap: wrap !important;
   background-color: transparent !important;
 }
 
 h1 + div span {
-  color: var(--accent-primary) !important;
+  color: var(--accent-secondary) !important;
   display: inline-flex !important;
   align-items: center !important;
   gap: 0.5rem !important;
 }
 
 /* ===================================
-   GRID LAYOUT - SOBRE + LOCAL
+   ABOLIR GRID 2 COLUNAS - LAYOUT VERTICAL
    =================================== */
-body > div > div > div[style*="grid"],
 div[style*="gridTemplateColumns"] {
-  display: grid !important;
-  grid-template-columns: 2fr 1fr !important;
-  gap: 2rem !important;
-  margin-bottom: 3rem !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 1.5rem !important;
+  margin-bottom: 2rem !important;
   background-color: transparent !important;
+  grid-template-columns: unset !important;
 }
 
 /* ===================================
-   CARDS BRANCOS - FORÇA ESTILO CORRETO
+   CARDS - ESTILO MAPLE (ESCURO COM BORDA)
    =================================== */
 div[style*="backgroundColor"][style*="white"],
 div[style*="padding: '30px'"],
 div[style*="padding: '40px'"],
 div[style*="borderRadius: '12px'"] {
-  background-color: var(--bg-primary) !important;
+  background-color: var(--bg-card) !important;
   border: 1px solid var(--border-color) !important;
-  box-shadow: var(--shadow-md) !important;
+  box-shadow: var(--shadow-sm) !important;
   border-radius: 16px !important;
   padding: 2rem !important;
-  transition: box-shadow 0.3s ease, transform 0.2s ease !important;
+  transition: all 0.3s ease !important;
+  width: 100% !important;
 }
 
 div[style*="backgroundColor"][style*="white"]:hover {
-  box-shadow: var(--shadow-lg) !important;
-  transform: translateY(-2px) !important;
+  box-shadow: var(--shadow-md) !important;
+  border-color: var(--accent-primary) !important;
 }
 
 /* ===================================
    TÍTULOS DENTRO DOS CARDS
    =================================== */
-h2, h3, h4 {
+h2 {
   color: var(--accent-primary) !important;
   font-weight: 700 !important;
-  margin-bottom: 1.25rem !important;
-}
-
-h2 {
-  font-size: clamp(1.5rem, 3vw, 1.75rem) !important;
-  margin-top: 0 !important;
+  font-size: 1.75rem !important;
+  margin: 0 0 1.5rem 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
 }
 
 h3 {
-  font-size: clamp(1.25rem, 2.5vw, 1.5rem) !important;
+  color: var(--accent-primary) !important;
+  font-weight: 700 !important;
+  font-size: 1.5rem !important;
+  margin: 0 0 1.25rem 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
 }
 
 h4 {
+  color: var(--text-primary) !important;
+  font-weight: 600 !important;
   font-size: 1.125rem !important;
+  margin: 0 0 0.75rem 0 !important;
 }
 
 /* ===================================
@@ -228,81 +234,111 @@ p {
   color: var(--text-secondary) !important;
   line-height: 1.8 !important;
   margin-bottom: 1rem !important;
+  font-size: 1rem !important;
 }
 
-/* Textos específicos de local */
-div[style*="fontSize: '18px'"] p,
-div[style*="fontSize: '15px'"] p,
-div[style*="fontSize: '14px'"] p {
+/* SOBRE O EVENTO - Descrição */
+div[style*="backgroundColor"][style*="white"]:first-of-type p {
   color: var(--text-secondary) !important;
-  font-weight: 500 !important;
+  line-height: 1.9 !important;
 }
 
-/* Nome do local em destaque */
+/* LOCAL - Informações */
 p[style*="fontSize: '18px'"][style*="fontWeight: 'bold'"] {
   color: var(--text-primary) !important;
   font-weight: 700 !important;
+  font-size: 1.25rem !important;
+  margin-bottom: 0.5rem !important;
+}
+
+p[style*="fontSize: '15px'"],
+p[style*="fontSize: '14px'"] {
+  color: var(--text-secondary) !important;
+  font-size: 0.95rem !important;
+  margin-bottom: 0.375rem !important;
 }
 
 /* ===================================
-   SEÇÃO DE CUPONS
+   BADGES E TAGS
+   =================================== */
+span[style*="backgroundColor"][style*="borderRadius"] {
+  background-color: rgba(124, 77, 189, 0.15) !important;
+  color: var(--accent-secondary) !important;
+  border: 1px solid var(--accent-primary) !important;
+  border-radius: 20px !important;
+  padding: 0.5rem 1rem !important;
+  font-weight: 600 !important;
+  transition: all 0.2s !important;
+  display: inline-block !important;
+  margin-top: 1rem !important;
+}
+
+span[style*="backgroundColor"][style*="borderRadius"]:hover {
+  background-color: rgba(124, 77, 189, 0.25) !important;
+  transform: translateY(-2px) !important;
+}
+
+/* ===================================
+   SEÇÃO DE CUPONS - AMARELO VIBRANTE
    =================================== */
 div[style*="#fff3cd"],
 div[style*="#d4edda"] {
   border-radius: 16px !important;
   box-shadow: var(--shadow-md) !important;
-  margin-bottom: 2.5rem !important;
+  margin-bottom: 2rem !important;
   padding: 2rem !important;
+  border: none !important;
 }
 
 div[style*="#fff3cd"] {
-  background: linear-gradient(135deg, #f39c12, #f1c40f) !important;
-  border: 2px solid rgba(241, 196, 15, 0.3) !important;
+  background: linear-gradient(135deg, #f39c12 0%, #f1c40f 100%) !important;
 }
 
 div[style*="#fff3cd"] h3,
-div[style*="#fff3cd"] p {
-  color: rgba(0, 0, 0, 0.85) !important;
+div[style*="#fff3cd"] p,
+div[style*="#fff3cd"] div {
+  color: rgba(0, 0, 0, 0.9) !important;
 }
 
 div[style*="#d4edda"] {
-  background: linear-gradient(135deg, var(--success), #2ecc71) !important;
-  border: 2px solid rgba(46, 204, 113, 0.3) !important;
+  background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%) !important;
 }
 
 div[style*="#d4edda"] h3,
-div[style*="#d4edda"] p {
-  color: rgba(0, 0, 0, 0.85) !important;
+div[style*="#d4edda"] p,
+div[style*="#d4edda"] div {
+  color: white !important;
 }
 
 /* Input de cupom */
 input[type="text"] {
   background-color: white !important;
   color: #333 !important;
-  border: 2px solid rgba(255, 255, 255, 0.8) !important;
-  border-radius: 10px !important;
-  padding: 0.875rem 1.25rem !important;
+  border: none !important;
+  border-radius: 12px !important;
+  padding: 1rem 1.5rem !important;
   font-size: 1rem !important;
   font-weight: 700 !important;
-  transition: border-color 0.2s !important;
+  transition: all 0.2s !important;
+  box-shadow: var(--shadow-sm) !important;
 }
 
 input[type="text"]:focus {
   outline: none !important;
-  border-color: var(--accent-primary) !important;
+  box-shadow: 0 0 0 3px rgba(124, 77, 189, 0.3) !important;
 }
 
 /* ===================================
-   BOTÕES - SOBRESCREVE TUDO
+   BOTÕES - MODERNOS E VIBRANTES
    =================================== */
 button {
   border: none !important;
-  border-radius: 10px !important;
+  border-radius: 12px !important;
   font-weight: 700 !important;
   cursor: pointer !important;
   transition: all 0.2s ease !important;
   box-shadow: var(--shadow-sm) !important;
-  padding: 0.875rem 1.75rem !important;
+  padding: 1rem 2rem !important;
   font-size: 1rem !important;
 }
 
@@ -311,33 +347,47 @@ button:hover:not(:disabled) {
   box-shadow: var(--shadow-md) !important;
 }
 
+button:active:not(:disabled) {
+  transform: translateY(0) !important;
+}
+
 button:disabled {
   cursor: not-allowed !important;
-  opacity: 0.6 !important;
+  opacity: 0.5 !important;
+  filter: grayscale(0.5) !important;
 }
 
 /* Botões roxos (accent) */
 button[style*="#5d34a4"] {
-  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)) !important;
+  background: linear-gradient(135deg, #7c4dbd 0%, #9b6dd6 100%) !important;
   color: white !important;
+}
+
+button[style*="#5d34a4"]:hover:not(:disabled) {
+  background: linear-gradient(135deg, #8b5acc 0%, #aa7ce5 100%) !important;
 }
 
 /* Botões verdes (success) */
 button[style*="#27ae60"] {
-  background: linear-gradient(135deg, var(--success), #2ecc71) !important;
+  background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%) !important;
   color: white !important;
+}
+
+button[style*="#27ae60"]:hover:not(:disabled) {
+  background: linear-gradient(135deg, #2ecc71 0%, #3ddc81 100%) !important;
 }
 
 /* Botões amarelos (warning) */
 button[style*="#f1c40f"],
 button[style*="#f39c12"] {
-  background: linear-gradient(135deg, #f39c12, #f1c40f) !important;
+  background: linear-gradient(135deg, #f39c12 0%, #f1c40f 100%) !important;
   color: #000 !important;
+  font-weight: 800 !important;
 }
 
 /* Botões vermelhos (danger) */
 button[style*="#dc3545"] {
-  background-color: var(--danger) !important;
+  background: linear-gradient(135deg, #e74c3c 0%, #dc3545 100%) !important;
   color: white !important;
 }
 
@@ -345,12 +395,12 @@ button[style*="#dc3545"] {
 button[style*="#95a5a6"],
 button[style*="#ccc"] {
   background-color: var(--bg-tertiary) !important;
-  color: var(--text-primary) !important;
+  color: var(--text-secondary) !important;
 }
 
 /* Botão azul (info) */
 button[style*="#3498db"] {
-  background: linear-gradient(135deg, var(--info), #5dade2) !important;
+  background: linear-gradient(135deg, #3498db 0%, #5dade2 100%) !important;
   color: white !important;
 }
 
@@ -358,73 +408,100 @@ button[style*="#3498db"] {
    SELECT DROPDOWNS
    =================================== */
 select {
-  background-color: var(--bg-primary) !important;
+  background-color: var(--bg-card) !important;
   color: var(--text-primary) !important;
-  border: 2px solid var(--accent-primary) !important;
-  border-radius: 10px !important;
-  padding: 0.75rem 1.25rem !important;
-  font-weight: 700 !important;
+  border: 2px solid var(--border-color) !important;
+  border-radius: 12px !important;
+  padding: 0.875rem 1.25rem !important;
+  font-weight: 600 !important;
   cursor: pointer !important;
   transition: all 0.2s !important;
 }
 
 select:hover {
-  border-color: var(--accent-secondary) !important;
-  box-shadow: var(--shadow-sm) !important;
+  border-color: var(--accent-primary) !important;
+}
+
+select:focus {
+  outline: none !important;
+  border-color: var(--accent-primary) !important;
+  box-shadow: 0 0 0 3px rgba(124, 77, 189, 0.2) !important;
 }
 
 select option {
-  background-color: var(--bg-primary) !important;
+  background-color: var(--bg-card) !important;
   color: var(--text-primary) !important;
 }
 
 /* ===================================
-   SETOR DE INGRESSOS - HEADER ROXO
+   INGRESSOS - ESTILO MAPLE
    =================================== */
+div[style*="backgroundColor: 'white'"][style*="padding: '40px'"] {
+  background-color: var(--bg-card) !important;
+}
+
+/* Header do Setor - Roxo */
 div[style*="#5d34a4"][style*="color: 'white'"] {
-  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)) !important;
+  background: linear-gradient(135deg, #7c4dbd 0%, #9b6dd6 100%) !important;
   color: white !important;
-  border-radius: 10px 10px 0 0 !important;
+  border-radius: 12px 12px 0 0 !important;
+  padding: 1.25rem 1.5rem !important;
 }
 
 div[style*="#5d34a4"] * {
   color: white !important;
 }
 
-/* ===================================
-   TICKETS COM DESCONTO
-   =================================== */
-div[style*="#d4edda"][style*="padding: '20px'"] {
-  background: linear-gradient(135deg, rgba(46, 204, 113, 0.15), rgba(39, 174, 96, 0.08)) !important;
-  border: 2px solid var(--success) !important;
-  border-radius: 10px !important;
+/* Setor Container */
+div[style*="border: '2px solid #e0e0e0'"] {
+  border: 1px solid var(--border-color) !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  background-color: var(--bg-card) !important;
+  margin-bottom: 1.5rem !important;
+}
+
+/* Ticket Item */
+div[style*="backgroundColor: '#fafafa'"],
+div[style*="backgroundColor: '#d4edda'"][style*="padding: '20px'"] {
+  background-color: var(--bg-primary) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 12px !important;
+  padding: 1.5rem !important;
+  margin-bottom: 1rem !important;
+  transition: all 0.2s !important;
+}
+
+div[style*="backgroundColor: '#fafafa'"]:hover,
+div[style*="backgroundColor: '#d4edda'"]:hover {
+  border-color: var(--accent-primary) !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+
+/* Ticket com desconto */
+div[style*="backgroundColor: '#d4edda'"][style*="padding: '20px'"] {
+  background: linear-gradient(135deg, rgba(46, 204, 113, 0.1) 0%, rgba(39, 174, 96, 0.05) 100%) !important;
+  border-color: var(--success) !important;
+}
+
+/* Lote header */
+div[style*="#f8f9fa"][style*="borderLeft"] {
+  background-color: rgba(124, 77, 189, 0.1) !important;
+  border-left: 4px solid var(--accent-primary) !important;
+  border-radius: 8px !important;
+  padding: 1rem 1.25rem !important;
+  margin-bottom: 1rem !important;
 }
 
 /* ===================================
-   BADGES E TAGS
+   CARRINHO
    =================================== */
-span[style*="backgroundColor"][style*="borderRadius"] {
-  border-radius: 20px !important;
-  padding: 0.5rem 1rem !important;
-  font-weight: 600 !important;
-  transition: transform 0.2s !important;
-  display: inline-block !important;
-}
-
-span[style*="#e8f4f8"] {
-  background-color: rgba(52, 152, 219, 0.15) !important;
-  color: var(--info) !important;
-}
-
-span[style*="#fff3cd"],
-span[style*="#ffc107"] {
-  background-color: var(--warning) !important;
-  color: #000 !important;
-}
-
-span[style*="#dc3545"] {
-  background-color: var(--danger) !important;
-  color: white !important;
+div[style*="border: '3px solid #5d34a4'"] {
+  border: 2px solid var(--accent-primary) !important;
+  background-color: var(--bg-card) !important;
+  border-radius: 16px !important;
+  box-shadow: var(--shadow-md) !important;
+  padding: 2rem !important;
 }
 
 /* ===================================
@@ -433,7 +510,8 @@ span[style*="#dc3545"] {
 div[style*="#e8f8f5"] {
   background-color: rgba(46, 204, 113, 0.1) !important;
   border: 1px solid var(--success) !important;
-  border-radius: 10px !important;
+  border-radius: 12px !important;
+  padding: 1.5rem !important;
 }
 
 div[style*="#e8f8f5"] * {
@@ -443,34 +521,45 @@ div[style*="#e8f8f5"] * {
 /* ===================================
    PRODUTOS
    =================================== */
-div[style*="border: '1px solid #e0e0e0'"] {
+div[style*="border: '1px solid #e0e0e0'"][style*="overflow: 'hidden'"] {
   border: 1px solid var(--border-color) !important;
-  border-radius: 12px !important;
-  background-color: var(--bg-primary) !important;
+  border-radius: 16px !important;
+  background-color: var(--bg-card) !important;
   box-shadow: var(--shadow-sm) !important;
   transition: all 0.3s !important;
+  overflow: hidden !important;
 }
 
 div[style*="border: '1px solid #e0e0e0'"]:hover {
   box-shadow: var(--shadow-md) !important;
   transform: translateY(-5px) !important;
+  border-color: var(--accent-primary) !important;
 }
 
 /* ===================================
-   CARRINHO
+   PRODUTOR - MELHOR VISUAL
    =================================== */
-div[style*="border: '3px solid #5d34a4'"] {
-  border: 3px solid var(--accent-primary) !important;
-  background-color: var(--bg-secondary) !important;
-  border-radius: 12px !important;
-  box-shadow: var(--shadow-md) !important;
+div[style*="paddingTop: '25px'"][style*="borderTop"] {
+  margin-top: 2rem !important;
+  padding-top: 2rem !important;
+  border-top: 1px solid var(--border-color) !important;
+}
+
+img[style*="borderRadius: '50%'"] {
+  border: 2px solid var(--accent-primary) !important;
+  box-shadow: var(--shadow-sm) !important;
 }
 
 /* ===================================
-   PREÇOS E VALORES
+   CORES ESPECÍFICAS
    =================================== */
 div[style*="color: '#27ae60'"],
 span[style*="color: '#27ae60'"] {
+  color: var(--success) !important;
+}
+
+div[style*="color: '#28a745'"],
+span[style*="color: '#28a745'"] {
   color: var(--success) !important;
 }
 
@@ -488,7 +577,8 @@ p[style*="color: '#666'"] {
 
 div[style*="color: '#2c3e50'"],
 span[style*="color: '#2c3e50'"],
-p[style*="color: '#2c3e50'"] {
+p[style*="color: '#2c3e50'"],
+h4[style*="color: '#2c3e50'"] {
   color: var(--text-primary) !important;
 }
 
@@ -502,7 +592,7 @@ p[style*="color: '#2c3e50'"] {
   width: 60px !important;
   height: 60px !important;
   border-radius: 50% !important;
-  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)) !important;
+  background: linear-gradient(135deg, #7c4dbd 0%, #9b6dd6 100%) !important;
   color: white !important;
   border: none !important;
   font-size: 1.5rem !important;
@@ -517,7 +607,8 @@ p[style*="color: '#2c3e50'"] {
 }
 
 .theme-toggle:hover {
-  transform: scale(1.1) rotate(15deg) !important;
+  transform: scale(1.1) rotate(20deg) !important;
+  box-shadow: 0 8px 40px rgba(124, 77, 189, 0.4) !important;
 }
 
 /* ===================================
@@ -526,17 +617,16 @@ p[style*="color: '#2c3e50'"] {
 
 /* Tablet */
 @media (max-width: 968px) {
-  div[style*="gridTemplateColumns"] {
-    grid-template-columns: 1fr !important;
-    gap: 1.5rem !important;
+  body > div > div:first-child {
+    padding: 0 1.25rem !important;
   }
 
   body > div > div > div:first-of-type img {
-    height: 300px !important;
+    height: 350px !important;
   }
 
-  div[style*="padding: '40px'"] {
-    padding: 2rem !important;
+  h1 {
+    font-size: 2rem !important;
   }
 }
 
@@ -546,24 +636,29 @@ p[style*="color: '#2c3e50'"] {
     padding: 1rem !important;
   }
 
+  body > div > div:first-child {
+    padding: 0 1rem !important;
+  }
+
   body > div > div > div:first-of-type {
-    margin-top: 1rem !important;
+    margin-top: 1.5rem !important;
   }
 
   body > div > div > div:first-of-type img {
-    height: 200px !important;
-    border-radius: 12px !important;
+    height: 250px !important;
+    border-radius: 16px !important;
   }
 
   h1 {
     font-size: 1.75rem !important;
-    margin-top: 1.5rem !important;
+    margin: 1.5rem 0 0.75rem 0 !important;
   }
 
   h1 + div {
-    font-size: 0.95rem !important;
+    font-size: 1rem !important;
     gap: 1rem !important;
     flex-direction: column !important;
+    margin-bottom: 2rem !important;
   }
 
   div[style*="padding: '30px'"],
@@ -571,10 +666,17 @@ p[style*="color: '#2c3e50'"] {
     padding: 1.5rem !important;
   }
 
-  button[style*="padding: '25px 80px'"],
-  button[style*="padding: '18px 60px'"] {
-    padding: 1.25rem 3rem !important;
+  h2 {
+    font-size: 1.5rem !important;
+  }
+
+  h3 {
     font-size: 1.25rem !important;
+  }
+
+  button {
+    padding: 0.875rem 1.5rem !important;
+    font-size: 0.95rem !important;
   }
 
   .theme-toggle {
