@@ -128,13 +128,12 @@ function PixPaymentContent() {
         console.log(`🎟️ Gerando ${quantidade} ingresso(s) do tipo: ${item.tipo}`);
         
         for (let i = 0; i < quantidade; i++) {
-          const qrCode = `INGRESSO-${pedidoId}-${item.ingresso_id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          const qrCode = `INGRESSO-${pedidoId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
           
           ingressosParaGerar.push({
             pedido_id: pedidoId,
             evento_id: pedido.evento_id,
             sessao_id: pedido.sessao_id,
-            ingresso_id: item.ingresso_id,
             tipo_ingresso: item.tipo,
             valor: item.valor_unitario,
             assento: item.assento || null,
