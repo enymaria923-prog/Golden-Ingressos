@@ -34,26 +34,6 @@ export default function EmitirCortesiasPage() {
     carregarDados();
   }, [eventoId]);
 
-  // Auto-selecionar quando houver apenas uma opção
-  useEffect(() => {
-    if (sessoes.length === 1 && !sessaoSelecionada) {
-      setSessaoSelecionada(sessoes[0].id);
-    }
-  }, [sessoes]);
-
-  useEffect(() => {
-    if (setoresFiltrados.length === 1 && !setorSelecionado) {
-      setSetorSelecionado(setoresFiltrados[0].nome);
-    }
-  }, [setoresFiltrados]);
-
-  useEffect(() => {
-    const tipos = tiposFiltrados();
-    if (tipos.length === 1 && !tipoSelecionado) {
-      setTipoSelecionado(tipos[0].id);
-    }
-  }, [setorSelecionado, loteSelecionado]);
-
   const carregarDados = async () => {
     try {
       // Carregar evento
@@ -123,6 +103,20 @@ export default function EmitirCortesiasPage() {
     ? setores.filter(s => s.sessao_id === sessaoSelecionada)
     : [];
 
+  // Auto-selecionar setor se houver apenas um
+  useEffect(() => {
+    if (setoresFiltrados.length === 1 && !setorSelecionado && sessaoSelecionada) {
+      setSetorSelecionado(setoresFiltrados[0].nome);
+    }
+  }, [sessaoSelecionada, setores]);
+
+  // Auto-selecionar sessão se houver apenas uma
+  useEffect(() => {
+    if (sessoes.length === 1 && !sessaoSelecionada) {
+      setSessaoSelecionada(sessoes[0].id);
+    }
+  }, [sessoes]);
+
   // Filtrar lotes pelo setor selecionado
   const lotesFiltrados = setorSelecionado
     ? ingressos.filter(i => i.setor === setorSelecionado && i.lote_id).map(i => {
@@ -143,6 +137,16 @@ export default function EmitirCortesiasPage() {
     
     return tipos;
   };
+
+  // Auto-selecionar tipo se houver apenas um
+  useEffect(() => {
+    if (setorSelecionado) {
+      const tipos = tiposFiltrados();
+      if (tipos.length === 1 && !tipoSelecionado) {
+        setTipoSelecionado(tipos[0].id);
+      }
+    }
+  }, [setorSelecionado, loteSelecionado, ingressos]);
 
   const emitirCortesia = async () => {
     if (!sessaoSelecionada || !setorSelecionado || !tipoSelecionado) {
