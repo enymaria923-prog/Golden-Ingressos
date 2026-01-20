@@ -36,11 +36,21 @@ export default async function BuscaPage({ searchParams }) {
       const { data: todosEventos, error: fetchError } = await supabase
         .from('eventos')
         .select('*')
+        .eq('status', 'aprovado')
         .order('data', { ascending: true });
       
       if (fetchError) throw fetchError;
       
       eventos = todosEventos || [];
+      
+      // Filtrar eventos cuja última sessão não tenha passado de 2 horas
+      const agora = new Date();
+      const duasHorasAtras = new Date(agora.getTime() - 2 * 60 * 60 * 1000);
+      
+      eventos = eventos.filter(evento => {
+        const dataEvento = new Date(evento.data);
+        return dataEvento >= duasHorasAtras;
+      });
       
       // Aplicar filtros manualmente no JavaScript
       if (query) {
