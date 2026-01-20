@@ -6,6 +6,7 @@ import EventosCarousel from './components/EventosCarousel';
 import FavoriteButton from './components/FavoriteButton';
 import ThemeToggle from './components/ThemeToggle';
 import Categorias from './components/categorias';
+import './components/SearchBar.css'; 
 import './styles/home.css';
 
 // Componente do Cartão com botão de favoritar
