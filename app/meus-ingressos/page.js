@@ -75,22 +75,22 @@ export default function MeusIngressosPage() {
         .in('id', sessoesIds);
 
       // Combinar dados
-      const ingressosCompletos = ingressosData?.map(ingresso => {
+      const ingressosCompletos = ingressosData.map(ingresso => {
         const pedido = pedidos.find(p => p.id === ingresso.pedido_id);
-        const evento = eventosData?.find(e => e.id === pedido?.evento_id);
-        const sessao = sessoes?.find(s => s.id === pedido?.sessao_id);
+        const evento = eventosData?.find(e => e.id === pedido.evento_id);
+        const sessao = sessoes?.find(s => s.id === pedido.sessao_id);
 
         return {
           ...ingresso,
           evento,
           sessao
         };
-      }) || [];
+      });
 
       setIngressos(ingressosCompletos);
 
-      // Agrupar eventos únicos com suas datas
-      const eventosUnicos = eventosData?.map(evento => {
+      // Agrupar eventos únicos
+      const eventosUnicos = eventosData.map(evento => {
         const ingressosDoEvento = ingressosCompletos.filter(ing => ing.evento?.id === evento.id);
         const sessao = ingressosDoEvento[0]?.sessao;
         
@@ -100,7 +100,7 @@ export default function MeusIngressosPage() {
           hora: sessao?.hora,
           totalIngressos: ingressosDoEvento.length
         };
-      }) || [];
+      });
 
       setEventos(eventosUnicos);
 
@@ -134,7 +134,7 @@ export default function MeusIngressosPage() {
 
   // Se um evento foi selecionado, mostrar ingressos desse evento
   if (eventoSelecionado) {
-    const ingressosDoEvento = ingressos.filter(ing => ing.evento.id === eventoSelecionado);
+    const ingressosDoEvento = ingressos.filter(ing => ing.evento?.id === eventoSelecionado);
     const eventoInfo = eventos.find(e => e.id === eventoSelecionado);
 
     return (
@@ -155,7 +155,7 @@ export default function MeusIngressosPage() {
           >
             ← Voltar para meus eventos
           </button>
-          <h1 style={{ margin: '10px 0 0 0', fontSize: '28px' }}>🎫 {eventoInfo.nome}</h1>
+          <h1 style={{ margin: '10px 0 0 0', fontSize: '28px' }}>🎫 {eventoInfo?.nome}</h1>
         </header>
 
         <div style={{ maxWidth: '800px', margin: '30px auto', padding: '0 20px' }}>
