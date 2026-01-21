@@ -67,12 +67,13 @@ export default function EmitirCortesiasPage() {
 
       setLotes(lotesData || []);
 
+      // ✅ BUSCAR INGRESSOS EXATAMENTE COMO NO CÓDIGO DE PUBLICAÇÃO
       const { data: ingressosData } = await supabase
         .from('ingressos')
         .select('*')
         .eq('evento_id', eventoId);
 
-      console.log('📊 INGRESSOS CARREGADOS DO BD:', ingressosData);
+      console.log('📊 TODOS OS INGRESSOS DO EVENTO:', ingressosData);
       setIngressos(ingressosData || []);
 
       const { data: cortesiasData } = await supabase
@@ -92,106 +93,80 @@ export default function EmitirCortesiasPage() {
     }
   };
 
-  // ✅ MÉTODO IGUAL AO QUE FUNCIONA NO CÓDIGO DO PRODUTOR
+  // ✅ FILTRAR SETORES PELA SESSÃO
   const setoresFiltrados = sessaoSelecionada 
     ? setores.filter(s => s.sessao_id === sessaoSelecionada)
     : [];
 
+  // ✅ FILTRAR LOTES PELA SESSÃO E SETOR
   const lotesFiltrados = (sessaoSelecionada && setorSelecionado)
     ? lotes.filter(l => l.sessao_id === sessaoSelecionada && l.setor === setorSelecionado)
     : [];
 
-  // ✅ NOVA FUNÇÃO - EXATAMENTE COMO NO CÓDIGO QUE FUNCIONA
+  // ✅ FILTRAR INGRESSOS - EXATAMENTE COMO NO CÓDIGO DE PUBLICAÇÃO
   const tiposFiltrados = () => {
     if (!sessaoSelecionada || !setorSelecionado) {
       console.log('❌ Falta sessão ou setor');
       return [];
     }
 
-    console.log('🔍 INICIANDO FILTRO DE TIPOS');
-    console.log('  📌 Sessão selecionada:', sessaoSelecionada);
-    console.log('  📌 Setor selecionado:', setorSelecionado);
-    console.log('  📌 Lote selecionado:', loteSelecionado || 'nenhum');
-    console.log('  📦 Total de ingressos no BD:', ingressos.length);
+    console.log('🔍 FILTRANDO INGRESSOS:');
+    console.log('  Sessão:', sessaoSelecionada);
+    console.log('  Setor:', setorSelecionado);
+    console.log('  Lote:', loteSelecionado || 'TODOS');
+    console.log('  Total ingressos:', ingressos.length);
 
-    // Encontrar o setor pelo nome na sessão selecionada
-    const setorDoIngresso = setores.find(s => 
-      s.nome === setorSelecionado && s.sessao_id === sessaoSelecionada
-    );
-
-    if (!setorDoIngresso) {
-      console.log('❌ Setor não encontrado na sessão');
-      return [];
-    }
-
-    console.log('  ✅ Setor encontrado:', setorDoIngresso);
-
-    // Filtrar ingressos que pertencem a este setor E sessão
-    let tiposFiltrados = ingressos.filter(ingresso => {
-      // Verificar se o ingresso pertence ao setor correto
-      const mesmoSetor = ingresso.setor === setorSelecionado;
+    // ✅ FILTRO 1: Sessão + Setor (IGUAL AO CÓDIGO DE PUBLICAÇÃO)
+    // Os ingressos têm: sessao_id, setor, lote_id, tipo, valor, quantidade, vendidos
+    let tipos = ingressos.filter(ing => {
+      const mesmaSessao = ing.sessao_id === sessaoSelecionada;
+      const mesmoSetor = ing.setor === setorSelecionado;
       
-      // Verificar se o ingresso pertence à sessão correta
-      const mesmaSessao = ingresso.sessao_id === sessaoSelecionada;
-
-      console.log(`  🎫 Ingresso ${ingresso.id}:`, {
-        tipo: ingresso.tipo,
-        setor: ingresso.setor,
+      console.log(`  Ingresso ${ing.tipo}:`, {
+        sessao: ing.sessao_id,
+        mesmaSessao,
+        setor: ing.setor,
         mesmoSetor,
-        sessao_id: ingresso.sessao_id,
-        mesmaSessao
+        lote_id: ing.lote_id
       });
-
-      return mesmoSetor && mesmaSessao;
+      
+      return mesmaSessao && mesmoSetor;
     });
 
-    console.log('  📋 Após filtro sessão+setor:', tiposFiltrados.length, 'ingressos');
+    console.log('  ✅ Após filtro sessão+setor:', tipos.length);
 
-    // Filtrar por lote (se selecionado)
+    // ✅ FILTRO 2: Lote (se selecionado)
     if (loteSelecionado) {
-      tiposFiltrados = tiposFiltrados.filter(i => 
-        String(i.lote_id) === String(loteSelecionado)
-      );
-      console.log('  📋 Após filtro lote:', tiposFiltrados.length, 'ingressos');
+      tipos = tipos.filter(ing => String(ing.lote_id) === String(loteSelecionado));
+      console.log('  ✅ Após filtro lote:', tipos.length);
     }
 
-    // Filtrar apenas tipos disponíveis (descontando vendidos E cortesias)
-    tiposFiltrados = tiposFiltrados.filter(tipo => {
-      const vendidos = parseInt(tipo.vendidos) || 0;
-      const cortesias = parseInt(tipo.cortesias) || 0;
-      const quantidade = parseInt(tipo.quantidade) || 0;
+    // ✅ FILTRO 3: Disponibilidade (quantidade > vendidos + cortesias)
+    tipos = tipos.filter(ing => {
+      const vendidos = parseInt(ing.vendidos) || 0;
+      const cortesias = parseInt(ing.cortesias) || 0;
+      const quantidade = parseInt(ing.quantidade) || 0;
       const ocupados = vendidos + cortesias;
       const disponivel = quantidade > ocupados;
       
-      console.log(`  💰 ${tipo.tipo}: qtd=${quantidade}, vendidos=${vendidos}, cortesias=${cortesias}, ocupados=${ocupados}, disponível=${disponivel}`);
+      console.log(`  ${ing.tipo}: qtd=${quantidade}, vend=${vendidos}, cort=${cortesias}, disp=${disponivel}`);
       
       return disponivel;
     });
 
-    console.log('✅ TIPOS FINAIS DISPONÍVEIS:', tiposFiltrados.length);
-    console.log('📝 Lista completa:', tiposFiltrados.map(t => ({
-      id: t.id,
-      tipo: t.tipo,
-      setor: t.setor,
-      sessao_id: t.sessao_id,
-      quantidade: t.quantidade,
-      vendidos: t.vendidos
-    })));
-
-    return tiposFiltrados;
+    console.log('✅ TIPOS FINAIS:', tipos.length);
+    return tipos;
   };
 
   // Auto-selecionar quando houver apenas uma opção
   useEffect(() => {
     if (sessoes.length === 1 && !sessaoSelecionada) {
-      console.log('🎬 Auto-selecionando única sessão:', sessoes[0].id);
       setSessaoSelecionada(sessoes[0].id);
     }
   }, [sessoes]);
 
   useEffect(() => {
     if (sessaoSelecionada && setoresFiltrados.length === 1 && !setorSelecionado) {
-      console.log('🏟️ Auto-selecionando único setor:', setoresFiltrados[0].nome);
       setSetorSelecionado(setoresFiltrados[0].nome);
     }
   }, [sessaoSelecionada, setoresFiltrados]);
@@ -199,7 +174,6 @@ export default function EmitirCortesiasPage() {
   useEffect(() => {
     const tipos = tiposFiltrados();
     if (setorSelecionado && tipos.length === 1 && !tipoSelecionado) {
-      console.log('🎫 Auto-selecionando único tipo:', tipos[0].id);
       setTipoSelecionado(tipos[0].id);
     }
   }, [setorSelecionado, loteSelecionado, sessaoSelecionada]);
@@ -245,10 +219,8 @@ export default function EmitirCortesiasPage() {
       const ocupados = vendidos + cortesias;
       const disponiveis = quantidade - ocupados;
       
-      console.log(`📊 Verificando disponibilidade: qtd=${quantidade}, vendidos=${vendidos}, cortesias=${cortesias}, disponíveis=${disponiveis}`);
-      
       if (disponiveis <= 0) {
-        throw new Error('Não há ingressos disponíveis deste tipo (todos ocupados por vendas ou cortesias)');
+        throw new Error('Não há ingressos disponíveis deste tipo');
       }
 
       const qrCode = `CORTESIA-${eventoId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -275,20 +247,15 @@ export default function EmitirCortesiasPage() {
 
       if (cortesiaError) throw cortesiaError;
 
-      // ✅ ATUALIZAR CAMPO DE CORTESIAS (separado de vendidos)
-      const cortesiasAtuais = parseInt(ingressoTipo.cortesias) || 0;
-      
+      // ✅ ATUALIZAR CAMPO CORTESIAS (NÃO VENDIDOS)
       const { error: updateError } = await supabase
         .from('ingressos')
-        .update({ cortesias: cortesiasAtuais + 1 })
+        .update({ cortesias: cortesias + 1 })
         .eq('id', tipoSelecionado);
 
       if (updateError) {
-        console.warn('⚠️ Erro ao atualizar cortesias (campo pode não existir ainda):', updateError);
-        // Não interrompe o processo se o campo ainda não existe
+        console.warn('Erro ao atualizar cortesias:', updateError);
       }
-      
-      console.log('✅ Cortesia emitida e registrada no campo separado');
 
       alert('✅ Cortesia emitida com sucesso!');
       
@@ -298,10 +265,7 @@ export default function EmitirCortesiasPage() {
       setCpfBeneficiario('');
       setObservacoes('');
       setTipoSelecionado('');
-      
-      if (loteSelecionado) {
-        setLoteSelecionado('');
-      }
+      setLoteSelecionado('');
 
       carregarDados();
 
@@ -352,7 +316,6 @@ export default function EmitirCortesiasPage() {
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             
-            {/* Sessão */}
             <div>
               <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>
                 🎬 Sessão *
@@ -360,7 +323,6 @@ export default function EmitirCortesiasPage() {
               <select
                 value={sessaoSelecionada}
                 onChange={(e) => {
-                  console.log('🔄 Mudando sessão para:', e.target.value);
                   setSessaoSelecionada(e.target.value);
                   setSetorSelecionado('');
                   setLoteSelecionado('');
@@ -383,7 +345,6 @@ export default function EmitirCortesiasPage() {
               </select>
             </div>
 
-            {/* Setor */}
             {sessaoSelecionada && setoresFiltrados.length > 0 && (
               <div>
                 <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>
@@ -392,7 +353,6 @@ export default function EmitirCortesiasPage() {
                 <select
                   value={setorSelecionado}
                   onChange={(e) => {
-                    console.log('🔄 Mudando setor para:', e.target.value);
                     setSetorSelecionado(e.target.value);
                     setLoteSelecionado('');
                     setTipoSelecionado('');
@@ -415,7 +375,6 @@ export default function EmitirCortesiasPage() {
               </div>
             )}
 
-            {/* Lote */}
             {setorSelecionado && lotesFiltrados.length > 0 && (
               <div>
                 <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>
@@ -424,7 +383,6 @@ export default function EmitirCortesiasPage() {
                 <select
                   value={loteSelecionado}
                   onChange={(e) => {
-                    console.log('🔄 Mudando lote para:', e.target.value);
                     setLoteSelecionado(e.target.value);
                     setTipoSelecionado('');
                   }}
@@ -446,7 +404,6 @@ export default function EmitirCortesiasPage() {
               </div>
             )}
 
-            {/* Tipo de Ingresso */}
             {setorSelecionado && (
               <div>
                 <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>
@@ -454,10 +411,7 @@ export default function EmitirCortesiasPage() {
                 </label>
                 <select
                   value={tipoSelecionado}
-                  onChange={(e) => {
-                    console.log('🔄 Selecionando tipo:', e.target.value);
-                    setTipoSelecionado(e.target.value);
-                  }}
+                  onChange={(e) => setTipoSelecionado(e.target.value)}
                   style={{
                     width: '100%',
                     padding: '12px',
@@ -471,12 +425,11 @@ export default function EmitirCortesiasPage() {
                     const vendidos = parseInt(tipo.vendidos) || 0;
                     const cortesias = parseInt(tipo.cortesias) || 0;
                     const quantidade = parseInt(tipo.quantidade) || 0;
-                    const ocupados = vendidos + cortesias;
-                    const disponiveis = quantidade - ocupados;
+                    const disponiveis = quantidade - vendidos - cortesias;
                     
                     return (
                       <option key={tipo.id} value={tipo.id}>
-                        {tipo.tipo} - R$ {parseFloat(tipo.valor).toFixed(2)} ({disponiveis} disponíveis - {vendidos} vendidos, {cortesias} cortesias)
+                        {tipo.tipo} - R$ {parseFloat(tipo.valor).toFixed(2)} ({disponiveis} disponíveis)
                       </option>
                     );
                   })}
@@ -496,7 +449,6 @@ export default function EmitirCortesiasPage() {
               </div>
             )}
 
-            {/* Assento */}
             {evento.tem_lugar_marcado && tipoSelecionado && (
               <div>
                 <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>
