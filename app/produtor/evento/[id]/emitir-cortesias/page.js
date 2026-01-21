@@ -108,7 +108,7 @@ export default function EmitirCortesiasPage() {
     ? ingressos
         .filter(i => i.setor === setorSelecionado && i.lote_id)
         .map(i => {
-          const lote = lotes.find(l => l.id === i.lote_id);
+          const lote = lotes.find(l => String(l.id) === String(i.lote_id));
           return lote;
         })
         .filter((lote, index, self) => 
@@ -120,21 +120,32 @@ export default function EmitirCortesiasPage() {
   const tiposFiltrados = () => {
     if (!setorSelecionado) return [];
     
-    let tipos = ingressos.filter(i => i.setor === setorSelecionado);
+    console.log('Setor selecionado:', setorSelecionado);
+    console.log('Lote selecionado:', loteSelecionado);
+    console.log('Todos os ingressos:', ingressos);
     
+    // Filtrar por setor
+    let tipos = ingressos.filter(i => i.setor === setorSelecionado);
+    console.log('Ingressos do setor:', tipos);
+    
+    // Filtrar por lote (se selecionado)
     if (loteSelecionado) {
-      tipos = tipos.filter(i => i.lote_id === loteSelecionado);
-    } else {
-      tipos = tipos.filter(i => !i.lote_id);
+      tipos = tipos.filter(i => String(i.lote_id) === String(loteSelecionado));
+      console.log('Ingressos do lote:', tipos);
     }
+    // Se não houver lote selecionado, mostrar TODOS os ingressos do setor
+    // (incluindo os com e sem lote)
     
     // Filtrar apenas tipos que têm estoque disponível
     tipos = tipos.filter(tipo => {
       const vendidos = parseInt(tipo.vendidos) || 0;
       const quantidade = parseInt(tipo.quantidade) || 0;
-      return quantidade > vendidos;
+      const disponivel = quantidade > vendidos;
+      console.log(`Tipo ${tipo.tipo}: quantidade=${quantidade}, vendidos=${vendidos}, disponivel=${disponivel}`);
+      return disponivel;
     });
     
+    console.log('Tipos finais disponíveis:', tipos);
     return tipos;
   };
 
