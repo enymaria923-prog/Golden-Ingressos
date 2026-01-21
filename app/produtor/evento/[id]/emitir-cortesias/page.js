@@ -269,12 +269,11 @@ export default function EmitirCortesiasPage() {
 
       if (cortesiaError) throw cortesiaError;
 
-      const { error: updateError } = await supabase
-        .from('ingressos')
-        .update({ vendidos: vendidos + 1 })
-        .eq('id', tipoSelecionado);
-
-      if (updateError) throw updateError;
+      // ❌ NÃO ATUALIZAR O CAMPO VENDIDOS PARA CORTESIAS
+      // Cortesias são registradas apenas em ingressos_vendidos
+      // e não devem descontar do estoque de vendas
+      
+      console.log('✅ Cortesia emitida SEM descontar do estoque de vendas');
 
       alert('✅ Cortesia emitida com sucesso!');
       
