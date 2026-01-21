@@ -71,30 +71,23 @@ export default function ProdutorPage() {
       return 0.35 + (valorIngressos * 0.0189);
     } else if (forma === 'cartao_credito') {
       if (numParcelas === 1) {
-        // À vista: 0.49 + 2.99%
         return 0.49 + (valorIngressos * 0.0299);
       } else if (numParcelas >= 2 && numParcelas <= 6) {
-        // 2 a 6 parcelas: 0.49 + 3.49%
         return 0.49 + (valorIngressos * 0.0349);
       } else if (numParcelas >= 7 && numParcelas <= 12) {
-        // 7 a 12 parcelas: 0.49 + 3.99%
         return 0.49 + (valorIngressos * 0.0399);
       } else if (numParcelas >= 13 && numParcelas <= 21) {
-        // 13 a 21 parcelas: 0.49 + 4.29%
         return 0.49 + (valorIngressos * 0.0429);
       } else {
-        // Default para mais de 21 parcelas (não deveria acontecer)
         return 0.49 + (valorIngressos * 0.0429);
       }
     }
     
-    // Default PIX se forma de pagamento não reconhecida
     return 1.99;
   };
 
   // FUNÇÃO PARA BUSCAR BILHETERIA REAL DO EVENTO
   const calcularBilheteriaReal = async (eventoId) => {
-    // Buscar todos os ingressos vendidos do evento
     const { data: ingressosVendidos } = await supabase
       .from('ingressos_vendidos')
       .select('valor, pedido_id')
@@ -104,7 +97,6 @@ export default function ProdutorPage() {
       return 0;
     }
 
-    // Buscar pedidos para pegar forma de pagamento e parcelas
     const pedidosIds = [...new Set(ingressosVendidos.map(i => i.pedido_id))];
     
     const { data: pedidos } = await supabase
@@ -114,12 +106,10 @@ export default function ProdutorPage() {
 
     let bilheteriaTotal = 0;
 
-    // Calcular bilheteria por pedido
     pedidos?.forEach(pedido => {
       const ingressosDoPedido = ingressosVendidos.filter(i => i.pedido_id === pedido.id);
       const valorIngressosPedido = ingressosDoPedido.reduce((sum, ing) => sum + parseFloat(ing.valor), 0);
       
-      // Aplicar desconto de acordo com forma de pagamento e parcelas
       const taxaPagamento = calcularTaxaPagamento(
         valorIngressosPedido, 
         pedido.forma_pagamento, 
@@ -133,16 +123,27 @@ export default function ProdutorPage() {
     return bilheteriaTotal;
   };
 
+  // CORRIGIDO: Bônus Golden correto por plano
   const calcularBonusGolden = (bilheteria, taxaCliente) => {
-    let percentualBonus = 0;
+    const taxa = parseFloat(taxaCliente) || 0;
     
-    if (taxaCliente === 18.5) percentualBonus = 6.5;
-    else if (taxaCliente === 15) percentualBonus = 5;
-    else if (taxaCliente === 10) percentualBonus = 3;
-    else if (taxaCliente === 8) percentualBonus = 0;
-    else if (taxaCliente === 0) percentualBonus = -8;
+    // Plano Premium: 18.5% taxa, +6.5% bônus
+    if (taxa === 18.5) return bilheteria * 0.065;
     
-    return bilheteria * (percentualBonus / 100);
+    // Plano Padrão: 15% taxa, +5% bônus
+    if (taxa === 15) return bilheteria * 0.05;
+    
+    // Plano Econômico: 10% taxa, +3% bônus
+    if (taxa === 10) return bilheteria * 0.03;
+    
+    // Plano Competitivo: 8% taxa, SEM bônus
+    if (taxa === 8) return 0;
+    
+    // Absorção Total: 0% taxa cliente, produtor paga 8%
+    if (taxa === 0) return bilheteria * -0.08;
+    
+    // Default: sem bônus
+    return 0;
   };
 
   const calcularLucroTotal = async (todosEventos) => {
@@ -150,7 +151,7 @@ export default function ProdutorPage() {
     
     for (const evento of todosEventos) {
       const bilheteria = await calcularBilheteriaReal(evento.id);
-      const bonus = calcularBonusGolden(bilheteria, evento.TaxaCliente || 0);
+      const bonus = calcularBonusGolden(bilheteria, evento.TaxaCliente);
       lucroTotal += bonus;
     }
     
@@ -162,9 +163,8 @@ export default function ProdutorPage() {
     const ingressosVendidos = evento.ingressos_vendidos || 0;
     const ingressosDisponiveis = Math.max(0, totalIngressos - ingressosVendidos);
     
-    // Calcular bilheteria real
     const valorTotalIngressos = await calcularBilheteriaReal(evento.id);
-    const bonusGolden = calcularBonusGolden(valorTotalIngressos, evento.TaxaCliente || 0);
+    const bonusGolden = calcularBonusGolden(valorTotalIngressos, evento.TaxaCliente);
     const totalReceber = valorTotalIngressos + bonusGolden;
 
     return {
@@ -385,7 +385,6 @@ export default function ProdutorPage() {
   );
 }
 
-// Componente separado para a tabela (precisa ser async)
 function EventosTable({ eventos, router, calcularDadosEvento, extrairCidade }) {
   const [dadosEventos, setDadosEventos] = useState({});
   const [carregando, setCarregando] = useState(true);
