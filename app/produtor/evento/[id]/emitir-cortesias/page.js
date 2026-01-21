@@ -156,18 +156,25 @@ export default function EmitirCortesiasPage() {
   }, [setorSelecionado, loteSelecionado, ingressos]);
 
   const emitirCortesia = async () => {
-    if (!sessaoSelecionada || !setorSelecionado || !tipoSelecionado) {
-      alert('Por favor, selecione sessão, setor e tipo de ingresso');
-      return;
-    }
-
+    // Validar dados do beneficiário
     if (!nomeBeneficiario || !emailBeneficiario) {
       alert('Por favor, preencha nome e email do beneficiário');
       return;
     }
 
+    // Validar assento se necessário
     if (evento.tem_lugar_marcado && !assentoSelecionado) {
       alert('Por favor, selecione um assento');
+      return;
+    }
+
+    // Garantir que temos os dados necessários (pode ser auto-selecionado)
+    const sessaoFinal = sessaoSelecionada || (sessoes.length === 1 ? sessoes[0].id : null);
+    const setorFinal = setorSelecionado || (setoresFiltrados.length === 1 ? setoresFiltrados[0].nome : null);
+    const tipoFinal = tipoSelecionado || (tiposFiltrados().length === 1 ? tiposFiltrados()[0].id : null);
+
+    if (!sessaoFinal || !setorFinal || !tipoFinal) {
+      alert('Por favor, selecione sessão, setor e tipo de ingresso');
       return;
     }
 
@@ -175,7 +182,7 @@ export default function EmitirCortesiasPage() {
 
     try {
       // Buscar o ingresso selecionado
-      const ingressoTipo = ingressos.find(i => i.id === tipoSelecionado);
+      const ingressoTipo = ingressos.find(i => i.id === tipoFinal);
       
       if (!ingressoTipo) {
         throw new Error('Tipo de ingresso não encontrado');
@@ -205,7 +212,7 @@ export default function EmitirCortesiasPage() {
         .from('ingressos_vendidos')
         .insert([{
           evento_id: eventoId,
-          sessao_id: sessaoSelecionada,
+          sessao_id: sessaoFinal,
           tipo_ingresso: ingressoTipo.tipo,
           valor: 0,
           assento: assentoSelecionado || null,
@@ -227,7 +234,7 @@ export default function EmitirCortesiasPage() {
       const { error: updateError } = await supabase
         .from('ingressos')
         .update({ vendidos: vendidos + 1 })
-        .eq('id', tipoSelecionado);
+        .eq('id', tipoFinal);
 
       if (updateError) throw updateError;
 
