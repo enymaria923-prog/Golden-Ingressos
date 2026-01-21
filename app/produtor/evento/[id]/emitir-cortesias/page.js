@@ -155,13 +155,15 @@ export default function EmitirCortesiasPage() {
       console.log('  📋 Após filtro lote:', tiposFiltrados.length, 'ingressos');
     }
 
-    // Filtrar apenas tipos disponíveis
+    // Filtrar apenas tipos disponíveis (descontando vendidos E cortesias)
     tiposFiltrados = tiposFiltrados.filter(tipo => {
       const vendidos = parseInt(tipo.vendidos) || 0;
+      const cortesias = parseInt(tipo.cortesias) || 0;
       const quantidade = parseInt(tipo.quantidade) || 0;
-      const disponivel = quantidade > vendidos;
+      const ocupados = vendidos + cortesias;
+      const disponivel = quantidade > ocupados;
       
-      console.log(`  💰 ${tipo.tipo}: qtd=${quantidade}, vendidos=${vendidos}, disponível=${disponivel}`);
+      console.log(`  💰 ${tipo.tipo}: qtd=${quantidade}, vendidos=${vendidos}, cortesias=${cortesias}, ocupados=${ocupados}, disponível=${disponivel}`);
       
       return disponivel;
     });
@@ -238,11 +240,15 @@ export default function EmitirCortesiasPage() {
       }
 
       const vendidos = parseInt(ingressoTipo.vendidos) || 0;
+      const cortesias = parseInt(ingressoTipo.cortesias) || 0;
       const quantidade = parseInt(ingressoTipo.quantidade) || 0;
-      const disponiveis = quantidade - vendidos;
+      const ocupados = vendidos + cortesias;
+      const disponiveis = quantidade - ocupados;
+      
+      console.log(`📊 Verificando disponibilidade: qtd=${quantidade}, vendidos=${vendidos}, cortesias=${cortesias}, disponíveis=${disponiveis}`);
       
       if (disponiveis <= 0) {
-        throw new Error('Não há ingressos disponíveis deste tipo');
+        throw new Error('Não há ingressos disponíveis deste tipo (todos ocupados por vendas ou cortesias)');
       }
 
       const qrCode = `CORTESIA-${eventoId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -269,11 +275,20 @@ export default function EmitirCortesiasPage() {
 
       if (cortesiaError) throw cortesiaError;
 
-      // ❌ NÃO ATUALIZAR O CAMPO VENDIDOS PARA CORTESIAS
-      // Cortesias são registradas apenas em ingressos_vendidos
-      // e não devem descontar do estoque de vendas
+      // ✅ ATUALIZAR CAMPO DE CORTESIAS (separado de vendidos)
+      const cortesiasAtuais = parseInt(ingressoTipo.cortesias) || 0;
       
-      console.log('✅ Cortesia emitida SEM descontar do estoque de vendas');
+      const { error: updateError } = await supabase
+        .from('ingressos')
+        .update({ cortesias: cortesiasAtuais + 1 })
+        .eq('id', tipoSelecionado);
+
+      if (updateError) {
+        console.warn('⚠️ Erro ao atualizar cortesias (campo pode não existir ainda):', updateError);
+        // Não interrompe o processo se o campo ainda não existe
+      }
+      
+      console.log('✅ Cortesia emitida e registrada no campo separado');
 
       alert('✅ Cortesia emitida com sucesso!');
       
@@ -453,10 +468,15 @@ export default function EmitirCortesiasPage() {
                 >
                   <option value="">Selecione o tipo</option>
                   {tiposDisponiveis.map(tipo => {
-                    const disponiveis = (parseInt(tipo.quantidade) || 0) - (parseInt(tipo.vendidos) || 0);
+                    const vendidos = parseInt(tipo.vendidos) || 0;
+                    const cortesias = parseInt(tipo.cortesias) || 0;
+                    const quantidade = parseInt(tipo.quantidade) || 0;
+                    const ocupados = vendidos + cortesias;
+                    const disponiveis = quantidade - ocupados;
+                    
                     return (
                       <option key={tipo.id} value={tipo.id}>
-                        {tipo.tipo} - R$ {parseFloat(tipo.valor).toFixed(2)} ({disponiveis} disponíveis)
+                        {tipo.tipo} - R$ {parseFloat(tipo.valor).toFixed(2)} ({disponiveis} disponíveis - {vendidos} vendidos, {cortesias} cortesias)
                       </option>
                     );
                   })}
