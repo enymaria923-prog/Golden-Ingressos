@@ -9,7 +9,7 @@ import { getTeatroConfig } from '../../../utils/teatros-config';
 import ThemeToggle from '../../components/ThemeToggle';
 
 // 👇 IMPORTAR O CSS AQUI
-import './page.css';
+
 
 function ProdutorInfo({ produtorId }) {
   const supabase = createClient();
