@@ -30,14 +30,6 @@ export default function ProdutorPage() {
       
       setUser(userData);
 
-      // Removido a busca da tabela produtores (não existe)
-      // const { data: produtorData } = await supabase
-      //   .from('produtores')
-      //   .select('*')
-      //   .eq('id', userData.id)
-      //   .single();
-      // setProdutor(produtorData);
-
       const dataHoje = new Date().toISOString().split('T')[0];
       const { data: eventosFuturos } = await supabase
         .from('eventos')
@@ -58,7 +50,7 @@ export default function ProdutorPage() {
       setEventosPassados(eventosPass || []);
 
       const todosEventos = [...(eventosFuturos || []), ...(eventosPass || [])];
-      const lucro = calcularLucroTotal(todosEventos);
+      const lucro = await calcularLucroTotal(todosEventos);
       setLucroTotal(lucro);
 
     } catch (error) {
@@ -68,34 +60,111 @@ export default function ProdutorPage() {
     }
   };
 
-  const calcularBonusGolden = (evento) => {
-    const taxaCliente = evento.TaxaCliente || evento.taxacliente || 0;
-    const ingressosVendidos = evento.ingressos_vendidos || 0;
-    const precoMedio = parseFloat(evento.preco_medio) || 0;
+  // CALCULAR TAXA DE ACORDO COM FORMA DE PAGAMENTO E PARCELAS
+  const calcularTaxaPagamento = (valorIngressos, formaPagamento, parcelas) => {
+    const forma = (formaPagamento || 'pix').toLowerCase();
+    const numParcelas = parseInt(parcelas) || 1;
     
-    const valorTotal = ingressosVendidos * precoMedio;
+    if (forma === 'pix') {
+      return 1.99;
+    } else if (forma === 'cartao_debito') {
+      return 0.35 + (valorIngressos * 0.0189);
+    } else if (forma === 'cartao_credito') {
+      if (numParcelas === 1) {
+        // À vista: 0.49 + 2.99%
+        return 0.49 + (valorIngressos * 0.0299);
+      } else if (numParcelas >= 2 && numParcelas <= 6) {
+        // 2 a 6 parcelas: 0.49 + 3.49%
+        return 0.49 + (valorIngressos * 0.0349);
+      } else if (numParcelas >= 7 && numParcelas <= 12) {
+        // 7 a 12 parcelas: 0.49 + 3.99%
+        return 0.49 + (valorIngressos * 0.0399);
+      } else if (numParcelas >= 13 && numParcelas <= 21) {
+        // 13 a 21 parcelas: 0.49 + 4.29%
+        return 0.49 + (valorIngressos * 0.0429);
+      } else {
+        // Default para mais de 21 parcelas (não deveria acontecer)
+        return 0.49 + (valorIngressos * 0.0429);
+      }
+    }
     
+    // Default PIX se forma de pagamento não reconhecida
+    return 1.99;
+  };
+
+  // FUNÇÃO PARA BUSCAR BILHETERIA REAL DO EVENTO
+  const calcularBilheteriaReal = async (eventoId) => {
+    // Buscar todos os ingressos vendidos do evento
+    const { data: ingressosVendidos } = await supabase
+      .from('ingressos_vendidos')
+      .select('valor, pedido_id')
+      .eq('evento_id', eventoId);
+
+    if (!ingressosVendidos || ingressosVendidos.length === 0) {
+      return 0;
+    }
+
+    // Buscar pedidos para pegar forma de pagamento e parcelas
+    const pedidosIds = [...new Set(ingressosVendidos.map(i => i.pedido_id))];
+    
+    const { data: pedidos } = await supabase
+      .from('pedidos')
+      .select('id, forma_pagamento, parcelas')
+      .in('id', pedidosIds);
+
+    let bilheteriaTotal = 0;
+
+    // Calcular bilheteria por pedido
+    pedidos?.forEach(pedido => {
+      const ingressosDoPedido = ingressosVendidos.filter(i => i.pedido_id === pedido.id);
+      const valorIngressosPedido = ingressosDoPedido.reduce((sum, ing) => sum + parseFloat(ing.valor), 0);
+      
+      // Aplicar desconto de acordo com forma de pagamento e parcelas
+      const taxaPagamento = calcularTaxaPagamento(
+        valorIngressosPedido, 
+        pedido.forma_pagamento, 
+        pedido.parcelas
+      );
+      
+      const valorLiquido = valorIngressosPedido - taxaPagamento;
+      bilheteriaTotal += Math.max(0, valorLiquido);
+    });
+
+    return bilheteriaTotal;
+  };
+
+  const calcularBonusGolden = (bilheteria, taxaCliente) => {
     let percentualBonus = 0;
-    if (taxaCliente === 15) percentualBonus = 5;
+    
+    if (taxaCliente === 18.5) percentualBonus = 6.5;
+    else if (taxaCliente === 15) percentualBonus = 5;
     else if (taxaCliente === 10) percentualBonus = 3;
     else if (taxaCliente === 8) percentualBonus = 0;
+    else if (taxaCliente === 0) percentualBonus = -8;
     
-    return valorTotal * (percentualBonus / 100);
+    return bilheteria * (percentualBonus / 100);
   };
 
-  const calcularLucroTotal = (todosEventos) => {
-    return todosEventos.reduce((total, evento) => {
-      return total + calcularBonusGolden(evento);
-    }, 0);
+  const calcularLucroTotal = async (todosEventos) => {
+    let lucroTotal = 0;
+    
+    for (const evento of todosEventos) {
+      const bilheteria = await calcularBilheteriaReal(evento.id);
+      const bonus = calcularBonusGolden(bilheteria, evento.TaxaCliente || 0);
+      lucroTotal += bonus;
+    }
+    
+    return lucroTotal;
   };
 
-  const calcularDadosEvento = (evento) => {
+  const calcularDadosEvento = async (evento) => {
     const totalIngressos = evento.total_ingressos || 0;
     const ingressosVendidos = evento.ingressos_vendidos || 0;
     const ingressosDisponiveis = Math.max(0, totalIngressos - ingressosVendidos);
-    const precoMedio = parseFloat(evento.preco_medio) || 0;
-    const valorTotalIngressos = ingressosVendidos * precoMedio;
-    const bonusGolden = calcularBonusGolden(evento);
+    
+    // Calcular bilheteria real
+    const valorTotalIngressos = await calcularBilheteriaReal(evento.id);
+    const bonusGolden = calcularBonusGolden(valorTotalIngressos, evento.TaxaCliente || 0);
     const totalReceber = valorTotalIngressos + bonusGolden;
 
     return {
@@ -240,71 +309,7 @@ export default function ProdutorPage() {
               </Link>
             </div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ backgroundColor: '#f8f9fa', borderBottom: '2px solid #dee2e6' }}>
-                    <th style={{ padding: '15px', textAlign: 'left', fontWeight: 'bold', color: '#495057' }}>Nome do Evento</th>
-                    <th style={{ padding: '15px', textAlign: 'left', fontWeight: 'bold', color: '#495057' }}>Cidade</th>
-                    <th style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', color: '#495057' }}>Ingressos Vendidos</th>
-                    <th style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', color: '#495057' }}>Ingressos Disponíveis</th>
-                    <th style={{ padding: '15px', textAlign: 'right', fontWeight: 'bold', color: '#495057' }}>Total Ingressos</th>
-                    <th style={{ padding: '15px', textAlign: 'right', fontWeight: 'bold', color: '#495057' }}>Bônus Golden</th>
-                    <th style={{ padding: '15px', textAlign: 'right', fontWeight: 'bold', color: '#495057' }}>Total a Receber</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {eventos.map((evento) => {
-                    const dados = calcularDadosEvento(evento);
-                    return (
-                      <tr 
-                        key={evento.id}
-                        onClick={() => router.push(`/produtor/evento/${evento.id}`)}
-                        style={{ 
-                          borderBottom: '1px solid #e9ecef',
-                          cursor: 'pointer',
-                          transition: 'background-color 0.2s'
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
-                      >
-                        <td style={{ padding: '20px' }}>
-                          <div>
-                            <div style={{ fontWeight: 'bold', color: '#2c3e50', marginBottom: '5px' }}>
-                              {evento.nome}
-                            </div>
-                            <div style={{ fontSize: '13px', color: '#7f8c8d' }}>
-                              📅 {new Date(evento.data).toLocaleDateString('pt-BR')} às {evento.hora}
-                            </div>
-                            <div style={{ fontSize: '13px', color: '#7f8c8d' }}>
-                              📍 {evento.local}
-                            </div>
-                          </div>
-                        </td>
-                        <td style={{ padding: '20px', color: '#7f8c8d' }}>
-                          {extrairCidade(evento)}
-                        </td>
-                        <td style={{ padding: '20px', textAlign: 'center', fontSize: '18px', fontWeight: 'bold', color: '#27ae60' }}>
-                          {dados.ingressosVendidos}
-                        </td>
-                        <td style={{ padding: '20px', textAlign: 'center', fontSize: '18px', fontWeight: 'bold', color: '#e67e22' }}>
-                          {dados.ingressosDisponiveis}
-                        </td>
-                        <td style={{ padding: '20px', textAlign: 'right', fontSize: '16px', fontWeight: 'bold', color: '#2980b9' }}>
-                          R$ {dados.valorTotalIngressos.toFixed(2)}
-                        </td>
-                        <td style={{ padding: '20px', textAlign: 'right', fontSize: '16px', fontWeight: 'bold', color: '#9b59b6' }}>
-                          R$ {dados.bonusGolden.toFixed(2)}
-                        </td>
-                        <td style={{ padding: '20px', textAlign: 'right', fontSize: '18px', fontWeight: 'bold', color: '#16a085' }}>
-                          R$ {dados.totalReceber.toFixed(2)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <EventosTable eventos={eventos} router={router} calcularDadosEvento={calcularDadosEvento} extrairCidade={extrairCidade} />
           )}
         </div>
 
@@ -376,6 +381,100 @@ export default function ProdutorPage() {
         </div>
 
       </div>
+    </div>
+  );
+}
+
+// Componente separado para a tabela (precisa ser async)
+function EventosTable({ eventos, router, calcularDadosEvento, extrairCidade }) {
+  const [dadosEventos, setDadosEventos] = useState({});
+  const [carregando, setCarregando] = useState(true);
+
+  useEffect(() => {
+    const carregarDados = async () => {
+      const dados = {};
+      for (const evento of eventos) {
+        dados[evento.id] = await calcularDadosEvento(evento);
+      }
+      setDadosEventos(dados);
+      setCarregando(false);
+    };
+    carregarDados();
+  }, [eventos]);
+
+  if (carregando) {
+    return (
+      <div style={{ padding: '40px', textAlign: 'center' }}>
+        <p>Carregando dados...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ overflowX: 'auto' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <thead>
+          <tr style={{ backgroundColor: '#f8f9fa', borderBottom: '2px solid #dee2e6' }}>
+            <th style={{ padding: '15px', textAlign: 'left', fontWeight: 'bold', color: '#495057' }}>Nome do Evento</th>
+            <th style={{ padding: '15px', textAlign: 'left', fontWeight: 'bold', color: '#495057' }}>Cidade</th>
+            <th style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', color: '#495057' }}>Ingressos Vendidos</th>
+            <th style={{ padding: '15px', textAlign: 'center', fontWeight: 'bold', color: '#495057' }}>Ingressos Disponíveis</th>
+            <th style={{ padding: '15px', textAlign: 'right', fontWeight: 'bold', color: '#495057' }}>Total Ingressos</th>
+            <th style={{ padding: '15px', textAlign: 'right', fontWeight: 'bold', color: '#495057' }}>Bônus Golden</th>
+            <th style={{ padding: '15px', textAlign: 'right', fontWeight: 'bold', color: '#495057' }}>Total a Receber</th>
+          </tr>
+        </thead>
+        <tbody>
+          {eventos.map((evento) => {
+            const dados = dadosEventos[evento.id] || {};
+            return (
+              <tr 
+                key={evento.id}
+                onClick={() => router.push(`/produtor/evento/${evento.id}`)}
+                style={{ 
+                  borderBottom: '1px solid #e9ecef',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+              >
+                <td style={{ padding: '20px' }}>
+                  <div>
+                    <div style={{ fontWeight: 'bold', color: '#2c3e50', marginBottom: '5px' }}>
+                      {evento.nome}
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#7f8c8d' }}>
+                      📅 {new Date(evento.data).toLocaleDateString('pt-BR')} às {evento.hora}
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#7f8c8d' }}>
+                      📍 {evento.local}
+                    </div>
+                  </div>
+                </td>
+                <td style={{ padding: '20px', color: '#7f8c8d' }}>
+                  {extrairCidade(evento)}
+                </td>
+                <td style={{ padding: '20px', textAlign: 'center', fontSize: '18px', fontWeight: 'bold', color: '#27ae60' }}>
+                  {dados.ingressosVendidos || 0}
+                </td>
+                <td style={{ padding: '20px', textAlign: 'center', fontSize: '18px', fontWeight: 'bold', color: '#e67e22' }}>
+                  {dados.ingressosDisponiveis || 0}
+                </td>
+                <td style={{ padding: '20px', textAlign: 'right', fontSize: '16px', fontWeight: 'bold', color: '#2980b9' }}>
+                  R$ {(dados.valorTotalIngressos || 0).toFixed(2)}
+                </td>
+                <td style={{ padding: '20px', textAlign: 'right', fontSize: '16px', fontWeight: 'bold', color: '#9b59b6' }}>
+                  R$ {(dados.bonusGolden || 0).toFixed(2)}
+                </td>
+                <td style={{ padding: '20px', textAlign: 'right', fontSize: '18px', fontWeight: 'bold', color: '#16a085' }}>
+                  R$ {(dados.totalReceber || 0).toFixed(2)}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
