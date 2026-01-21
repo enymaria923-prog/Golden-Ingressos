@@ -132,21 +132,35 @@ export default function EmitirCortesiasPage() {
 
   // Filtrar tipos de ingresso
   const tiposFiltrados = () => {
+    if (!setorSelecionado) return [];
+    
+    console.log('🔍 Filtrando tipos:', {
+      setorSelecionado,
+      loteSelecionado,
+      todosIngressos: ingressos.length
+    });
+    
     let tipos = ingressos.filter(i => i.setor === setorSelecionado);
+    console.log('📋 Ingressos do setor:', tipos);
     
     if (loteSelecionado) {
       tipos = tipos.filter(i => i.lote_id === loteSelecionado);
+      console.log('📦 Ingressos do lote:', tipos);
     } else {
       tipos = tipos.filter(i => !i.lote_id);
+      console.log('🎫 Ingressos sem lote:', tipos);
     }
     
     // Filtrar apenas tipos que têm estoque disponível
     tipos = tipos.filter(tipo => {
       const vendidos = parseInt(tipo.vendidos) || 0;
       const quantidade = parseInt(tipo.quantidade) || 0;
-      return quantidade > vendidos;
+      const disponivel = quantidade > vendidos;
+      console.log(`  ${tipo.tipo}: qtd=${quantidade}, vendidos=${vendidos}, disponível=${disponivel}`);
+      return disponivel;
     });
     
+    console.log('✅ Tipos finais:', tipos);
     return tipos;
   };
 
@@ -430,6 +444,18 @@ export default function EmitirCortesiasPage() {
                     );
                   })}
                 </select>
+                {tiposFiltrados().length === 0 && (
+                  <div style={{
+                    marginTop: '10px',
+                    padding: '10px',
+                    backgroundColor: '#fff3cd',
+                    borderRadius: '6px',
+                    fontSize: '13px',
+                    color: '#856404'
+                  }}>
+                    ⚠️ Nenhum ingresso disponível para este setor
+                  </div>
+                )}
               </div>
             )}
 
