@@ -175,54 +175,18 @@ export default function EmitirCortesiasPage() {
   }, [setorSelecionado, loteSelecionado, ingressos]);
 
   const emitirCortesia = async () => {
-    // Validar dados do beneficiário
+    if (!sessaoSelecionada || !setorSelecionado || !tipoSelecionado) {
+      alert('Por favor, selecione sessão, setor e tipo de ingresso');
+      return;
+    }
+
     if (!nomeBeneficiario || !emailBeneficiario) {
       alert('Por favor, preencha nome e email do beneficiário');
       return;
     }
 
-    // Validar assento se necessário
     if (evento.tem_lugar_marcado && !assentoSelecionado) {
       alert('Por favor, selecione um assento');
-      return;
-    }
-
-    // Se não foi selecionado, tentar pegar automaticamente
-    let sessaoFinal = sessaoSelecionada;
-    let setorFinal = setorSelecionado;
-    let tipoFinal = tipoSelecionado;
-
-    // Se não tem sessão selecionada e só tem uma, usar ela
-    if (!sessaoFinal && sessoes.length === 1) {
-      sessaoFinal = sessoes[0].id;
-      setSessaoSelecionada(sessaoFinal);
-    }
-
-    // Se não tem setor selecionado e só tem um, usar ele
-    if (!setorFinal && sessaoFinal) {
-      const setoresDaSessao = setores.filter(s => s.sessao_id === sessaoFinal);
-      if (setoresDaSessao.length === 1) {
-        setorFinal = setoresDaSessao[0].nome;
-        setSetorSelecionado(setorFinal);
-      }
-    }
-
-    // Se não tem tipo selecionado e só tem um, usar ele
-    if (!tipoFinal && setorFinal) {
-      let tipos = ingressos.filter(i => i.setor === setorFinal && !i.lote_id);
-      tipos = tipos.filter(tipo => {
-        const vendidos = parseInt(tipo.vendidos) || 0;
-        const quantidade = parseInt(tipo.quantidade) || 0;
-        return quantidade > vendidos;
-      });
-      if (tipos.length === 1) {
-        tipoFinal = tipos[0].id;
-        setTipoSelecionado(tipoFinal);
-      }
-    }
-
-    if (!sessaoFinal || !setorFinal || !tipoFinal) {
-      alert('Por favor, selecione sessão, setor e tipo de ingresso');
       return;
     }
 
@@ -230,7 +194,7 @@ export default function EmitirCortesiasPage() {
 
     try {
       // Buscar o ingresso selecionado
-      const ingressoTipo = ingressos.find(i => i.id === tipoFinal);
+      const ingressoTipo = ingressos.find(i => i.id === tipoSelecionado);
       
       if (!ingressoTipo) {
         throw new Error('Tipo de ingresso não encontrado');
@@ -260,7 +224,7 @@ export default function EmitirCortesiasPage() {
         .from('ingressos_vendidos')
         .insert([{
           evento_id: eventoId,
-          sessao_id: sessaoFinal,
+          sessao_id: sessaoSelecionada,
           tipo_ingresso: ingressoTipo.tipo,
           valor: 0,
           assento: assentoSelecionado || null,
@@ -282,7 +246,7 @@ export default function EmitirCortesiasPage() {
       const { error: updateError } = await supabase
         .from('ingressos')
         .update({ vendidos: vendidos + 1 })
-        .eq('id', tipoFinal);
+        .eq('id', tipoSelecionado);
 
       if (updateError) throw updateError;
 
@@ -349,49 +313,37 @@ export default function EmitirCortesiasPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             
             {/* Sessão */}
-            {sessoes.length > 1 ? (
-              <div>
-                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>
-                  🎬 Sessão *
-                </label>
-                <select
-                  value={sessaoSelecionada}
-                  onChange={(e) => {
-                    setSessaoSelecionada(e.target.value);
-                    setSetorSelecionado('');
-                    setLoteSelecionado('');
-                    setTipoSelecionado('');
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    border: '2px solid #e0e0e0',
-                    borderRadius: '8px',
-                    fontSize: '14px'
-                  }}
-                >
-                  <option value="">Selecione a sessão</option>
-                  {sessoes.map(sessao => (
-                    <option key={sessao.id} value={sessao.id}>
-                      {sessao.numero ? `Sessão ${sessao.numero}` : 'Sessão Principal'} - {new Date(sessao.data).toLocaleDateString('pt-BR')} às {sessao.hora}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ) : sessoes.length === 1 && (
-              <div style={{
-                padding: '12px',
-                backgroundColor: '#e8f5e9',
-                borderRadius: '8px',
-                fontSize: '14px',
-                color: '#2e7d32'
-              }}>
-                ✓ Sessão: {sessoes[0].numero ? `Sessão ${sessoes[0].numero}` : 'Sessão Principal'} - {new Date(sessoes[0].data).toLocaleDateString('pt-BR')} às {sessoes[0].hora}
-              </div>
-            )}
+            <div>
+              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>
+                🎬 Sessão *
+              </label>
+              <select
+                value={sessaoSelecionada}
+                onChange={(e) => {
+                  setSessaoSelecionada(e.target.value);
+                  setSetorSelecionado('');
+                  setLoteSelecionado('');
+                  setTipoSelecionado('');
+                }}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '2px solid #e0e0e0',
+                  borderRadius: '8px',
+                  fontSize: '14px'
+                }}
+              >
+                <option value="">Selecione a sessão</option>
+                {sessoes.map(sessao => (
+                  <option key={sessao.id} value={sessao.id}>
+                    {sessao.numero ? `Sessão ${sessao.numero}` : 'Sessão Principal'} - {new Date(sessao.data).toLocaleDateString('pt-BR')} às {sessao.hora}
+                  </option>
+                ))}
+              </select>
+            </div>
 
             {/* Setor */}
-            {sessaoSelecionada && setoresFiltrados.length > 1 ? (
+            {sessaoSelecionada && setoresFiltrados.length > 0 && (
               <div>
                 <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>
                   🏟️ Setor *
@@ -418,16 +370,6 @@ export default function EmitirCortesiasPage() {
                     </option>
                   ))}
                 </select>
-              </div>
-            ) : sessaoSelecionada && setoresFiltrados.length === 1 && (
-              <div style={{
-                padding: '12px',
-                backgroundColor: '#e8f5e9',
-                borderRadius: '8px',
-                fontSize: '14px',
-                color: '#2e7d32'
-              }}>
-                ✓ Setor: {setoresFiltrados[0].nome}
               </div>
             )}
 
@@ -462,7 +404,7 @@ export default function EmitirCortesiasPage() {
             )}
 
             {/* Tipo de Ingresso */}
-            {setorSelecionado && tiposFiltrados().length > 1 ? (
+            {setorSelecionado && (
               <div>
                 <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>
                   🎫 Tipo de Ingresso *
@@ -488,16 +430,6 @@ export default function EmitirCortesiasPage() {
                     );
                   })}
                 </select>
-              </div>
-            ) : setorSelecionado && tiposFiltrados().length === 1 && (
-              <div style={{
-                padding: '12px',
-                backgroundColor: '#e8f5e9',
-                borderRadius: '8px',
-                fontSize: '14px',
-                color: '#2e7d32'
-              }}>
-                ✓ Tipo: {tiposFiltrados()[0].tipo} - R$ {parseFloat(tiposFiltrados()[0].valor).toFixed(2)}
               </div>
             )}
 
