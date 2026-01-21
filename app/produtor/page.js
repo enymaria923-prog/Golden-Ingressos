@@ -123,7 +123,7 @@ export default function ProdutorPage() {
     return bilheteriaTotal;
   };
 
-  // CORRIGIDO: Bônus Golden correto por plano
+  // CORRIGIDO: Bônus Golden correto por plano - SEM valores negativos
   const calcularBonusGolden = (bilheteria, taxaCliente) => {
     const taxa = parseFloat(taxaCliente) || 0;
     
@@ -139,8 +139,8 @@ export default function ProdutorPage() {
     // Plano Competitivo: 8% taxa, SEM bônus
     if (taxa === 8) return 0;
     
-    // Absorção Total: 0% taxa cliente, produtor paga 8%
-    if (taxa === 0) return bilheteria * -0.08;
+    // Absorção Total: 0% taxa cliente, produtor NÃO GANHA BÔNUS (mas paga 8%)
+    if (taxa === 0) return 0;
     
     // Default: sem bônus
     return 0;
@@ -215,7 +215,7 @@ export default function ProdutorPage() {
             R$ {lucroTotal.toFixed(2)}
           </div>
           <p style={{ margin: '0', opacity: 0.9, fontSize: '14px' }}>
-            Este valor representa seu bônus sobre as vendas dos seus eventos
+            Este valor representa a soma dos bônus Golden de todos os seus eventos
           </p>
         </div>
 
