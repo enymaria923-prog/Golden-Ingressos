@@ -103,25 +103,6 @@ export default function EmitirCortesiasPage() {
     ? setores.filter(s => s.sessao_id === sessaoSelecionada)
     : [];
 
-  // Auto-selecionar quando dados carregarem
-  useEffect(() => {
-    // Auto-selecionar sessão se houver apenas uma
-    if (sessoes.length === 1 && !sessaoSelecionada) {
-      setSessaoSelecionada(sessoes[0].id);
-    }
-  }, [sessoes]);
-
-  useEffect(() => {
-    // Auto-selecionar setor se houver apenas um
-    const filtrados = sessaoSelecionada 
-      ? setores.filter(s => s.sessao_id === sessaoSelecionada)
-      : [];
-    
-    if (filtrados.length === 1 && !setorSelecionado) {
-      setSetorSelecionado(filtrados[0].nome);
-    }
-  }, [sessaoSelecionada, setores]);
-
   // Filtrar lotes pelo setor selecionado
   const lotesFiltrados = setorSelecionado
     ? ingressos.filter(i => i.setor === setorSelecionado && i.lote_id).map(i => {
@@ -134,63 +115,58 @@ export default function EmitirCortesiasPage() {
   const tiposFiltrados = () => {
     if (!setorSelecionado) return [];
     
-    console.log('🔍 Filtrando tipos:', {
-      setorSelecionado,
-      loteSelecionado,
-      todosIngressos: ingressos.length
-    });
-    
     let tipos = ingressos.filter(i => i.setor === setorSelecionado);
-    console.log('📋 Ingressos do setor:', tipos);
     
     if (loteSelecionado) {
       tipos = tipos.filter(i => i.lote_id === loteSelecionado);
-      console.log('📦 Ingressos do lote:', tipos);
     } else {
       tipos = tipos.filter(i => !i.lote_id);
-      console.log('🎫 Ingressos sem lote:', tipos);
     }
     
     // Filtrar apenas tipos que têm estoque disponível
     tipos = tipos.filter(tipo => {
       const vendidos = parseInt(tipo.vendidos) || 0;
       const quantidade = parseInt(tipo.quantidade) || 0;
-      const disponivel = quantidade > vendidos;
-      console.log(`  ${tipo.tipo}: qtd=${quantidade}, vendidos=${vendidos}, disponível=${disponivel}`);
-      return disponivel;
+      return quantidade > vendidos;
     });
     
-    console.log('✅ Tipos finais:', tipos);
     return tipos;
   };
 
-  // Auto-selecionar tipo se houver apenas um
+  // Auto-selecionar quando houver apenas uma opção
   useEffect(() => {
-    if (setorSelecionado) {
-      let tipos = ingressos.filter(i => i.setor === setorSelecionado);
-      
-      if (loteSelecionado) {
-        tipos = tipos.filter(i => i.lote_id === loteSelecionado);
-      } else {
-        tipos = tipos.filter(i => !i.lote_id);
-      }
-      
-      // Filtrar apenas tipos com estoque
-      tipos = tipos.filter(tipo => {
-        const vendidos = parseInt(tipo.vendidos) || 0;
-        const quantidade = parseInt(tipo.quantidade) || 0;
-        return quantidade > vendidos;
-      });
-      
-      if (tipos.length === 1 && !tipoSelecionado) {
-        setTipoSelecionado(tipos[0].id);
-      }
+    if (sessoes.length === 1 && !sessaoSelecionada) {
+      setSessaoSelecionada(sessoes[0].id);
     }
-  }, [setorSelecionado, loteSelecionado, ingressos]);
+  }, [sessoes, sessaoSelecionada]);
+
+  useEffect(() => {
+    if (sessaoSelecionada && setoresFiltrados.length === 1 && !setorSelecionado) {
+      setSetorSelecionado(setoresFiltrados[0].nome);
+    }
+  }, [sessaoSelecionada, setoresFiltrados, setorSelecionado]);
+
+  useEffect(() => {
+    const tipos = tiposFiltrados();
+    if (setorSelecionado && tipos.length === 1 && !tipoSelecionado) {
+      setTipoSelecionado(tipos[0].id);
+    }
+  }, [setorSelecionado, loteSelecionado, ingressos, tipoSelecionado]);
 
   const emitirCortesia = async () => {
-    if (!sessaoSelecionada || !setorSelecionado || !tipoSelecionado) {
-      alert('Por favor, selecione sessão, setor e tipo de ingresso');
+    // Validações
+    if (!sessaoSelecionada) {
+      alert('Por favor, selecione uma sessão');
+      return;
+    }
+
+    if (!setorSelecionado) {
+      alert('Por favor, selecione um setor');
+      return;
+    }
+
+    if (!tipoSelecionado) {
+      alert('Por favor, selecione um tipo de ingresso');
       return;
     }
 
@@ -222,13 +198,6 @@ export default function EmitirCortesiasPage() {
       if (disponiveis <= 0) {
         throw new Error('Não há ingressos disponíveis deste tipo');
       }
-
-      console.log('📊 Verificação de estoque:', {
-        tipo: ingressoTipo.tipo,
-        quantidade,
-        vendidos,
-        disponiveis
-      });
 
       // Gerar QR Code único
       const qrCode = `CORTESIA-${eventoId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -267,15 +236,17 @@ export default function EmitirCortesiasPage() {
       alert('✅ Cortesia emitida com sucesso!');
       
       // Limpar formulário
-      setSessaoSelecionada('');
-      setSetorSelecionado('');
-      setLoteSelecionado('');
-      setTipoSelecionado('');
       setAssentoSelecionado('');
       setNomeBeneficiario('');
       setEmailBeneficiario('');
       setCpfBeneficiario('');
       setObservacoes('');
+      setTipoSelecionado('');
+      
+      // Resetar lote se existir
+      if (loteSelecionado) {
+        setLoteSelecionado('');
+      }
 
       // Recarregar dados
       carregarDados();
@@ -304,6 +275,8 @@ export default function EmitirCortesiasPage() {
       </div>
     );
   }
+
+  const tiposDisponiveis = tiposFiltrados();
 
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', padding: '20px' }}>
@@ -435,16 +408,16 @@ export default function EmitirCortesiasPage() {
                   }}
                 >
                   <option value="">Selecione o tipo</option>
-                  {tiposFiltrados().map(tipo => {
+                  {tiposDisponiveis.map(tipo => {
                     const disponiveis = (parseInt(tipo.quantidade) || 0) - (parseInt(tipo.vendidos) || 0);
                     return (
-                      <option key={tipo.id} value={tipo.id} disabled={disponiveis <= 0}>
+                      <option key={tipo.id} value={tipo.id}>
                         {tipo.tipo} - R$ {parseFloat(tipo.valor).toFixed(2)} ({disponiveis} disponíveis)
                       </option>
                     );
                   })}
                 </select>
-                {tiposFiltrados().length === 0 && (
+                {tiposDisponiveis.length === 0 && (
                   <div style={{
                     marginTop: '10px',
                     padding: '10px',
@@ -453,7 +426,7 @@ export default function EmitirCortesiasPage() {
                     fontSize: '13px',
                     color: '#856404'
                   }}>
-                    ⚠️ Nenhum ingresso disponível para este setor
+                    ⚠️ Nenhum ingresso disponível para esta seleção
                   </div>
                 )}
               </div>
