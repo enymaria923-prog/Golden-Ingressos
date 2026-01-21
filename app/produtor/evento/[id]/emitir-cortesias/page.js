@@ -103,19 +103,24 @@ export default function EmitirCortesiasPage() {
     ? setores.filter(s => s.sessao_id === sessaoSelecionada)
     : [];
 
-  // Auto-selecionar setor se houver apenas um
+  // Auto-selecionar quando dados carregarem
   useEffect(() => {
-    if (setoresFiltrados.length === 1 && !setorSelecionado && sessaoSelecionada) {
-      setSetorSelecionado(setoresFiltrados[0].nome);
-    }
-  }, [sessaoSelecionada, setores]);
-
-  // Auto-selecionar sessão se houver apenas uma
-  useEffect(() => {
+    // Auto-selecionar sessão se houver apenas uma
     if (sessoes.length === 1 && !sessaoSelecionada) {
       setSessaoSelecionada(sessoes[0].id);
     }
   }, [sessoes]);
+
+  useEffect(() => {
+    // Auto-selecionar setor se houver apenas um
+    const filtrados = sessaoSelecionada 
+      ? setores.filter(s => s.sessao_id === sessaoSelecionada)
+      : [];
+    
+    if (filtrados.length === 1 && !setorSelecionado) {
+      setSetorSelecionado(filtrados[0].nome);
+    }
+  }, [sessaoSelecionada, setores]);
 
   // Filtrar lotes pelo setor selecionado
   const lotesFiltrados = setorSelecionado
@@ -148,7 +153,21 @@ export default function EmitirCortesiasPage() {
   // Auto-selecionar tipo se houver apenas um
   useEffect(() => {
     if (setorSelecionado) {
-      const tipos = tiposFiltrados();
+      let tipos = ingressos.filter(i => i.setor === setorSelecionado);
+      
+      if (loteSelecionado) {
+        tipos = tipos.filter(i => i.lote_id === loteSelecionado);
+      } else {
+        tipos = tipos.filter(i => !i.lote_id);
+      }
+      
+      // Filtrar apenas tipos com estoque
+      tipos = tipos.filter(tipo => {
+        const vendidos = parseInt(tipo.vendidos) || 0;
+        const quantidade = parseInt(tipo.quantidade) || 0;
+        return quantidade > vendidos;
+      });
+      
       if (tipos.length === 1 && !tipoSelecionado) {
         setTipoSelecionado(tipos[0].id);
       }
@@ -168,10 +187,39 @@ export default function EmitirCortesiasPage() {
       return;
     }
 
-    // Garantir que temos os dados necessários (pode ser auto-selecionado)
-    const sessaoFinal = sessaoSelecionada || (sessoes.length === 1 ? sessoes[0].id : null);
-    const setorFinal = setorSelecionado || (setoresFiltrados.length === 1 ? setoresFiltrados[0].nome : null);
-    const tipoFinal = tipoSelecionado || (tiposFiltrados().length === 1 ? tiposFiltrados()[0].id : null);
+    // Se não foi selecionado, tentar pegar automaticamente
+    let sessaoFinal = sessaoSelecionada;
+    let setorFinal = setorSelecionado;
+    let tipoFinal = tipoSelecionado;
+
+    // Se não tem sessão selecionada e só tem uma, usar ela
+    if (!sessaoFinal && sessoes.length === 1) {
+      sessaoFinal = sessoes[0].id;
+      setSessaoSelecionada(sessaoFinal);
+    }
+
+    // Se não tem setor selecionado e só tem um, usar ele
+    if (!setorFinal && sessaoFinal) {
+      const setoresDaSessao = setores.filter(s => s.sessao_id === sessaoFinal);
+      if (setoresDaSessao.length === 1) {
+        setorFinal = setoresDaSessao[0].nome;
+        setSetorSelecionado(setorFinal);
+      }
+    }
+
+    // Se não tem tipo selecionado e só tem um, usar ele
+    if (!tipoFinal && setorFinal) {
+      let tipos = ingressos.filter(i => i.setor === setorFinal && !i.lote_id);
+      tipos = tipos.filter(tipo => {
+        const vendidos = parseInt(tipo.vendidos) || 0;
+        const quantidade = parseInt(tipo.quantidade) || 0;
+        return quantidade > vendidos;
+      });
+      if (tipos.length === 1) {
+        tipoFinal = tipos[0].id;
+        setTipoSelecionado(tipoFinal);
+      }
+    }
 
     if (!sessaoFinal || !setorFinal || !tipoFinal) {
       alert('Por favor, selecione sessão, setor e tipo de ingresso');
