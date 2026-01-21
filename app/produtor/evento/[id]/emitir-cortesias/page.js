@@ -18,7 +18,6 @@ export default function EmitirCortesiasPage() {
   const [cortesiasEmitidas, setCortesiasEmitidas] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // Campos do formulário
   const [sessaoSelecionada, setSessaoSelecionada] = useState('');
   const [setorSelecionado, setSetorSelecionado] = useState('');
   const [loteSelecionado, setLoteSelecionado] = useState('');
@@ -36,7 +35,6 @@ export default function EmitirCortesiasPage() {
 
   const carregarDados = async () => {
     try {
-      // Carregar evento
       const { data: eventoData, error: eventoError } = await supabase
         .from('eventos')
         .select('*')
@@ -46,7 +44,6 @@ export default function EmitirCortesiasPage() {
       if (eventoError) throw eventoError;
       setEvento(eventoData);
 
-      // Carregar sessões
       const { data: sessoesData } = await supabase
         .from('sessoes')
         .select('*')
@@ -56,7 +53,6 @@ export default function EmitirCortesiasPage() {
 
       setSessoes(sessoesData || []);
 
-      // Carregar setores
       const { data: setoresData } = await supabase
         .from('setores')
         .select('*')
@@ -64,7 +60,6 @@ export default function EmitirCortesiasPage() {
 
       setSetores(setoresData || []);
 
-      // Carregar lotes
       const { data: lotesData } = await supabase
         .from('lotes')
         .select('*')
@@ -72,16 +67,14 @@ export default function EmitirCortesiasPage() {
 
       setLotes(lotesData || []);
 
-      // Carregar ingressos
       const { data: ingressosData } = await supabase
         .from('ingressos')
         .select('*')
         .eq('evento_id', eventoId);
 
-      console.log('📊 INGRESSOS CARREGADOS:', ingressosData);
+      console.log('📊 INGRESSOS CARREGADOS DO BD:', ingressosData);
       setIngressos(ingressosData || []);
 
-      // Carregar cortesias já emitidas
       const { data: cortesiasData } = await supabase
         .from('ingressos_vendidos')
         .select('*')
@@ -99,73 +92,104 @@ export default function EmitirCortesiasPage() {
     }
   };
 
-  // Filtrar setores pela sessão selecionada
+  // ✅ MÉTODO IGUAL AO QUE FUNCIONA NO CÓDIGO DO PRODUTOR
   const setoresFiltrados = sessaoSelecionada 
     ? setores.filter(s => s.sessao_id === sessaoSelecionada)
     : [];
 
-  // Filtrar lotes pelo setor E sessão selecionados
   const lotesFiltrados = (sessaoSelecionada && setorSelecionado)
-    ? lotes
-        .filter(l => l.sessao_id === sessaoSelecionada && l.setor === setorSelecionado)
-        .filter((lote, index, self) => 
-          self.findIndex(l => l.id === lote.id) === index
-        )
+    ? lotes.filter(l => l.sessao_id === sessaoSelecionada && l.setor === setorSelecionado)
     : [];
 
-  // ✅ CORRIGIDO: Filtrar tipos de ingresso corretamente
+  // ✅ NOVA FUNÇÃO - EXATAMENTE COMO NO CÓDIGO QUE FUNCIONA
   const tiposFiltrados = () => {
     if (!sessaoSelecionada || !setorSelecionado) {
-      console.log('❌ Sessão ou setor não selecionado');
+      console.log('❌ Falta sessão ou setor');
       return [];
     }
-    
-    console.log('🔍 Filtrando tipos:');
-    console.log('  Sessão:', sessaoSelecionada);
-    console.log('  Setor:', setorSelecionado);
-    console.log('  Lote:', loteSelecionado);
-    console.log('  Total de ingressos:', ingressos.length);
-    
-    // ✅ Filtrar por sessão E setor
-    let tipos = ingressos.filter(i => {
-      const mesmasSessao = i.sessao_id === sessaoSelecionada;
-      const mesmoSetor = i.setor === setorSelecionado;
+
+    console.log('🔍 INICIANDO FILTRO DE TIPOS');
+    console.log('  📌 Sessão selecionada:', sessaoSelecionada);
+    console.log('  📌 Setor selecionado:', setorSelecionado);
+    console.log('  📌 Lote selecionado:', loteSelecionado || 'nenhum');
+    console.log('  📦 Total de ingressos no BD:', ingressos.length);
+
+    // Encontrar o setor pelo nome na sessão selecionada
+    const setorDoIngresso = setores.find(s => 
+      s.nome === setorSelecionado && s.sessao_id === sessaoSelecionada
+    );
+
+    if (!setorDoIngresso) {
+      console.log('❌ Setor não encontrado na sessão');
+      return [];
+    }
+
+    console.log('  ✅ Setor encontrado:', setorDoIngresso);
+
+    // Filtrar ingressos que pertencem a este setor E sessão
+    let tiposFiltrados = ingressos.filter(ingresso => {
+      // Verificar se o ingresso pertence ao setor correto
+      const mesmoSetor = ingresso.setor === setorSelecionado;
       
-      console.log(`  Ingresso ${i.id}: sessao=${i.sessao_id} (${mesmasSessao}), setor="${i.setor}" (${mesmoSetor})`);
-      
-      return mesmasSessao && mesmoSetor;
+      // Verificar se o ingresso pertence à sessão correta
+      const mesmaSessao = ingresso.sessao_id === sessaoSelecionada;
+
+      console.log(`  🎫 Ingresso ${ingresso.id}:`, {
+        tipo: ingresso.tipo,
+        setor: ingresso.setor,
+        mesmoSetor,
+        sessao_id: ingresso.sessao_id,
+        mesmaSessao
+      });
+
+      return mesmoSetor && mesmaSessao;
     });
-    
-    console.log('  Após filtro sessão+setor:', tipos.length);
-    
+
+    console.log('  📋 Após filtro sessão+setor:', tiposFiltrados.length, 'ingressos');
+
     // Filtrar por lote (se selecionado)
     if (loteSelecionado) {
-      tipos = tipos.filter(i => String(i.lote_id) === String(loteSelecionado));
-      console.log('  Após filtro lote:', tipos.length);
+      tiposFiltrados = tiposFiltrados.filter(i => 
+        String(i.lote_id) === String(loteSelecionado)
+      );
+      console.log('  📋 Após filtro lote:', tiposFiltrados.length, 'ingressos');
     }
-    
-    // Filtrar apenas tipos que têm estoque disponível
-    tipos = tipos.filter(tipo => {
+
+    // Filtrar apenas tipos disponíveis
+    tiposFiltrados = tiposFiltrados.filter(tipo => {
       const vendidos = parseInt(tipo.vendidos) || 0;
       const quantidade = parseInt(tipo.quantidade) || 0;
       const disponivel = quantidade > vendidos;
-      console.log(`  Tipo ${tipo.tipo}: qtd=${quantidade}, vendidos=${vendidos}, disp=${disponivel}`);
+      
+      console.log(`  💰 ${tipo.tipo}: qtd=${quantidade}, vendidos=${vendidos}, disponível=${disponivel}`);
+      
       return disponivel;
     });
-    
-    console.log('✅ Tipos finais disponíveis:', tipos.length);
-    return tipos;
+
+    console.log('✅ TIPOS FINAIS DISPONÍVEIS:', tiposFiltrados.length);
+    console.log('📝 Lista completa:', tiposFiltrados.map(t => ({
+      id: t.id,
+      tipo: t.tipo,
+      setor: t.setor,
+      sessao_id: t.sessao_id,
+      quantidade: t.quantidade,
+      vendidos: t.vendidos
+    })));
+
+    return tiposFiltrados;
   };
 
   // Auto-selecionar quando houver apenas uma opção
   useEffect(() => {
     if (sessoes.length === 1 && !sessaoSelecionada) {
+      console.log('🎬 Auto-selecionando única sessão:', sessoes[0].id);
       setSessaoSelecionada(sessoes[0].id);
     }
   }, [sessoes]);
 
   useEffect(() => {
     if (sessaoSelecionada && setoresFiltrados.length === 1 && !setorSelecionado) {
+      console.log('🏟️ Auto-selecionando único setor:', setoresFiltrados[0].nome);
       setSetorSelecionado(setoresFiltrados[0].nome);
     }
   }, [sessaoSelecionada, setoresFiltrados]);
@@ -173,12 +197,12 @@ export default function EmitirCortesiasPage() {
   useEffect(() => {
     const tipos = tiposFiltrados();
     if (setorSelecionado && tipos.length === 1 && !tipoSelecionado) {
+      console.log('🎫 Auto-selecionando único tipo:', tipos[0].id);
       setTipoSelecionado(tipos[0].id);
     }
-  }, [setorSelecionado, loteSelecionado]);
+  }, [setorSelecionado, loteSelecionado, sessaoSelecionada]);
 
   const emitirCortesia = async () => {
-    // Validações
     if (!sessaoSelecionada) {
       alert('Por favor, selecione uma sessão');
       return;
@@ -207,14 +231,12 @@ export default function EmitirCortesiasPage() {
     setEmitindo(true);
 
     try {
-      // Buscar o ingresso selecionado
       const ingressoTipo = ingressos.find(i => i.id === tipoSelecionado);
       
       if (!ingressoTipo) {
         throw new Error('Tipo de ingresso não encontrado');
       }
 
-      // Verificar disponibilidade
       const vendidos = parseInt(ingressoTipo.vendidos) || 0;
       const quantidade = parseInt(ingressoTipo.quantidade) || 0;
       const disponiveis = quantidade - vendidos;
@@ -223,10 +245,8 @@ export default function EmitirCortesiasPage() {
         throw new Error('Não há ingressos disponíveis deste tipo');
       }
 
-      // Gerar QR Code único
       const qrCode = `CORTESIA-${eventoId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-      // Criar cortesia
       const { data: cortesiaData, error: cortesiaError } = await supabase
         .from('ingressos_vendidos')
         .insert([{
@@ -249,7 +269,6 @@ export default function EmitirCortesiasPage() {
 
       if (cortesiaError) throw cortesiaError;
 
-      // Atualizar quantidade vendida do ingresso
       const { error: updateError } = await supabase
         .from('ingressos')
         .update({ vendidos: vendidos + 1 })
@@ -259,7 +278,6 @@ export default function EmitirCortesiasPage() {
 
       alert('✅ Cortesia emitida com sucesso!');
       
-      // Limpar formulário
       setAssentoSelecionado('');
       setNomeBeneficiario('');
       setEmailBeneficiario('');
@@ -267,12 +285,10 @@ export default function EmitirCortesiasPage() {
       setObservacoes('');
       setTipoSelecionado('');
       
-      // Resetar lote se existir
       if (loteSelecionado) {
         setLoteSelecionado('');
       }
 
-      // Recarregar dados
       carregarDados();
 
     } catch (error) {
@@ -317,7 +333,6 @@ export default function EmitirCortesiasPage() {
 
       <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '25px' }}>
         
-        {/* FORMULÁRIO DE EMISSÃO */}
         <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
           <h2 style={{ color: '#5d34a4', marginTop: 0, marginBottom: '25px' }}>📝 Nova Cortesia</h2>
           
@@ -407,7 +422,7 @@ export default function EmitirCortesiasPage() {
                     fontSize: '14px'
                   }}
                 >
-                  <option value="">Sem lote específico</option>
+                  <option value="">Todos os lotes</option>
                   {lotesFiltrados.map(lote => (
                     <option key={lote.id} value={lote.id}>
                       {lote.nome}
@@ -462,7 +477,7 @@ export default function EmitirCortesiasPage() {
               </div>
             )}
 
-            {/* Assento (se tiver lugar marcado) */}
+            {/* Assento */}
             {evento.tem_lugar_marcado && tipoSelecionado && (
               <div>
                 <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>
@@ -595,7 +610,6 @@ export default function EmitirCortesiasPage() {
           </div>
         </div>
 
-        {/* LISTA DE CORTESIAS EMITIDAS */}
         <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
           <h2 style={{ color: '#5d34a4', marginTop: 0, marginBottom: '20px' }}>
             📋 Cortesias Emitidas ({cortesiasEmitidas.length})
