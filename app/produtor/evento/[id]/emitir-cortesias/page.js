@@ -78,6 +78,7 @@ export default function EmitirCortesiasPage() {
         .select('*')
         .eq('evento_id', eventoId);
 
+      console.log('📊 INGRESSOS CARREGADOS:', ingressosData);
       setIngressos(ingressosData || []);
 
       // Carregar cortesias já emitidas
@@ -103,49 +104,56 @@ export default function EmitirCortesiasPage() {
     ? setores.filter(s => s.sessao_id === sessaoSelecionada)
     : [];
 
-  // Filtrar lotes pelo setor selecionado
-  const lotesFiltrados = setorSelecionado
-    ? ingressos
-        .filter(i => i.setor === setorSelecionado && i.lote_id)
-        .map(i => {
-          const lote = lotes.find(l => String(l.id) === String(i.lote_id));
-          return lote;
-        })
+  // Filtrar lotes pelo setor E sessão selecionados
+  const lotesFiltrados = (sessaoSelecionada && setorSelecionado)
+    ? lotes
+        .filter(l => l.sessao_id === sessaoSelecionada && l.setor === setorSelecionado)
         .filter((lote, index, self) => 
-          lote && self.findIndex(l => l?.id === lote.id) === index
+          self.findIndex(l => l.id === lote.id) === index
         )
     : [];
 
-  // Filtrar tipos de ingresso
+  // ✅ CORRIGIDO: Filtrar tipos de ingresso corretamente
   const tiposFiltrados = () => {
-    if (!setorSelecionado) return [];
+    if (!sessaoSelecionada || !setorSelecionado) {
+      console.log('❌ Sessão ou setor não selecionado');
+      return [];
+    }
     
-    console.log('Setor selecionado:', setorSelecionado);
-    console.log('Lote selecionado:', loteSelecionado);
-    console.log('Todos os ingressos:', ingressos);
+    console.log('🔍 Filtrando tipos:');
+    console.log('  Sessão:', sessaoSelecionada);
+    console.log('  Setor:', setorSelecionado);
+    console.log('  Lote:', loteSelecionado);
+    console.log('  Total de ingressos:', ingressos.length);
     
-    // Filtrar por setor
-    let tipos = ingressos.filter(i => i.setor === setorSelecionado);
-    console.log('Ingressos do setor:', tipos);
+    // ✅ Filtrar por sessão E setor
+    let tipos = ingressos.filter(i => {
+      const mesmasSessao = i.sessao_id === sessaoSelecionada;
+      const mesmoSetor = i.setor === setorSelecionado;
+      
+      console.log(`  Ingresso ${i.id}: sessao=${i.sessao_id} (${mesmasSessao}), setor="${i.setor}" (${mesmoSetor})`);
+      
+      return mesmasSessao && mesmoSetor;
+    });
+    
+    console.log('  Após filtro sessão+setor:', tipos.length);
     
     // Filtrar por lote (se selecionado)
     if (loteSelecionado) {
       tipos = tipos.filter(i => String(i.lote_id) === String(loteSelecionado));
-      console.log('Ingressos do lote:', tipos);
+      console.log('  Após filtro lote:', tipos.length);
     }
-    // Se não houver lote selecionado, mostrar TODOS os ingressos do setor
-    // (incluindo os com e sem lote)
     
     // Filtrar apenas tipos que têm estoque disponível
     tipos = tipos.filter(tipo => {
       const vendidos = parseInt(tipo.vendidos) || 0;
       const quantidade = parseInt(tipo.quantidade) || 0;
       const disponivel = quantidade > vendidos;
-      console.log(`Tipo ${tipo.tipo}: quantidade=${quantidade}, vendidos=${vendidos}, disponivel=${disponivel}`);
+      console.log(`  Tipo ${tipo.tipo}: qtd=${quantidade}, vendidos=${vendidos}, disp=${disponivel}`);
       return disponivel;
     });
     
-    console.log('Tipos finais disponíveis:', tipos);
+    console.log('✅ Tipos finais disponíveis:', tipos.length);
     return tipos;
   };
 
@@ -323,6 +331,7 @@ export default function EmitirCortesiasPage() {
               <select
                 value={sessaoSelecionada}
                 onChange={(e) => {
+                  console.log('🔄 Mudando sessão para:', e.target.value);
                   setSessaoSelecionada(e.target.value);
                   setSetorSelecionado('');
                   setLoteSelecionado('');
@@ -354,6 +363,7 @@ export default function EmitirCortesiasPage() {
                 <select
                   value={setorSelecionado}
                   onChange={(e) => {
+                    console.log('🔄 Mudando setor para:', e.target.value);
                     setSetorSelecionado(e.target.value);
                     setLoteSelecionado('');
                     setTipoSelecionado('');
@@ -385,6 +395,7 @@ export default function EmitirCortesiasPage() {
                 <select
                   value={loteSelecionado}
                   onChange={(e) => {
+                    console.log('🔄 Mudando lote para:', e.target.value);
                     setLoteSelecionado(e.target.value);
                     setTipoSelecionado('');
                   }}
@@ -414,7 +425,10 @@ export default function EmitirCortesiasPage() {
                 </label>
                 <select
                   value={tipoSelecionado}
-                  onChange={(e) => setTipoSelecionado(e.target.value)}
+                  onChange={(e) => {
+                    console.log('🔄 Selecionando tipo:', e.target.value);
+                    setTipoSelecionado(e.target.value);
+                  }}
                   style={{
                     width: '100%',
                     padding: '12px',
