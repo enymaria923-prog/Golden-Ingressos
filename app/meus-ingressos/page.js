@@ -75,23 +75,23 @@ export default function MeusIngressosPage() {
         .in('id', sessoesIds);
 
       // Combinar dados
-      const ingressosCompletos = ingressosData.map(ingresso => {
+      const ingressosCompletos = ingressosData?.map(ingresso => {
         const pedido = pedidos.find(p => p.id === ingresso.pedido_id);
-        const evento = eventosData?.find(e => e.id === pedido.evento_id);
-        const sessao = sessoes?.find(s => s.id === pedido.sessao_id);
+        const evento = eventosData?.find(e => e.id === pedido?.evento_id);
+        const sessao = sessoes?.find(s => s.id === pedido?.sessao_id);
 
         return {
           ...ingresso,
           evento,
           sessao
         };
-      });
+      }) || [];
 
       setIngressos(ingressosCompletos);
 
       // Agrupar eventos únicos com suas datas
-      const eventosUnicos = eventosData.map(evento => {
-        const ingressosDoEvento = ingressosCompletos.filter(ing => ing.evento.id === evento.id);
+      const eventosUnicos = eventosData?.map(evento => {
+        const ingressosDoEvento = ingressosCompletos.filter(ing => ing.evento?.id === evento.id);
         const sessao = ingressosDoEvento[0]?.sessao;
         
         return {
@@ -100,7 +100,7 @@ export default function MeusIngressosPage() {
           hora: sessao?.hora,
           totalIngressos: ingressosDoEvento.length
         };
-      });
+      }) || [];
 
       setEventos(eventosUnicos);
 
