@@ -105,10 +105,15 @@ export default function EmitirCortesiasPage() {
 
   // Filtrar lotes pelo setor selecionado
   const lotesFiltrados = setorSelecionado
-    ? ingressos.filter(i => i.setor === setorSelecionado && i.lote_id).map(i => {
-        const lote = lotes.find(l => l.id === i.lote_id);
-        return lote;
-      }).filter((lote, index, self) => lote && self.findIndex(l => l?.id === lote.id) === index)
+    ? ingressos
+        .filter(i => i.setor === setorSelecionado && i.lote_id)
+        .map(i => {
+          const lote = lotes.find(l => l.id === i.lote_id);
+          return lote;
+        })
+        .filter((lote, index, self) => 
+          lote && self.findIndex(l => l?.id === lote.id) === index
+        )
     : [];
 
   // Filtrar tipos de ingresso
@@ -138,20 +143,20 @@ export default function EmitirCortesiasPage() {
     if (sessoes.length === 1 && !sessaoSelecionada) {
       setSessaoSelecionada(sessoes[0].id);
     }
-  }, [sessoes, sessaoSelecionada]);
+  }, [sessoes]);
 
   useEffect(() => {
     if (sessaoSelecionada && setoresFiltrados.length === 1 && !setorSelecionado) {
       setSetorSelecionado(setoresFiltrados[0].nome);
     }
-  }, [sessaoSelecionada, setoresFiltrados, setorSelecionado]);
+  }, [sessaoSelecionada, setoresFiltrados]);
 
   useEffect(() => {
     const tipos = tiposFiltrados();
     if (setorSelecionado && tipos.length === 1 && !tipoSelecionado) {
       setTipoSelecionado(tipos[0].id);
     }
-  }, [setorSelecionado, loteSelecionado, ingressos, tipoSelecionado]);
+  }, [setorSelecionado, loteSelecionado]);
 
   const emitirCortesia = async () => {
     // Validações
@@ -364,7 +369,7 @@ export default function EmitirCortesiasPage() {
             {setorSelecionado && lotesFiltrados.length > 0 && (
               <div>
                 <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>
-                  📦 Lote
+                  📦 Lote (opcional)
                 </label>
                 <select
                   value={loteSelecionado}
@@ -380,7 +385,7 @@ export default function EmitirCortesiasPage() {
                     fontSize: '14px'
                   }}
                 >
-                  <option value="">Ingressos sem lote</option>
+                  <option value="">Sem lote específico</option>
                   {lotesFiltrados.map(lote => (
                     <option key={lote.id} value={lote.id}>
                       {lote.nome}
