@@ -135,6 +135,13 @@ export default function EmitirCortesiasPage() {
       tipos = tipos.filter(i => !i.lote_id);
     }
     
+    // Filtrar apenas tipos que têm estoque disponível
+    tipos = tipos.filter(tipo => {
+      const vendidos = parseInt(tipo.vendidos) || 0;
+      const quantidade = parseInt(tipo.quantidade) || 0;
+      return quantidade > vendidos;
+    });
+    
     return tipos;
   };
 
@@ -177,10 +184,18 @@ export default function EmitirCortesiasPage() {
       // Verificar disponibilidade
       const vendidos = parseInt(ingressoTipo.vendidos) || 0;
       const quantidade = parseInt(ingressoTipo.quantidade) || 0;
+      const disponiveis = quantidade - vendidos;
       
-      if (vendidos >= quantidade) {
+      if (disponiveis <= 0) {
         throw new Error('Não há ingressos disponíveis deste tipo');
       }
+
+      console.log('📊 Verificação de estoque:', {
+        tipo: ingressoTipo.tipo,
+        quantidade,
+        vendidos,
+        disponiveis
+      });
 
       // Gerar QR Code único
       const qrCode = `CORTESIA-${eventoId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
