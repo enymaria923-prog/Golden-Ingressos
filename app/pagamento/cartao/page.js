@@ -3,7 +3,6 @@
 import { useState, useEffect, Suspense } from 'react';
 import { createClient } from '../../../utils/supabase/client';
 import { useSearchParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
 
 function PagamentoCartaoContent() {
   const supabase = createClient();
@@ -57,12 +56,12 @@ function PagamentoCartaoContent() {
       setDadosCartao(prev => ({
         ...prev,
         holderInfo: {
-          name: pedidoData.comprador_nome,
-          email: pedidoData.comprador_email,
-          cpfCnpj: pedidoData.comprador_cpf,
+          name: pedidoData.nome_comprador,
+          email: pedidoData.email_comprador,
+          cpfCnpj: pedidoData.cpf_comprador,
           postalCode: '',
           addressNumber: '',
-          phone: pedidoData.comprador_telefone || ''
+          phone: pedidoData.telefone_comprador || ''
         }
       }));
 
@@ -86,7 +85,7 @@ function PagamentoCartaoContent() {
     }
   };
 
-  const handleProcessarPagamento = async () => {
+  const simularPagamento = async () => {
     // Validações
     if (!dadosCartao.number || dadosCartao.number.length < 13) {
       alert('Número do cartão inválido');
@@ -116,43 +115,201 @@ function PagamentoCartaoContent() {
     setProcessando(true);
 
     try {
-      // Obter IP do cliente
-      const ipResponse = await fetch('https://api.ipify.org?format=json');
-      const ipData = await ipResponse.json();
+      console.log('🔄 Iniciando simulação de pagamento via cartão...');
+      
+      await new Promise(resolve => setTimeout(resolve, 2000));
 
-      const payload = {
-        pedidoId: pedido.id,
-        formaPagamento: tipoCartao,
-        dadosCartao: {
-          ...dadosCartao,
-          remoteIp: ipData.ip
+      // Buscar pedido
+      const { data: pedidoAtual, error: pedidoErro } = await supabase
+        .from('pedidos')
+        .select('*')
+        .eq('id', pedidoId)
+        .single();
+
+      if (pedidoErro) {
+        console.error('❌ Erro ao buscar pedido:', pedidoErro);
+        throw pedidoErro;
+      }
+
+      console.log('📦 Pedido encontrado:', pedidoAtual);
+
+      // Criar registro de pagamento
+      const { error: pagamentoError } = await supabase
+        .from('pagamentos')
+        .insert([{
+          pedido_id: pedidoId,
+          valor: parseFloat(pedidoAtual.valor_total),
+          forma_pagamento: tipoCartao,
+          pago: true,
+          pago_em: new Date().toISOString()
+        }]);
+
+      if (pagamentoError) {
+        console.error('❌ Erro ao criar pagamento:', pagamentoError);
+        throw pagamentoError;
+      }
+
+      console.log('💰 Pagamento criado!');
+
+      // Atualizar status do pedido
+      const { error: pedidoError } = await supabase
+        .from('pedidos')
+        .update({ 
+          status: 'PAGO',
+          data_pagamento: new Date().toISOString()
+        })
+        .eq('id', pedidoId);
+
+      if (pedidoError) {
+        console.error('❌ Erro ao atualizar pedido:', pedidoError);
+        throw pedidoError;
+      }
+
+      console.log('✅ Pedido atualizado para PAGO!');
+
+      // Processar itens e gerar ingressos
+      let itens = [];
+      
+      if (pedidoAtual.itens) {
+        // Verificar se é string ou objeto
+        if (typeof pedidoAtual.itens === 'string') {
+          itens = JSON.parse(pedidoAtual.itens);
+        } else {
+          itens = pedidoAtual.itens;
         }
-      };
+      }
 
-      const response = await fetch('/api/pagamento/processar-cartao', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload)
+      console.log('🎫 Itens do pedido:', itens);
+
+      if (!Array.isArray(itens) || itens.length === 0) {
+        console.error('❌ Nenhum item encontrado no pedido!');
+        throw new Error('Nenhum item encontrado no pedido');
+      }
+
+      // Gerar ingressos individuais com QR Code único
+      const ingressosParaGerar = [];
+
+      itens.forEach((item, index) => {
+        const quantidade = item.quantidade || 1;
+        console.log(`🎟️ Gerando ${quantidade} ingresso(s) do tipo: ${item.tipo}`);
+        
+        for (let i = 0; i < quantidade; i++) {
+          const qrCode = `INGRESSO-${pedidoId}-${item.ingresso_id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          
+          ingressosParaGerar.push({
+            pedido_id: pedidoId,
+            evento_id: pedidoAtual.evento_id,
+            sessao_id: pedidoAtual.sessao_id,
+            ingresso_id: item.ingresso_id,
+            tipo_ingresso: item.tipo,
+            valor: item.valor_unitario,
+            comprador_nome: pedidoAtual.nome_comprador,
+            comprador_email: pedidoAtual.email_comprador,
+            comprador_cpf: pedidoAtual.cpf_comprador,
+            assento: item.assento || null,
+            qr_code: qrCode,
+            status: 'ATIVO'
+          });
+        }
       });
 
-      const result = await response.json();
+      console.log(`📝 Total de ingressos a gerar: ${ingressosParaGerar.length}`);
+      console.log('📋 Ingressos:', ingressosParaGerar);
 
-      if (!response.ok) {
-        throw new Error(result.error || 'Erro ao processar pagamento');
+      if (ingressosParaGerar.length > 0) {
+        const { data: ingressosGerados, error: ingressosError } = await supabase
+          .from('ingressos_vendidos')
+          .insert(ingressosParaGerar)
+          .select();
+
+        if (ingressosError) {
+          console.error('❌ Erro ao gerar ingressos:', ingressosError);
+          throw ingressosError;
+        }
+
+        console.log('🎉 Ingressos gerados com sucesso:', ingressosGerados);
       }
 
-      if (result.aprovado) {
-        // Pagamento aprovado! Redirecionar para página de sucesso
-        router.push(`/pedido/sucesso?pedido_id=${pedido.id}`);
-      } else {
-        alert('Pagamento recusado. Verifique os dados do cartão e tente novamente.');
+      // ✅ ATUALIZAR ESTOQUE DE INGRESSOS
+      console.log('📊 Atualizando estoque...');
+      
+      for (const item of itens) {
+        const quantidade = item.quantidade || 1;
+        const ingressoId = item.ingresso_id;
+
+        // Buscar dados do ingresso
+        const { data: ingressoOriginal } = await supabase
+          .from('ingressos')
+          .select('*, lote_id')
+          .eq('id', ingressoId)
+          .single();
+
+        if (ingressoOriginal) {
+          // Atualizar vendidos do ingresso
+          const { error: updateIngressoError } = await supabase
+            .from('ingressos')
+            .update({ 
+              vendidos: (ingressoOriginal.vendidos || 0) + quantidade 
+            })
+            .eq('id', ingressoId);
+
+          if (updateIngressoError) {
+            console.error('❌ Erro ao atualizar estoque do ingresso:', updateIngressoError);
+          } else {
+            console.log(`✅ Ingresso ${ingressoId}: +${quantidade} vendidos`);
+          }
+
+          // Se tem lote, atualizar o lote também
+          if (ingressoOriginal.lote_id) {
+            const { data: lote } = await supabase
+              .from('lotes')
+              .select('quantidade_vendida')
+              .eq('id', ingressoOriginal.lote_id)
+              .single();
+
+            if (lote) {
+              await supabase
+                .from('lotes')
+                .update({ 
+                  quantidade_vendida: (lote.quantidade_vendida || 0) + quantidade 
+                })
+                .eq('id', ingressoOriginal.lote_id);
+
+              console.log(`✅ Lote ${ingressoOriginal.lote_id}: +${quantidade} vendidos`);
+            }
+          }
+        }
       }
+
+      // Atualizar total de ingressos vendidos do evento
+      const totalVendidosAgora = itens.reduce((acc, item) => acc + (item.quantidade || 1), 0);
+      
+      const { data: eventoAtual } = await supabase
+        .from('eventos')
+        .select('ingressos_vendidos')
+        .eq('id', pedidoAtual.evento_id)
+        .single();
+
+      if (eventoAtual) {
+        await supabase
+          .from('eventos')
+          .update({ 
+            ingressos_vendidos: (eventoAtual.ingressos_vendidos || 0) + totalVendidosAgora 
+          })
+          .eq('id', pedidoAtual.evento_id);
+
+        console.log(`✅ Evento: +${totalVendidosAgora} ingressos vendidos`);
+      }
+
+      console.log('📊 Estoque atualizado com sucesso!');
+
+      // Redirecionar
+      console.log('🚀 Redirecionando para meus-ingressos...');
+      router.push('/meus-ingressos');
 
     } catch (error) {
-      console.error('Erro ao processar pagamento:', error);
-      alert(`Erro: ${error.message}`);
+      console.error('❌ Erro ao simular pagamento:', error);
+      alert('Erro ao processar pagamento: ' + error.message);
     } finally {
       setProcessando(false);
     }
@@ -170,11 +327,12 @@ function PagamentoCartaoContent() {
     return (
       <div style={{ fontFamily: 'sans-serif', padding: '50px', textAlign: 'center' }}>
         <h2>⚠️ Pedido não encontrado</h2>
-        <Link href="/">
-          <button style={{ padding: '10px 20px', marginTop: '20px', cursor: 'pointer' }}>
-            Voltar para Home
-          </button>
-        </Link>
+        <button 
+          onClick={() => router.push('/')}
+          style={{ padding: '10px 20px', marginTop: '20px', cursor: 'pointer' }}
+        >
+          Voltar para Home
+        </button>
       </div>
     );
   }
@@ -236,7 +394,8 @@ function PagamentoCartaoContent() {
                   border: '2px solid #e0e0e0',
                   borderRadius: '8px',
                   fontSize: '16px',
-                  letterSpacing: '2px'
+                  letterSpacing: '2px',
+                  boxSizing: 'border-box'
                 }}
               />
             </div>
@@ -257,7 +416,8 @@ function PagamentoCartaoContent() {
                   border: '2px solid #e0e0e0',
                   borderRadius: '8px',
                   fontSize: '16px',
-                  textTransform: 'uppercase'
+                  textTransform: 'uppercase',
+                  boxSizing: 'border-box'
                 }}
               />
             </div>
@@ -285,7 +445,8 @@ function PagamentoCartaoContent() {
                     border: '2px solid #e0e0e0',
                     borderRadius: '8px',
                     fontSize: '16px',
-                    textAlign: 'center'
+                    textAlign: 'center',
+                    boxSizing: 'border-box'
                   }}
                 />
               </div>
@@ -311,7 +472,8 @@ function PagamentoCartaoContent() {
                     border: '2px solid #e0e0e0',
                     borderRadius: '8px',
                     fontSize: '16px',
-                    textAlign: 'center'
+                    textAlign: 'center',
+                    boxSizing: 'border-box'
                   }}
                 />
               </div>
@@ -337,7 +499,8 @@ function PagamentoCartaoContent() {
                     border: '2px solid #e0e0e0',
                     borderRadius: '8px',
                     fontSize: '16px',
-                    textAlign: 'center'
+                    textAlign: 'center',
+                    boxSizing: 'border-box'
                   }}
                 />
               </div>
@@ -377,7 +540,8 @@ function PagamentoCartaoContent() {
                       padding: '14px',
                       border: '2px solid #e0e0e0',
                       borderRadius: '8px',
-                      fontSize: '16px'
+                      fontSize: '16px',
+                      boxSizing: 'border-box'
                     }}
                   />
                 </div>
@@ -399,7 +563,8 @@ function PagamentoCartaoContent() {
                       padding: '14px',
                       border: '2px solid #e0e0e0',
                       borderRadius: '8px',
-                      fontSize: '16px'
+                      fontSize: '16px',
+                      boxSizing: 'border-box'
                     }}
                   />
                 </div>
@@ -410,25 +575,53 @@ function PagamentoCartaoContent() {
               </p>
             </div>
 
-            {/* Botão de Pagamento */}
+            {/* Ambiente de Teste */}
+            <div style={{
+              padding: '20px',
+              backgroundColor: '#fff3cd',
+              borderRadius: '8px',
+              border: '2px dashed #ffc107',
+              marginTop: '10px'
+            }}>
+              <div style={{ fontSize: '14px', color: '#856404', marginBottom: '10px', fontWeight: 'bold' }}>
+                ⚠️ AMBIENTE DE TESTE
+              </div>
+              <button
+                onClick={simularPagamento}
+                disabled={processando}
+                style={{
+                  width: '100%',
+                  padding: '15px',
+                  backgroundColor: processando ? '#95a5a6' : '#ffc107',
+                  color: '#333',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                  cursor: processando ? 'not-allowed' : 'pointer'
+                }}
+              >
+                {processando ? '⏳ Processando pagamento...' : '✅ Simular Pagamento Aprovado'}
+              </button>
+            </div>
+
+            {/* Botão de Pagamento Real (desabilitado) */}
             <button
-              onClick={handleProcessarPagamento}
-              disabled={processando}
+              disabled={true}
               style={{
                 width: '100%',
-                backgroundColor: processando ? '#95a5a6' : '#27ae60',
-                color: 'white',
+                backgroundColor: '#e0e0e0',
+                color: '#999',
                 border: 'none',
                 padding: '18px',
                 borderRadius: '10px',
                 fontSize: '18px',
                 fontWeight: 'bold',
-                cursor: processando ? 'not-allowed' : 'pointer',
-                marginTop: '10px',
-                transition: 'all 0.3s'
+                cursor: 'not-allowed',
+                marginTop: '10px'
               }}
             >
-              {processando ? '⏳ Processando...' : `💳 Pagar R$ ${parseFloat(pedido.valor_total).toFixed(2)}`}
+              💳 Pagamento Real (Em Produção)
             </button>
 
           </div>
@@ -448,9 +641,19 @@ function PagamentoCartaoContent() {
         </div>
 
         <div style={{ marginTop: '20px', textAlign: 'center' }}>
-          <Link href={`/checkout?evento_id=${pedido.evento_id}&sessao_id=${pedido.sessao_id}`} style={{ color: '#5d34a4', textDecoration: 'none', fontSize: '14px' }}>
-            ← Voltar para checkout
-          </Link>
+          <button 
+            onClick={() => router.back()}
+            style={{ 
+              color: '#5d34a4', 
+              background: 'none',
+              border: 'none',
+              textDecoration: 'underline',
+              fontSize: '14px',
+              cursor: 'pointer'
+            }}
+          >
+            ← Voltar
+          </button>
         </div>
 
       </div>
