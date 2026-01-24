@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import '../styles/checkout.css';
 import Link from 'next/link';
 
 export default function CheckoutPage() {
