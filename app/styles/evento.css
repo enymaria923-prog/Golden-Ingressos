@@ -1,0 +1,1209 @@
+/* ==================== VARIÁVEIS DE TEMA - EVENTO ==================== */
+:root {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f9fa;
+  --text-primary: #1a1a1a;
+  --text-secondary: #666666;
+  --card-bg: #ffffff;
+  --header-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --btn-primary: #f1c40f;
+  --btn-primary-hover: #d4a717;
+  --btn-success: #27ae60;
+  --btn-success-hover: #229954;
+  --border-color: #e0e0e0;
+  --price-color: #27ae60;
+  --accent-purple: #5d34a4;
+  --cupom-bg: #fff3cd;
+  --cupom-border: #ffc107;
+  --cupom-text: #856404;
+  --cupom-success-bg: #d4edda;
+  --cupom-success-border: #28a745;
+  --cupom-success-text: #155724;
+  --warning-bg: #ffc107;
+  --warning-text: #856404;
+  --danger-bg: #dc3545;
+  --danger-text: #fff;
+  --info-bg: #e8f8f5;
+  --info-border: #27ae60;
+}
+
+.dark {
+  --bg-primary: #0a0e27;
+  --bg-secondary: #151932;
+  --text-primary: #ffffff;
+  --text-secondary: #b0b0b0;
+  --card-bg: #1a1f3a;
+  --header-bg: linear-gradient(135deg, #1e1440 0%, #0a0e27 100%);
+  --btn-primary: #f1c40f;
+  --btn-primary-hover: #d4a717;
+  --btn-success: #4ade80;
+  --btn-success-hover: #22c55e;
+  --border-color: #2d3250;
+  --price-color: #4ade80;
+  --accent-purple: #9b59b6;
+  --cupom-bg: rgba(241, 196, 15, 0.15);
+  --cupom-border: #f1c40f;
+  --cupom-text: #f1c40f;
+  --cupom-success-bg: rgba(74, 222, 128, 0.15);
+  --cupom-success-border: #4ade80;
+  --cupom-success-text: #4ade80;
+  --warning-bg: #f1c40f;
+  --warning-text: #000;
+  --danger-bg: #dc3545;
+  --danger-text: #fff;
+  --info-bg: rgba(74, 222, 128, 0.1);
+  --info-border: #4ade80;
+}
+
+/* ==================== RESET ==================== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  transition: background-color 0.3s ease, color 0.3s ease;
+  overflow-x: hidden;
+}
+
+/* ==================== PÁGINA DE EVENTO ==================== */
+.page-evento {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--bg-primary);
+  min-height: 100vh;
+  color: var(--text-primary);
+}
+
+/* ==================== HEADER EVENTO ==================== */
+.header-evento {
+  background: var(--header-bg);
+  color: white;
+  padding: 15px 30px;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 0;
+}
+
+.header-content-evento {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  max-width: 1200px;
+  width: 100%;
+  position: relative;
+}
+
+.logo-golden-evento {
+  font-size: 32px;
+  font-weight: 900;
+  margin: 0;
+  letter-spacing: 2px;
+  background: linear-gradient(90deg, #3CDCE8, #9B59B6, #E74C3C, #F1C40f, #3CDCE8);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shine 3s linear infinite;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+@keyframes shine {
+  0% { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
+
+.theme-toggle-evento {
+  position: absolute;
+  right: 0;
+  background: rgba(255,255,255,0.25);
+  border: none;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  font-size: 24px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.theme-toggle-evento:hover {
+  background: rgba(255,255,255,0.35);
+  transform: scale(1.1);
+}
+
+.theme-toggle-evento:active {
+  transform: scale(0.95);
+}
+
+.btn-voltar-home {
+  color: white;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 20px;
+  transition: all 0.3s ease;
+  background: rgba(255,255,255,0.1);
+  position: absolute;
+  left: 0;
+}
+
+.btn-voltar-home:hover {
+  background: rgba(255,255,255,0.2);
+}
+
+/* ==================== CONTAINER ==================== */
+.container-evento {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px 40px;
+}
+
+/* ==================== IMAGEM PRINCIPAL ==================== */
+.evento-imagem-destaque {
+  margin-top: 30px;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.evento-img-principal {
+  width: 100%;
+  max-width: 1200px;
+  height: 400px;
+  object-fit: cover;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  transition: transform 0.3s ease;
+}
+
+.dark .evento-img-principal {
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+
+/* ==================== TÍTULO E META ==================== */
+.evento-titulo-principal {
+  text-align: center;
+  font-size: 38px;
+  color: var(--text-primary);
+  margin: 25px 0 15px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.evento-meta-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 25px;
+  flex-wrap: wrap;
+  text-align: center;
+  font-size: 16px;
+  color: var(--accent-purple);
+  font-weight: 600;
+  margin-bottom: 35px;
+}
+
+/* ==================== GRID INFO ==================== */
+.evento-grid-info {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 25px;
+  margin-bottom: 35px;
+}
+
+/* ==================== CARDS ==================== */
+.evento-card {
+  background-color: var(--card-bg);
+  padding: 30px;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  transition: all 0.3s ease;
+}
+
+.dark .evento-card {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+
+.evento-card-titulo {
+  color: var(--accent-purple);
+  margin: 0 0 20px;
+  font-size: 26px;
+  font-weight: 800;
+}
+
+.evento-card-subtitulo {
+  color: var(--accent-purple);
+  margin: 0 0 15px;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.evento-texto {
+  font-size: 15px;
+  line-height: 1.8;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+}
+
+.evento-categoria-tag {
+  display: inline-block;
+  background: rgba(93, 52, 164, 0.1);
+  color: var(--text-primary);
+  padding: 8px 18px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+  margin-top: 20px;
+}
+
+.dark .evento-categoria-tag {
+  background: rgba(241, 196, 15, 0.15);
+}
+
+/* ==================== LOCAL INFO ==================== */
+.evento-local-titulo {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.evento-local-info {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  line-height: 1.6;
+}
+
+.evento-divisor {
+  margin: 20px 0;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color);
+}
+
+/* ==================== CUPOM ==================== */
+.evento-cupom-section {
+  background-color: var(--cupom-bg);
+  padding: 25px;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  margin-bottom: 35px;
+  border: 2px solid var(--cupom-border);
+}
+
+.evento-cupom-aplicado {
+  background-color: var(--cupom-success-bg);
+  border-color: var(--cupom-success-border);
+}
+
+.evento-cupom-titulo {
+  color: var(--cupom-text);
+  margin: 0 0 15px;
+  font-size: 20px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.evento-cupom-aplicado .evento-cupom-titulo {
+  color: var(--cupom-success-text);
+}
+
+.evento-cupom-form {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  max-width: 500px;
+  margin: 0 auto 15px;
+}
+
+.evento-cupom-input {
+  flex: 1;
+  padding: 12px 20px;
+  border: 2px solid var(--cupom-border);
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  text-transform: uppercase;
+  text-align: center;
+  background-color: var(--card-bg);
+  color: var(--text-primary);
+}
+
+.evento-cupom-btn {
+  background-color: #f39c12;
+  color: white;
+  border: none;
+  padding: 12px 30px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.evento-cupom-btn:hover {
+  background-color: #e67e22;
+  transform: translateY(-2px);
+}
+
+.evento-cupom-info {
+  text-align: center;
+  color: var(--cupom-success-text);
+  margin-bottom: 15px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.evento-cupom-remover {
+  background-color: var(--danger-bg);
+  color: white;
+  border: none;
+  padding: 10px 25px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: block;
+  margin: 0 auto;
+}
+
+.evento-cupom-remover:hover {
+  background-color: #c82333;
+  transform: scale(1.05);
+}
+
+/* ==================== INGRESSOS ==================== */
+.evento-ingressos-section {
+  background-color: var(--card-bg);
+  padding: 35px;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  margin-bottom: 35px;
+}
+
+.dark .evento-ingressos-section {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+
+.evento-ingressos-titulo {
+  color: var(--accent-purple);
+  margin: 0 0 10px;
+  font-size: 30px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.evento-preco-info {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 15px;
+  margin-bottom: 25px;
+}
+
+.evento-preco-valor {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--price-color);
+}
+
+/* ==================== BOTÕES ==================== */
+.evento-btn-primary {
+  padding: 22px 70px;
+  background-color: var(--btn-success);
+  color: white;
+  border: none;
+  border-radius: 14px;
+  font-size: 22px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: block;
+  margin: 0 auto;
+}
+
+.evento-btn-primary:hover {
+  background-color: var(--btn-success-hover);
+  transform: scale(1.05);
+}
+
+.evento-btn-secondary {
+  padding: 10px 20px;
+  background-color: #95a5a6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.evento-btn-secondary:hover {
+  background-color: #7f8c8d;
+}
+
+/* ==================== SESSÕES ==================== */
+.evento-sessoes-container {
+  background-color: var(--bg-secondary);
+  padding: 25px;
+  border-radius: 14px;
+  margin-bottom: 25px;
+}
+
+.evento-sessoes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.evento-sessao-card {
+  padding: 18px;
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  background-color: var(--card-bg);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+}
+
+.evento-sessao-card:hover {
+  border-color: var(--accent-purple);
+  transform: translateY(-3px);
+}
+
+.evento-sessao-card.selecionada {
+  border-color: var(--accent-purple);
+  background-color: rgba(93, 52, 164, 0.1);
+}
+
+.dark .evento-sessao-card.selecionada {
+  background-color: rgba(241, 196, 15, 0.15);
+}
+
+/* ==================== SETORES ==================== */
+.evento-setor-container {
+  margin-bottom: 30px;
+  border: 2px solid var(--border-color);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.evento-setor-header {
+  background-color: var(--accent-purple);
+  color: white;
+  padding: 18px 25px;
+  font-size: 19px;
+  font-weight: 800;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.evento-setor-badge {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 20px;
+}
+
+.evento-setor-content {
+  padding: 25px;
+  background-color: var(--card-bg);
+}
+
+/* ==================== LOTES ==================== */
+.evento-lote-header {
+  background-color: var(--bg-secondary);
+  padding: 12px 20px;
+  border-radius: 10px;
+  margin-bottom: 15px;
+  border-left: 4px solid #9b59b6;
+}
+
+/* CONTINUA NA PRÓXIMA MENSAGEM... */
+/* ==================== CONTINUAÇÃO DO CSS - PARTE 2 ==================== */
+
+/* ==================== INGRESSO ITEM ==================== */
+.evento-ingresso-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  background-color: var(--bg-secondary);
+  border-radius: 12px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border-color);
+  flex-wrap: wrap;
+  gap: 15px;
+  transition: all 0.3s ease;
+}
+
+.evento-ingresso-item:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  transform: translateY(-2px);
+}
+
+.dark .evento-ingresso-item:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.evento-ingresso-com-desconto {
+  background-color: var(--cupom-success-bg);
+  border-color: var(--cupom-success-border);
+}
+
+.evento-ingresso-info {
+  flex: 1;
+  min-width: 200px;
+}
+
+.evento-ingresso-tipo {
+  margin: 0 0 5px;
+  font-size: 17px;
+  color: var(--text-primary);
+  font-weight: 800;
+}
+
+.evento-ingresso-preco-section {
+  text-align: right;
+  margin-right: 20px;
+}
+
+.evento-preco-original {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-decoration: line-through;
+  margin-bottom: 3px;
+}
+
+.evento-preco-detalhes {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 3px;
+}
+
+.evento-preco-total {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--price-color);
+}
+
+.evento-ingresso-com-desconto .evento-preco-total {
+  color: var(--cupom-success-text);
+}
+
+/* ==================== SELECT QUANTIDADE ==================== */
+.evento-quantidade-select {
+  padding: 10px 15px;
+  border: 2px solid var(--accent-purple);
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  background-color: var(--card-bg);
+  color: var(--text-primary);
+  transition: all 0.3s ease;
+}
+
+.evento-quantidade-select:hover {
+  border-color: var(--btn-primary);
+  box-shadow: 0 2px 8px rgba(93, 52, 164, 0.2);
+}
+
+.evento-btn-esgotado {
+  background-color: #ccc;
+  color: #666;
+  border: none;
+  padding: 12px 30px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* ==================== CARRINHO ==================== */
+.evento-carrinho-resumo {
+  margin-top: 30px;
+  padding: 25px;
+  background-color: var(--bg-secondary);
+  border-radius: 14px;
+  border: 3px solid var(--accent-purple);
+  box-shadow: 0 6px 20px rgba(93, 52, 164, 0.15);
+}
+
+.evento-carrinho-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.evento-carrinho-titulo {
+  margin: 0;
+  color: var(--accent-purple);
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.evento-carrinho-total-section {
+  text-align: right;
+}
+
+.evento-carrinho-total-label {
+  font-size: 15px;
+  color: var(--text-secondary);
+  margin-bottom: 5px;
+}
+
+.evento-carrinho-total-valor {
+  font-size: 30px;
+  font-weight: 900;
+  color: var(--price-color);
+}
+
+.evento-carrinho-produtos {
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: var(--card-bg);
+  border-radius: 10px;
+}
+
+.evento-produto-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  gap: 10px;
+}
+
+.evento-btn-remover {
+  background-color: var(--danger-bg);
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.evento-btn-remover:hover {
+  background-color: #c82333;
+  transform: scale(1.1);
+}
+
+.evento-btn-finalizar {
+  width: 100%;
+  background-color: var(--btn-success);
+  color: white;
+  border: none;
+  padding: 18px;
+  border-radius: 12px;
+  font-size: 19px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 6px 18px rgba(39, 174, 96, 0.3);
+}
+
+.dark .evento-btn-finalizar {
+  background-color: var(--btn-success);
+  box-shadow: 0 6px 18px rgba(74, 222, 128, 0.3);
+}
+
+.evento-btn-finalizar:hover {
+  background-color: var(--btn-success-hover);
+  transform: scale(1.02);
+  box-shadow: 0 8px 24px rgba(39, 174, 96, 0.4);
+}
+
+.dark .evento-btn-finalizar:hover {
+  box-shadow: 0 8px 24px rgba(74, 222, 128, 0.4);
+}
+
+/* ==================== BADGES CONFIANÇA ==================== */
+.evento-badges-confianca {
+  margin-top: 25px;
+  padding: 20px;
+  background-color: var(--info-bg);
+  border-radius: 12px;
+  border: 1px solid var(--info-border);
+}
+
+.evento-badges-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  text-align: center;
+}
+
+.evento-badge-icon {
+  font-size: 26px;
+  margin-bottom: 8px;
+}
+
+.evento-badge-text {
+  font-size: 13px;
+  color: var(--btn-success);
+  font-weight: 700;
+}
+
+.dark .evento-badge-text {
+  color: var(--btn-success);
+}
+
+/* ==================== PRODUTOS ==================== */
+.evento-produtos-section {
+  background-color: var(--card-bg);
+  padding: 35px;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  margin-bottom: 35px;
+}
+
+.dark .evento-produtos-section {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+}
+
+.evento-produtos-titulo {
+  color: var(--accent-purple);
+  margin: 0 0 25px;
+  font-size: 30px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.evento-produtos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 25px;
+}
+
+.evento-produto-card {
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  background-color: var(--card-bg);
+  position: relative;
+}
+
+.evento-produto-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+}
+
+.dark .evento-produto-card:hover {
+  box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+}
+
+.evento-produto-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 5px 10px;
+  border-radius: 15px;
+  font-size: 12px;
+  font-weight: 700;
+  z-index: 1;
+}
+
+.evento-produto-badge.ultimos {
+  background-color: var(--warning-bg);
+  color: var(--warning-text);
+}
+
+.evento-produto-badge.esgotado {
+  background-color: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+.evento-produto-imagem-container {
+  width: 100%;
+  height: 200px;
+  background-color: var(--bg-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.evento-produto-imagem {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.evento-produto-content {
+  padding: 20px;
+}
+
+.evento-produto-nome {
+  margin: 0 0 10px;
+  font-size: 18px;
+  color: var(--text-primary);
+  font-weight: 800;
+}
+
+.evento-produto-descricao {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+.evento-produto-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.evento-produto-preco {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--price-color);
+}
+
+.evento-produto-tamanho {
+  background-color: rgba(93, 52, 164, 0.1);
+  color: var(--accent-purple);
+  padding: 4px 12px;
+  border-radius: 15px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.dark .evento-produto-tamanho {
+  background-color: rgba(241, 196, 15, 0.15);
+}
+
+.evento-produto-disponivel {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 15px;
+}
+
+.evento-btn-adicionar-produto {
+  background-color: #3498db;
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 10px;
+  width: 100%;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.evento-btn-adicionar-produto:hover {
+  background-color: #2980b9;
+  transform: translateY(-2px);
+}
+
+/* ==================== ALERTA/WARNING ==================== */
+.evento-alerta-warning {
+  background-color: var(--cupom-bg);
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  margin-bottom: 35px;
+  border: 2px solid var(--cupom-border);
+  text-align: center;
+}
+
+.evento-alerta-titulo {
+  color: var(--cupom-text);
+  margin: 0 0 15px;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.evento-alerta-texto {
+  font-size: 15px;
+  color: var(--cupom-text);
+  margin-bottom: 10px;
+  line-height: 1.6;
+}
+
+/* ==================== LOADING ==================== */
+.evento-loading {
+  font-family: sans-serif;
+  padding: 50px;
+  text-align: center;
+  background-color: var(--bg-primary);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.evento-error {
+  font-family: sans-serif;
+  padding: 50px;
+  text-align: center;
+  background-color: var(--bg-primary);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ==================== IMAGENS DESCRIÇÃO ==================== */
+.evento-imagens-descricao {
+  margin-top: 30px;
+}
+
+.evento-imagem-desc-item {
+  margin-bottom: 30px;
+}
+
+.evento-imagem-desc-texto {
+  font-size: 15px;
+  line-height: 1.8;
+  color: var(--text-secondary);
+  margin-bottom: 15px;
+  white-space: pre-wrap;
+}
+
+.evento-imagem-desc-img {
+  width: 100%;
+  max-height: 500px;
+  object-fit: contain;
+  border-radius: 12px;
+  margin-bottom: 15px;
+}
+
+/* ==================== PRODUTOR INFO ==================== */
+.evento-produtor-section {
+  margin-top: 25px;
+  padding-top: 25px;
+  border-top: 1px solid var(--border-color);
+}
+
+.evento-produtor-titulo {
+  color: var(--accent-purple);
+  font-size: 16px;
+  margin-bottom: 15px;
+  font-weight: 800;
+}
+
+.evento-produtor-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.evento-produtor-foto {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--accent-purple);
+}
+
+.evento-produtor-nome {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.evento-btn-produtor {
+  width: 100%;
+  padding: 10px;
+  background-color: var(--accent-purple);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  display: block;
+  text-align: center;
+}
+
+.evento-btn-produtor:hover {
+  background-color: #7d3c98;
+  transform: translateY(-2px);
+}
+
+/* ==================== RESPONSIVE - MOBILE ==================== */
+@media (max-width: 480px) {
+  .header-evento {
+    padding: 15px 20px;
+  }
+  
+  .logo-golden-evento {
+    font-size: 24px;
+    letter-spacing: 1.5px;
+  }
+  
+  .theme-toggle-evento {
+    width: 42px;
+    height: 42px;
+    font-size: 18px;
+  }
+  
+  .container-evento {
+    padding: 0 15px 30px;
+  }
+  
+  .evento-img-principal {
+    height: 250px;
+    border-radius: 12px;
+  }
+  
+  .evento-titulo-principal {
+    font-size: 26px;
+    margin: 20px 15px 15px;
+  }
+  
+  .evento-meta-container {
+    font-size: 13px;
+    gap: 15px;
+    margin-bottom: 25px;
+    padding: 0 15px;
+  }
+  
+  .evento-grid-info {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .evento-card {
+    padding: 20px;
+    border-radius: 12px;
+  }
+  
+  .evento-card-titulo {
+    font-size: 20px;
+  }
+  
+  .evento-card-subtitulo {
+    font-size: 18px;
+  }
+  
+  .evento-ingressos-section,
+  .evento-produtos-section {
+    padding: 25px 20px;
+    border-radius: 12px;
+  }
+  
+  .evento-ingressos-titulo,
+  .evento-produtos-titulo {
+    font-size: 24px;
+  }
+  
+  .evento-produtos-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .evento-sessoes-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .evento-cupom-form {
+    flex-direction: column;
+  }
+  
+  .evento-cupom-btn {
+    width: 100%;
+  }
+  
+  .evento-badges-grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+  
+  .evento-btn-primary {
+    padding: 18px 50px;
+    font-size: 18px;
+  }
+  
+  .evento-ingresso-item {
+    padding: 15px;
+    gap: 10px;
+  }
+  
+  .evento-ingresso-preco-section {
+    margin-right: 0;
+    width: 100%;
+  }
+  
+  .evento-carrinho-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .evento-carrinho-total-section {
+    width: 100%;
+    text-align: left;
+  }
+  
+  .evento-setor-header {
+    font-size: 16px;
+    padding: 15px 20px;
+  }
+  
+  .evento-setor-content {
+    padding: 20px;
+  }
+}
+
+@media (min-width: 481px) and (max-width: 768px) {
+  .logo-golden-evento {
+    font-size: 28px;
+  }
+  
+  .evento-titulo-principal {
+    font-size: 32px;
+  }
+  
+  .evento-grid-info {
+    grid-template-columns: 1fr;
+  }
+  
+  .evento-produtos-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .evento-img-principal {
+    height: 300px;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .evento-produtos-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  .evento-img-principal {
+    height: 350px;
+  }
+}
+
+@media (min-width: 1025px) {
+  .evento-produtos-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
+}
