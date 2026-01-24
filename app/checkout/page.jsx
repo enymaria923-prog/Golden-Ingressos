@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { createClient } from '../../utils/supabase/client';
 import { useSearchParams, useRouter } from 'next/navigation';
+import '../styles/checkout.css';
 import Link from 'next/link';
 
 function CheckoutContent() {
