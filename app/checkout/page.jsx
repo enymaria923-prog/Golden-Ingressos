@@ -3,8 +3,8 @@
 import { useState, useEffect, Suspense } from 'react';
 import { createClient } from '../../utils/supabase/client';
 import { useSearchParams, useRouter } from 'next/navigation';
-import '../styles/checkout.css';
 import Link from 'next/link';
+import '../styles/checkout.css';
 
 function CheckoutContent() {
   const supabase = createClient();
@@ -20,6 +20,7 @@ function CheckoutContent() {
   const [cupom, setCupom] = useState(null);
   const [formaPagamento, setFormaPagamento] = useState('pix');
   const [user, setUser] = useState(null);
+  const [theme, setTheme] = useState('dark');
   const [dadosComprador, setDadosComprador] = useState({
     nome: '',
     email: '',
@@ -33,9 +34,21 @@ function CheckoutContent() {
   const cupomId = searchParams.get('cupom_id');
 
   useEffect(() => {
+    // Carregar tema do localStorage
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    setTheme(savedTheme);
+    document.documentElement.classList.toggle('dark', savedTheme === 'dark');
+    
     carregarUsuario();
     carregarDados();
   }, [eventoId, sessaoId]);
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    localStorage.setItem('theme', newTheme);
+    document.documentElement.classList.toggle('dark', newTheme === 'dark');
+  };
 
   const carregarUsuario = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -282,7 +295,7 @@ function CheckoutContent() {
 
   if (loading) {
     return (
-      <div style={{ fontFamily: 'sans-serif', padding: '50px', textAlign: 'center' }}>
+      <div className="loading-container">
         <h2>🔄 Carregando...</h2>
       </div>
     );
@@ -290,10 +303,10 @@ function CheckoutContent() {
 
   if (!evento) {
     return (
-      <div style={{ fontFamily: 'sans-serif', padding: '50px', textAlign: 'center' }}>
+      <div className="error-container">
         <h2>⚠️ Erro ao carregar checkout</h2>
         <Link href="/">
-          <button style={{ padding: '10px 20px', marginTop: '20px', cursor: 'pointer' }}>
+          <button className="btn-home">
             Voltar para Home
           </button>
         </Link>
@@ -302,113 +315,83 @@ function CheckoutContent() {
   }
 
   return (
-    <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', paddingBottom: '40px' }}>
-      <header style={{ backgroundColor: '#5d34a4', color: 'white', padding: '20px 30px' }}>
-        <Link href={`/evento/${eventoId}`} style={{ color: 'white', textDecoration: 'none', fontSize: '16px' }}>
-          ← Voltar
-        </Link>
-        <h1 style={{ margin: '10px 0 0 0', fontSize: '28px' }}>Checkout - {evento.nome}</h1>
+    <div className="checkout-page">
+      <header className="checkout-header">
+        <div className="checkout-header-content">
+          <Link href={`/evento/${eventoId}`} className="checkout-back-link">
+            ← Voltar
+          </Link>
+          <h1 className="checkout-logo">GOLDEN INGRESSOS</h1>
+          <button 
+            className="checkout-theme-toggle"
+            onClick={toggleTheme}
+            aria-label="Alternar tema"
+          >
+            {theme === 'dark' ? '☀️' : '🌙'}
+          </button>
+        </div>
       </header>
 
-      <div style={{ maxWidth: '1200px', margin: '30px auto', padding: '0 20px', display: 'grid', gridTemplateColumns: '1fr 400px', gap: '30px' }}>
+      <div className="checkout-main">
         
         {/* Coluna Esquerda */}
-        <div>
+        <div className="checkout-left">
           {/* Dados do Comprador */}
-          <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
-            <h2 style={{ color: '#5d34a4', marginTop: 0, fontSize: '24px', marginBottom: '20px' }}>
+          <div className="checkout-card">
+            <h2 className="checkout-section-title">
               👤 Dados do Comprador
             </h2>
             
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#333' }}>
-                  Nome Completo *
-                </label>
+            <div className="checkout-form-group">
+              <div className="checkout-input-wrapper">
+                <label>Nome Completo *</label>
                 <input
                   type="text"
+                  className="checkout-input"
                   value={dadosComprador.nome}
                   onChange={(e) => setDadosComprador({...dadosComprador, nome: e.target.value})}
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    border: '2px solid #e0e0e0',
-                    borderRadius: '8px',
-                    fontSize: '16px'
-                  }}
                   placeholder="Seu nome completo"
                 />
               </div>
 
-              <div>
-                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#333' }}>
-                  E-mail *
-                </label>
+              <div className="checkout-input-wrapper">
+                <label>E-mail *</label>
                 <input
                   type="email"
+                  className="checkout-input"
                   value={dadosComprador.email}
                   onChange={(e) => setDadosComprador({...dadosComprador, email: e.target.value})}
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    border: '2px solid #e0e0e0',
-                    borderRadius: '8px',
-                    fontSize: '16px'
-                  }}
                   placeholder="seu@email.com"
                   disabled={!!user}
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#333' }}>
-                    CPF *
-                  </label>
+              <div className="checkout-form-row">
+                <div className="checkout-input-wrapper">
+                  <label>CPF *</label>
                   <input
                     type="text"
+                    className="checkout-input"
                     value={dadosComprador.cpf}
                     onChange={(e) => setDadosComprador({...dadosComprador, cpf: e.target.value})}
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      border: '2px solid #e0e0e0',
-                      borderRadius: '8px',
-                      fontSize: '16px'
-                    }}
                     placeholder="000.000.000-00"
                   />
                 </div>
 
-                <div>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#333' }}>
-                    Telefone
-                  </label>
+                <div className="checkout-input-wrapper">
+                  <label>Telefone</label>
                   <input
                     type="tel"
+                    className="checkout-input"
                     value={dadosComprador.telefone}
                     onChange={(e) => setDadosComprador({...dadosComprador, telefone: e.target.value})}
-                    style={{
-                      width: '100%',
-                      padding: '12px',
-                      border: '2px solid #e0e0e0',
-                      borderRadius: '8px',
-                      fontSize: '16px'
-                    }}
                     placeholder="(11) 99999-9999"
                   />
                 </div>
               </div>
 
               {user && (
-                <div style={{
-                  padding: '10px',
-                  backgroundColor: '#d4edda',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  color: '#155724',
-                  border: '1px solid #c3e6cb'
-                }}>
+                <div className="checkout-alert">
                   ✅ Dados preenchidos automaticamente da sua conta
                 </div>
               )}
@@ -416,96 +399,68 @@ function CheckoutContent() {
           </div>
 
           {/* Forma de Pagamento */}
-          <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
-            <h2 style={{ color: '#5d34a4', marginTop: 0, fontSize: '24px', marginBottom: '20px' }}>
+          <div className="checkout-card">
+            <h2 className="checkout-section-title">
               💳 Forma de Pagamento
             </h2>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              <label style={{
-                padding: '20px',
-                border: formaPagamento === 'pix' ? '3px solid #5d34a4' : '2px solid #e0e0e0',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                backgroundColor: formaPagamento === 'pix' ? '#f0e6ff' : 'white',
-                transition: 'all 0.3s'
-              }}>
+            <div className="payment-options">
+              <label className={`payment-option-label ${formaPagamento === 'pix' ? 'selected' : ''}`}>
                 <input
                   type="radio"
                   name="pagamento"
                   value="pix"
                   checked={formaPagamento === 'pix'}
                   onChange={(e) => setFormaPagamento(e.target.value)}
-                  style={{ marginRight: '10px' }}
+                  className="payment-radio"
                 />
-                <span style={{ fontSize: '18px', fontWeight: '600' }}>📱 PIX</span>
-                <div style={{ fontSize: '14px', color: '#666', marginTop: '5px', marginLeft: '25px' }}>
+                <span className="payment-title">📱 PIX</span>
+                <div className="payment-desc">
                   Pagamento instantâneo
                 </div>
               </label>
 
-              <label style={{
-                padding: '20px',
-                border: formaPagamento === 'cartao_credito' ? '3px solid #5d34a4' : '2px solid #e0e0e0',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                backgroundColor: formaPagamento === 'cartao_credito' ? '#f0e6ff' : 'white',
-                transition: 'all 0.3s'
-              }}>
+              <label className={`payment-option-label ${formaPagamento === 'cartao_credito' ? 'selected' : ''}`}>
                 <input
                   type="radio"
                   name="pagamento"
                   value="cartao_credito"
                   checked={formaPagamento === 'cartao_credito'}
                   onChange={(e) => setFormaPagamento(e.target.value)}
-                  style={{ marginRight: '10px' }}
+                  className="payment-radio"
                 />
-                <span style={{ fontSize: '18px', fontWeight: '600' }}>💳 Cartão de Crédito</span>
-                <div style={{ fontSize: '14px', color: '#666', marginTop: '5px', marginLeft: '25px' }}>
+                <span className="payment-title">💳 Cartão de Crédito</span>
+                <div className="payment-desc">
                   Parcele em até 12x
                 </div>
               </label>
 
-              <label style={{
-                padding: '20px',
-                border: formaPagamento === 'cartao_debito' ? '3px solid #5d34a4' : '2px solid #e0e0e0',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                backgroundColor: formaPagamento === 'cartao_debito' ? '#f0e6ff' : 'white',
-                transition: 'all 0.3s'
-              }}>
+              <label className={`payment-option-label ${formaPagamento === 'cartao_debito' ? 'selected' : ''}`}>
                 <input
                   type="radio"
                   name="pagamento"
                   value="cartao_debito"
                   checked={formaPagamento === 'cartao_debito'}
                   onChange={(e) => setFormaPagamento(e.target.value)}
-                  style={{ marginRight: '10px' }}
+                  className="payment-radio"
                 />
-                <span style={{ fontSize: '18px', fontWeight: '600' }}>💳 Cartão de Débito</span>
-                <div style={{ fontSize: '14px', color: '#666', marginTop: '5px', marginLeft: '25px' }}>
+                <span className="payment-title">💳 Cartão de Débito</span>
+                <div className="payment-desc">
                   Débito em conta
                 </div>
               </label>
 
-              <label style={{
-                padding: '20px',
-                border: formaPagamento === 'boleto' ? '3px solid #5d34a4' : '2px solid #e0e0e0',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                backgroundColor: formaPagamento === 'boleto' ? '#f0e6ff' : 'white',
-                transition: 'all 0.3s'
-              }}>
+              <label className={`payment-option-label ${formaPagamento === 'boleto' ? 'selected' : ''}`}>
                 <input
                   type="radio"
                   name="pagamento"
                   value="boleto"
                   checked={formaPagamento === 'boleto'}
                   onChange={(e) => setFormaPagamento(e.target.value)}
-                  style={{ marginRight: '10px' }}
+                  className="payment-radio"
                 />
-                <span style={{ fontSize: '18px', fontWeight: '600' }}>📄 Boleto</span>
-                <div style={{ fontSize: '14px', color: '#666', marginTop: '5px', marginLeft: '25px' }}>
+                <span className="payment-title">📄 Boleto</span>
+                <div className="payment-desc">
                   Pagamento em até 3 dias
                 </div>
               </label>
@@ -514,47 +469,47 @@ function CheckoutContent() {
         </div>
 
         {/* Coluna Direita - Resumo */}
-        <div>
-          <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', position: 'sticky', top: '20px' }}>
-            <h2 style={{ color: '#5d34a4', marginTop: 0, fontSize: '24px', marginBottom: '20px' }}>
+        <div className="checkout-summary">
+          <div className="checkout-card">
+            <h2 className="checkout-section-title">
               🛒 Resumo do Pedido
             </h2>
 
             {/* Evento */}
-            <div style={{ marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid #e0e0e0' }}>
-              <h3 style={{ fontSize: '18px', color: '#2c3e50', marginBottom: '10px' }}>{evento.nome}</h3>
-              <p style={{ fontSize: '14px', color: '#666', margin: '5px 0' }}>
+            <div className="summary-event-info">
+              <h3 className="summary-event-title">{evento.nome}</h3>
+              <p className="summary-event-detail">
                 📅 {sessao?.data && new Date(sessao.data).toLocaleDateString('pt-BR')}
               </p>
-              <p style={{ fontSize: '14px', color: '#666', margin: '5px 0' }}>
+              <p className="summary-event-detail">
                 🕐 {sessao?.hora}
               </p>
-              <p style={{ fontSize: '14px', color: '#666', margin: '5px 0' }}>
+              <p className="summary-event-detail">
                 📍 {evento.local}
               </p>
             </div>
 
             {/* Itens */}
-            <div style={{ marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid #e0e0e0' }}>
-              <h3 style={{ fontSize: '16px', color: '#2c3e50', marginBottom: '15px' }}>Ingressos:</h3>
+            <div className="summary-section">
+              <h3 className="summary-section-title">Ingressos:</h3>
               {itensCarrinho.map((item, index) => (
-                <div key={index} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                  <div>
-                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#2c3e50' }}>
+                <div key={index} className="summary-item">
+                  <div className="summary-item-info">
+                    <div className="summary-item-name">
                       {item.tipo}
                       {lugarMarcado && item.assento && (
-                        <span style={{ marginLeft: '8px', fontSize: '12px', color: '#666' }}>
+                        <span style={{ marginLeft: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
                           ({item.assento})
                         </span>
                       )}
                     </div>
                     {!lugarMarcado && (
-                      <div style={{ fontSize: '12px', color: '#999' }}>
+                      <div className="summary-item-qty">
                         Qtd: {item.quantidade}
                       </div>
                     )}
                   </div>
-                  <div style={{ fontSize: '14px', fontWeight: '600', color: '#27ae60' }}>
+                  <div className="summary-item-price">
                     R$ {(item.valor * (lugarMarcado ? 1 : item.quantidade)).toFixed(2)}
                   </div>
                 </div>
@@ -563,19 +518,19 @@ function CheckoutContent() {
 
             {/* Produtos */}
             {produtos.length > 0 && (
-              <div style={{ marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid #e0e0e0' }}>
-                <h3 style={{ fontSize: '16px', color: '#2c3e50', marginBottom: '15px' }}>Produtos:</h3>
+              <div className="summary-section">
+                <h3 className="summary-section-title">Produtos:</h3>
                 {produtos.map((produto, index) => (
-                  <div key={index} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                    <div>
-                      <div style={{ fontSize: '14px', fontWeight: '600', color: '#2c3e50' }}>
+                  <div key={index} className="summary-item">
+                    <div className="summary-item-info">
+                      <div className="summary-item-name">
                         {produto.nome}
                       </div>
-                      <div style={{ fontSize: '12px', color: '#999' }}>
+                      <div className="summary-item-qty">
                         Qtd: {produto.quantidade}
                       </div>
                     </div>
-                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#27ae60' }}>
+                    <div className="summary-item-price">
                       R$ {(parseFloat(produto.preco) * produto.quantidade).toFixed(2)}
                     </div>
                   </div>
@@ -584,27 +539,27 @@ function CheckoutContent() {
             )}
 
             {/* Totais */}
-            <div style={{ marginBottom: '20px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                <span style={{ fontSize: '14px', color: '#666' }}>Subtotal:</span>
-                <span style={{ fontSize: '14px', color: '#666' }}>R$ {calcularSubtotal().toFixed(2)}</span>
+            <div className="summary-totals">
+              <div className="summary-total-line">
+                <span className="summary-total-label">Subtotal:</span>
+                <span className="summary-total-value">R$ {calcularSubtotal().toFixed(2)}</span>
               </div>
 
               {cupom && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-                  <span style={{ fontSize: '14px', color: '#28a745' }}>Desconto ({cupom.codigo}):</span>
-                  <span style={{ fontSize: '14px', color: '#28a745' }}>- R$ {calcularDesconto().toFixed(2)}</span>
+                <div className="summary-total-line summary-discount">
+                  <span className="summary-total-label">Desconto ({cupom.codigo}):</span>
+                  <span className="summary-total-value">- R$ {calcularDesconto().toFixed(2)}</span>
                 </div>
               )}
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
-                <span style={{ fontSize: '14px', color: '#666' }}>Taxa de serviço:</span>
-                <span style={{ fontSize: '14px', color: '#666' }}>R$ {calcularTaxas().toFixed(2)}</span>
+              <div className="summary-total-line">
+                <span className="summary-total-label">Taxa de serviço:</span>
+                <span className="summary-total-value">R$ {calcularTaxas().toFixed(2)}</span>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '15px', borderTop: '2px solid #5d34a4' }}>
-                <span style={{ fontSize: '20px', fontWeight: 'bold', color: '#2c3e50' }}>Total:</span>
-                <span style={{ fontSize: '24px', fontWeight: 'bold', color: '#27ae60' }}>
+              <div className="summary-final-total">
+                <span className="summary-final-label">Total:</span>
+                <span className="summary-final-value">
                   R$ {calcularTotal().toFixed(2)}
                 </span>
               </div>
@@ -614,27 +569,15 @@ function CheckoutContent() {
             <button
               onClick={handleFinalizarPedido}
               disabled={processando}
-              style={{
-                width: '100%',
-                backgroundColor: processando ? '#95a5a6' : '#27ae60',
-                color: 'white',
-                border: 'none',
-                padding: '18px',
-                borderRadius: '10px',
-                fontSize: '18px',
-                fontWeight: 'bold',
-                cursor: processando ? 'not-allowed' : 'pointer',
-                transition: 'all 0.3s',
-                boxShadow: '0 4px 10px rgba(39, 174, 96, 0.3)'
-              }}
+              className="checkout-submit-btn"
               onMouseOver={(e) => !processando && (e.target.style.transform = 'scale(1.02)')}
               onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
             >
               {processando ? '⏳ Processando...' : '🎫 Finalizar Pedido'}
             </button>
 
-            <div style={{ marginTop: '20px', textAlign: 'center' }}>
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', fontSize: '12px', color: '#999' }}>
+            <div className="checkout-security">
+              <div className="checkout-security-badges">
                 <span>🔒 Pagamento seguro</span>
                 <span>✅ Entrada garantida</span>
               </div>
@@ -649,7 +592,7 @@ function CheckoutContent() {
 export default function CheckoutPage() {
   return (
     <Suspense fallback={
-      <div style={{ fontFamily: 'sans-serif', padding: '50px', textAlign: 'center' }}>
+      <div className="loading-container">
         <h2>🔄 Carregando...</h2>
       </div>
     }>
