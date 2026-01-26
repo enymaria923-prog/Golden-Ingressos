@@ -100,7 +100,6 @@ export default function EmitirCortesiasPage() {
     ? lotes.filter(l => l.sessao_id === sessaoSelecionada && l.setor === setorSelecionado)
     : [];
 
-  // ✅ CALCULAR DISPONÍVEIS COM HIERARQUIA: TIPO → LOTE → SETOR
   const calcularDisponiveis = (ingresso) => {
     const vendidos = parseInt(ingresso.vendidos) || 0;
     const cortesias = parseInt(ingresso.cortesias) || 0;
@@ -109,7 +108,6 @@ export default function EmitirCortesiasPage() {
     console.log(`\n🔍 Calculando disponíveis para "${ingresso.tipo}":`);
     console.log('  vendidos:', vendidos, '| cortesias:', cortesias, '| ocupados:', ocupadosIngresso);
 
-    // 1️⃣ PRIORIDADE 1: Quantidade definida no TIPO
     const qtdTipo = parseInt(ingresso.quantidade) || 0;
     if (qtdTipo > 0) {
       const disponiveis = qtdTipo - ocupadosIngresso;
@@ -117,13 +115,11 @@ export default function EmitirCortesiasPage() {
       return disponiveis;
     }
 
-    // 2️⃣ PRIORIDADE 2: Quantidade definida no LOTE
     if (ingresso.lote_id) {
       const lote = lotes.find(l => l.id === ingresso.lote_id);
       const qtdLote = lote ? parseInt(lote.quantidade_total) || 0 : 0;
       
       if (qtdLote > 0) {
-        // Somar todos os ocupados do mesmo lote
         const ingressosDoLote = ingressos.filter(i => 
           i.lote_id === ingresso.lote_id && 
           i.sessao_id === ingresso.sessao_id
@@ -137,7 +133,6 @@ export default function EmitirCortesiasPage() {
       }
     }
 
-    // 3️⃣ PRIORIDADE 3: Quantidade definida no SETOR
     const setor = setores.find(s => 
       s.nome === ingresso.setor && 
       s.sessao_id === ingresso.sessao_id
@@ -145,7 +140,6 @@ export default function EmitirCortesiasPage() {
     const qtdSetor = setor ? parseInt(setor.capacidade_definida) || 0 : 0;
     
     if (qtdSetor > 0) {
-      // Somar todos os ocupados do mesmo setor
       const ingressosDoSetor = ingressos.filter(i => 
         i.setor === ingresso.setor && 
         i.sessao_id === ingresso.sessao_id
@@ -167,18 +161,15 @@ export default function EmitirCortesiasPage() {
       return [];
     }
 
-    // Filtrar por sessão + setor
     let tipos = ingressos.filter(ing => 
       ing.sessao_id === sessaoSelecionada && 
       ing.setor === setorSelecionado
     );
 
-    // Filtrar por lote (se selecionado)
     if (loteSelecionado) {
       tipos = tipos.filter(ing => String(ing.lote_id) === String(loteSelecionado));
     }
 
-    // Filtrar apenas os que têm disponibilidade
     tipos = tipos.filter(ing => calcularDisponiveis(ing) > 0);
 
     return tipos;
@@ -244,12 +235,18 @@ export default function EmitirCortesiasPage() {
         throw new Error('Não há ingressos disponíveis deste tipo');
       }
 
-      const qrCode = `CORTESIA-${eventoId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      const pedidoId = crypto.randomUUID();
+      // Gerar IDs únicos
+      const timestamp = Date.now();
+      const random = Math.random().toString(36).substring(2, 15);
+      const qrCode = `CORTESIA-${eventoId}-${timestamp}-${random}`;
+      const pedidoId = `${timestamp}${random}${Math.random().toString(36).substring(2, 15)}`.substring(0, 36);
+
+      console.log('🔑 pedidoId gerado:', pedidoId);
 
       const { data: cortesiaData, error: cortesiaError } = await supabase
         .from('ingressos_vendidos')
         .insert([{
+          pedido_id: pedidoId,
           evento_id: eventoId,
           sessao_id: sessaoSelecionada,
           tipo_ingresso: ingressoTipo.tipo,
@@ -269,7 +266,6 @@ export default function EmitirCortesiasPage() {
 
       if (cortesiaError) throw cortesiaError;
 
-      // Atualizar campo cortesias
       const cortesiasAtuais = parseInt(ingressoTipo.cortesias) || 0;
       const { error: updateError } = await supabase
         .from('ingressos')
