@@ -245,6 +245,7 @@ export default function EmitirCortesiasPage() {
       }
 
       const qrCode = `CORTESIA-${eventoId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const pedidoId = crypto.randomUUID();
 
       const { data: cortesiaData, error: cortesiaError } = await supabase
         .from('ingressos_vendidos')
