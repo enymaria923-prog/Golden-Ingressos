@@ -12,6 +12,7 @@ function PagamentoCartaoContent() {
   const [loading, setLoading] = useState(true);
   const [processando, setProcessando] = useState(false);
   const [pedido, setPedido] = useState(null);
+  const [parcelas, setParcelas] = useState(1);
   const [dadosCartao, setDadosCartao] = useState({
     number: '',
     holderName: '',
@@ -83,6 +84,11 @@ function PagamentoCartaoContent() {
     if (valor.length <= 16) {
       setDadosCartao({ ...dadosCartao, number: valor });
     }
+  };
+
+  const calcularValorParcela = () => {
+    if (!pedido) return 0;
+    return parseFloat(pedido.valor_total) / parcelas;
   };
 
   const simularPagamento = async () => {
@@ -171,7 +177,6 @@ function PagamentoCartaoContent() {
       let itens = [];
       
       if (pedidoAtual.itens) {
-        // Verificar se é string ou objeto
         if (typeof pedidoAtual.itens === 'string') {
           itens = JSON.parse(pedidoAtual.itens);
         } else {
@@ -208,7 +213,9 @@ function PagamentoCartaoContent() {
             comprador_cpf: pedidoAtual.cpf_comprador,
             assento: item.assento || null,
             qr_code: qrCode,
-            status: 'ATIVO'
+            status: 'ATIVO',
+            tipo_pagamento: tipoCartao,
+            parcelas: tipoCartao === 'cartao_credito' ? parcelas : 1
           });
         }
       });
@@ -368,6 +375,34 @@ function PagamentoCartaoContent() {
             </div>
           </div>
         </div>
+
+        {/* Parcelamento (apenas para crédito) */}
+        {tipoCartao === 'cartao_credito' && (
+          <div style={{ backgroundColor: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
+            <h3 style={{ color: '#5d34a4', marginTop: 0, fontSize: '16px', marginBottom: '15px' }}>
+              Parcelamento
+            </h3>
+            <select
+              value={parcelas}
+              onChange={(e) => setParcelas(parseInt(e.target.value))}
+              style={{
+                width: '100%',
+                padding: '14px',
+                border: '2px solid #e0e0e0',
+                borderRadius: '8px',
+                fontSize: '16px',
+                backgroundColor: 'white',
+                cursor: 'pointer'
+              }}
+            >
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(num => (
+                <option key={num} value={num}>
+                  {num}x de R$ {calcularValorParcela().toFixed(2)} {num === 1 ? 'à vista' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Formulário do Cartão */}
         <div style={{ backgroundColor: 'white', padding: '30px', borderRadius: '12px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
