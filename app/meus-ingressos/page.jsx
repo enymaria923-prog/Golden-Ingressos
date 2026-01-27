@@ -11,8 +11,6 @@ export default function MeusIngressosPage() {
 
   const [loading, setLoading] = useState(true);
   const [ingressos, setIngressos] = useState([]);
-  const [eventos, setEventos] = useState([]);
-  const [eventoSelecionado, setEventoSelecionado] = useState(null);
   const [user, setUser] = useState(null);
 
   useEffect(() => {
@@ -44,7 +42,6 @@ export default function MeusIngressosPage() {
 
       if (!pedidos || pedidos.length === 0) {
         setIngressos([]);
-        setEventos([]);
         setLoading(false);
         return;
       }
@@ -64,7 +61,7 @@ export default function MeusIngressosPage() {
       const eventosIds = [...new Set(pedidos.map(p => p.evento_id))];
       const sessoesIds = [...new Set(pedidos.map(p => p.sessao_id))];
 
-      const { data: eventosData } = await supabase
+      const { data: eventos } = await supabase
         .from('eventos')
         .select('id, nome, local, imagem')
         .in('id', eventosIds);
@@ -77,8 +74,8 @@ export default function MeusIngressosPage() {
       // Combinar dados
       const ingressosCompletos = ingressosData.map(ingresso => {
         const pedido = pedidos.find(p => p.id === ingresso.pedido_id);
-        const evento = eventosData?.find(e => e.id === pedido.evento_id);
-        const sessao = sessoes?.find(s => s.id === pedido.sessao_id);
+        const evento = eventos?.find(e => e.id === pedido?.evento_id);
+        const sessao = sessoes?.find(s => s.id === pedido?.sessao_id);
 
         return {
           ...ingresso,
@@ -87,20 +84,7 @@ export default function MeusIngressosPage() {
         };
       });
 
-      // Agrupar ingressos por evento
-      const eventosComIngressos = eventosData.map(evento => {
-        const ingressosDoEvento = ingressosCompletos.filter(i => i.evento?.id === evento.id);
-        const sessaoDoEvento = ingressosDoEvento[0]?.sessao;
-        
-        return {
-          ...evento,
-          sessao: sessaoDoEvento,
-          totalIngressos: ingressosDoEvento.length
-        };
-      });
-
       setIngressos(ingressosCompletos);
-      setEventos(eventosComIngressos);
 
     } catch (error) {
       console.error('Erro ao carregar ingressos:', error);
@@ -114,9 +98,21 @@ export default function MeusIngressosPage() {
     return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(texto)}`;
   };
 
-  const ingressosDoEventoSelecionado = eventoSelecionado 
-    ? ingressos.filter(i => i.evento?.id === eventoSelecionado.id)
-    : [];
+  // Agrupar ingressos por evento
+  const ingressosPorEvento = {};
+  ingressos.forEach(ingresso => {
+    const eventoId = ingresso.evento?.id;
+    if (eventoId) {
+      if (!ingressosPorEvento[eventoId]) {
+        ingressosPorEvento[eventoId] = {
+          evento: ingresso.evento,
+          sessao: ingresso.sessao,
+          ingressos: []
+        };
+      }
+      ingressosPorEvento[eventoId].ingressos.push(ingresso);
+    }
+  });
 
   if (loading) {
     return (
@@ -139,7 +135,7 @@ export default function MeusIngressosPage() {
 
       <div style={{ maxWidth: '1200px', margin: '30px auto', padding: '0 20px' }}>
        
-        {eventos.length === 0 ? (
+        {ingressos.length === 0 ? (
           // Nenhum ingresso
           <div style={{
             backgroundColor: 'white',
@@ -168,8 +164,8 @@ export default function MeusIngressosPage() {
               </button>
             </Link>
           </div>
-        ) : eventoSelecionado === null ? (
-          // Lista de eventos
+        ) : (
+          // Lista de eventos com ingressos agrupados
           <div>
             <div style={{
               backgroundColor: '#d4edda',
@@ -179,304 +175,238 @@ export default function MeusIngressosPage() {
               border: '1px solid #c3e6cb'
             }}>
               <p style={{ margin: 0, color: '#155724', fontSize: '14px' }}>
-                ✅ <strong>Eventos com Ingressos:</strong> {eventos.length} evento(s)
+                ✅ <strong>Total de ingressos:</strong> {ingressos.length} ingresso(s)
               </p>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
-              {eventos.map((evento) => (
-                <div 
-                  key={evento.id} 
-                  onClick={() => setEventoSelecionado(evento)}
-                  style={{
-                    backgroundColor: 'white',
-                    borderRadius: '12px',
-                    overflow: 'hidden',
-                    boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-                    cursor: 'pointer',
-                    transition: 'transform 0.2s, box-shadow 0.2s'
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.transform = 'translateY(-5px)';
-                    e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.15)';
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = '0 2px 10px rgba(0,0,0,0.1)';
-                  }}
-                >
-                  {/* Imagem do Evento */}
-                  <div style={{ 
-                    width: '100%', 
-                    height: '200px', 
-                    overflow: 'hidden',
-                    backgroundColor: '#e0e0e0'
-                  }}>
-                    {evento.imagem ? (
-                      <img 
-                        src={evento.imagem} 
-                        alt={evento.nome}
-                        style={{ 
-                          width: '100%', 
-                          height: '100%', 
-                          objectFit: 'cover' 
-                        }}
-                      />
-                    ) : (
-                      <div style={{ 
-                        width: '100%', 
-                        height: '100%', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'center',
-                        fontSize: '60px'
-                      }}>
-                        🎭
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Informações do Evento */}
-                  <div style={{ padding: '20px' }}>
-                    <h3 style={{ 
-                      margin: '0 0 10px 0', 
-                      fontSize: '20px', 
-                      color: '#5d34a4',
-                      fontWeight: 'bold'
-                    }}>
-                      {evento.nome}
-                    </h3>
-                    
-                    <div style={{ 
-                      fontSize: '14px', 
-                      color: '#666',
-                      marginBottom: '15px'
-                    }}>
-                      📅 {evento.sessao?.data && new Date(evento.sessao.data).toLocaleDateString('pt-BR', {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })}
-                    </div>
-
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '10px 15px',
-                      backgroundColor: '#f0e6ff',
-                      borderRadius: '8px'
-                    }}>
-                      <span style={{ fontSize: '14px', color: '#5d34a4', fontWeight: '600' }}>
-                        🎫 {evento.totalIngressos} ingresso{evento.totalIngressos > 1 ? 's' : ''}
-                      </span>
-                      <span style={{ fontSize: '14px', color: '#5d34a4', fontWeight: 'bold' }}>
-                        Ver →
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
-          // Exibir ingressos do evento selecionado
-          <div>
-            <button
-              onClick={() => setEventoSelecionado(null)}
-              style={{
-                marginBottom: '20px',
-                padding: '10px 20px',
-                backgroundColor: 'white',
-                color: '#5d34a4',
-                border: '2px solid #5d34a4',
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: 'bold',
-                cursor: 'pointer'
-              }}
-            >
-              ← Voltar para Eventos
-            </button>
-
-            <div style={{ display: 'grid', gap: '30px' }}>
-              {ingressosDoEventoSelecionado.map((ingresso, index) => (
-                <div key={ingresso.id} style={{
-                  backgroundColor: 'white',
-                  borderRadius: '12px',
-                  boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-                  overflow: 'hidden',
-                  padding: '30px',
-                  border: ingresso.validado ? '3px solid #dc3545' : '3px solid #27ae60'
+            {Object.values(ingressosPorEvento).map((grupo, grupoIndex) => (
+              <div key={grupoIndex} style={{ marginBottom: '50px' }}>
+                
+                {/* Separador/Cabeçalho do Evento */}
+                <div style={{
+                  backgroundColor: '#5d34a4',
+                  color: 'white',
+                  padding: '20px 30px',
+                  borderRadius: '12px 12px 0 0',
+                  marginBottom: '0'
                 }}>
-                  
-                  {/* Título do Evento */}
-                  <h2 style={{
-                    color: '#5d34a4',
-                    margin: '0 0 30px 0',
+                  <h2 style={{ 
+                    margin: '0 0 5px 0', 
                     fontSize: '24px',
-                    textAlign: 'center',
                     fontWeight: 'bold'
                   }}>
-                    {ingresso.evento?.nome}
+                    🎭 {grupo.evento?.nome}
                   </h2>
-
-                  {/* QR Code */}
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    marginBottom: '30px'
-                  }}>
-                    <div style={{
-                      width: '300px',
-                      height: '300px',
-                      backgroundColor: 'white',
-                      padding: '15px',
-                      borderRadius: '12px',
-                      border: '3px solid #5d34a4',
-                      boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
-                    }}>
-                      <img
-                        src={gerarQRCodeURL(ingresso.qr_code)}
-                        alt="QR Code do Ingresso"
-                        style={{ width: '100%', height: '100%' }}
-                      />
-                    </div>
+                  <div style={{ fontSize: '14px', opacity: 0.9 }}>
+                    {grupo.ingressos.length} ingresso{grupo.ingressos.length > 1 ? 's' : ''}
                   </div>
+                </div>
 
-                  {/* Status do Ingresso */}
-                  <div style={{ 
-                    textAlign: 'center',
-                    marginBottom: '30px'
-                  }}>
-                    {ingresso.validado ? (
-                      <div style={{
-                        display: 'inline-block',
-                        padding: '12px 30px',
-                        backgroundColor: '#dc3545',
-                        color: 'white',
-                        borderRadius: '8px',
-                        fontWeight: 'bold',
-                        fontSize: '16px'
-                      }}>
-                        ❌ JÁ UTILIZADO
-                      </div>
-                    ) : (
-                      <div style={{
-                        display: 'inline-block',
-                        padding: '12px 30px',
-                        backgroundColor: '#27ae60',
-                        color: 'white',
-                        borderRadius: '8px',
-                        fontWeight: 'bold',
-                        fontSize: '16px'
-                      }}>
-                        ✅ VÁLIDO
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Informações do Ingresso */}
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: ingresso.assento ? 'repeat(2, 1fr)' : '1fr',
-                    gap: '20px',
-                    marginBottom: '30px',
-                    padding: '20px',
-                    backgroundColor: '#f8f9fa',
-                    borderRadius: '8px'
-                  }}>
-                    <div style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: '12px', color: '#999', marginBottom: '8px', fontWeight: '600' }}>
-                        TIPO DE INGRESSO
-                      </div>
-                      <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#333' }}>
-                        {ingresso.tipo_ingresso}
-                      </div>
-                    </div>
-
-                    {ingresso.assento && (
-                      <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: '12px', color: '#999', marginBottom: '8px', fontWeight: '600' }}>
-                          ASSENTO
+                {/* Lista de ingressos deste evento */}
+                <div style={{
+                  backgroundColor: 'white',
+                  borderRadius: '0 0 12px 12px',
+                  boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+                  overflow: 'hidden'
+                }}>
+                  {grupo.ingressos.map((ingresso, index) => (
+                    <div 
+                      key={ingresso.id} 
+                      style={{
+                        padding: '30px',
+                        borderBottom: index < grupo.ingressos.length - 1 ? '2px dashed #e0e0e0' : 'none',
+                        borderLeft: ingresso.validado ? '5px solid #dc3545' : '5px solid #27ae60'
+                      }}
+                    >
+                      
+                      {/* Cabeçalho do Ingresso com informações principais */}
+                      <div style={{ marginBottom: '25px' }}>
+                        <h3 style={{
+                          color: '#5d34a4',
+                          margin: '0 0 15px 0',
+                          fontSize: '20px',
+                          fontWeight: 'bold'
+                        }}>
+                          {grupo.evento?.nome}
+                        </h3>
+                        
+                        <div style={{ 
+                          fontSize: '15px', 
+                          color: '#666',
+                          marginBottom: '8px'
+                        }}>
+                          📅 {grupo.sessao?.data && new Date(grupo.sessao.data).toLocaleDateString('pt-BR', {
+                            weekday: 'long',
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })} • 🕐 {grupo.sessao?.hora}
                         </div>
-                        <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#333' }}>
-                          {ingresso.assento}
+                        
+                        <div style={{ 
+                          fontSize: '15px', 
+                          color: '#666'
+                        }}>
+                          📍 {grupo.evento?.local}
                         </div>
                       </div>
-                    )}
-                  </div>
 
-                  {/* Data, Hora e Local */}
+                      {/* Foto do Evento e QR Code lado a lado */}
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 1fr',
+                        gap: '30px',
+                        marginBottom: '25px',
+                        alignItems: 'center'
+                      }}>
+                        
+                        {/* Foto do Evento */}
+                        <div style={{
+                          width: '100%',
+                          height: '300px',
+                          borderRadius: '12px',
+                          overflow: 'hidden',
+                          backgroundColor: '#e0e0e0',
+                          border: '3px solid #5d34a4'
+                        }}>
+                          {grupo.evento?.imagem ? (
+                            <img 
+                              src={grupo.evento.imagem} 
+                              alt={grupo.evento.nome}
+                              style={{ 
+                                width: '100%', 
+                                height: '100%', 
+                                objectFit: 'cover' 
+                              }}
+                            />
+                          ) : (
+                            <div style={{ 
+                              width: '100%', 
+                              height: '100%', 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              justifyContent: 'center',
+                              fontSize: '80px'
+                            }}>
+                              🎭
+                            </div>
+                          )}
+                        </div>
+
+                        {/* QR Code */}
+                        <div style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center'
+                        }}>
+                          <div style={{
+                            width: '300px',
+                            height: '300px',
+                            backgroundColor: 'white',
+                            padding: '15px',
+                            borderRadius: '12px',
+                            border: '3px solid #5d34a4',
+                            boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+                          }}>
+                            <img
+                              src={gerarQRCodeURL(ingresso.qr_code)}
+                              alt="QR Code do Ingresso"
+                              style={{ width: '100%', height: '100%' }}
+                            />
+                          </div>
+                          
+                          {/* Status */}
+                          <div style={{ marginTop: '15px' }}>
+                            {ingresso.validado ? (
+                              <div style={{
+                                padding: '10px 25px',
+                                backgroundColor: '#dc3545',
+                                color: 'white',
+                                borderRadius: '8px',
+                                fontWeight: 'bold',
+                                fontSize: '14px'
+                              }}>
+                                ❌ JÁ UTILIZADO
+                              </div>
+                            ) : (
+                              <div style={{
+                                padding: '10px 25px',
+                                backgroundColor: '#27ae60',
+                                color: 'white',
+                                borderRadius: '8px',
+                                fontWeight: 'bold',
+                                fontSize: '14px'
+                              }}>
+                                ✅ VÁLIDO
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Informações do Ingresso */}
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: ingresso.assento ? 'repeat(2, 1fr)' : '1fr',
+                        gap: '20px',
+                        padding: '20px',
+                        backgroundColor: '#f0e6ff',
+                        borderRadius: '8px'
+                      }}>
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px', fontWeight: '600' }}>
+                            TIPO DE INGRESSO
+                          </div>
+                          <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#5d34a4' }}>
+                            {ingresso.tipo_ingresso}
+                          </div>
+                        </div>
+
+                        {ingresso.assento && (
+                          <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px', fontWeight: '600' }}>
+                              ASSENTO
+                            </div>
+                            <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#5d34a4' }}>
+                              {ingresso.assento}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {ingresso.validado && (
+                        <div style={{
+                          marginTop: '20px',
+                          padding: '15px',
+                          backgroundColor: '#f8d7da',
+                          borderRadius: '8px',
+                          border: '1px solid #f5c6cb',
+                          textAlign: 'center'
+                        }}>
+                          <div style={{ fontSize: '14px', color: '#721c24' }}>
+                            <strong>⚠️ Ingresso utilizado</strong><br />
+                            Validado em: {new Date(ingresso.validado_em).toLocaleString('pt-BR')}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  
+                  {/* Aviso importante no final do grupo */}
                   <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(3, 1fr)',
-                    gap: '15px',
-                    padding: '20px',
-                    backgroundColor: '#f0e6ff',
-                    borderRadius: '8px'
-                  }}>
-                    <div style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px', fontWeight: '600' }}>
-                        📅 DATA
-                      </div>
-                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#5d34a4' }}>
-                        {ingresso.sessao?.data && new Date(ingresso.sessao.data).toLocaleDateString('pt-BR')}
-                      </div>
-                    </div>
-
-                    <div style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px', fontWeight: '600' }}>
-                        🕐 HORÁRIO
-                      </div>
-                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#5d34a4' }}>
-                        {ingresso.sessao?.hora}
-                      </div>
-                    </div>
-
-                    <div style={{ textAlign: 'center' }}>
-                      <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px', fontWeight: '600' }}>
-                        📍 LOCAL
-                      </div>
-                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#5d34a4' }}>
-                        {ingresso.evento?.local}
-                      </div>
-                    </div>
-                  </div>
-
-                  {ingresso.validado && (
-                    <div style={{
-                      marginTop: '20px',
-                      padding: '15px',
-                      backgroundColor: '#f8d7da',
-                      borderRadius: '8px',
-                      border: '1px solid #f5c6cb',
-                      textAlign: 'center'
-                    }}>
-                      <div style={{ fontSize: '14px', color: '#721c24' }}>
-                        <strong>⚠️ Ingresso utilizado</strong><br />
-                        Validado em: {new Date(ingresso.validado_em).toLocaleString('pt-BR')}
-                      </div>
-                    </div>
-                  )}
-
-                  <div style={{
-                    marginTop: '20px',
-                    padding: '15px',
+                    padding: '20px 30px',
                     backgroundColor: '#fff3cd',
-                    borderRadius: '8px',
-                    border: '1px solid #ffc107',
+                    borderTop: '2px dashed #ffc107',
                     fontSize: '13px',
                     color: '#856404',
                     textAlign: 'center'
                   }}>
-                    💡 <strong>Importante:</strong> Apresente este QR Code na entrada do evento.
+                    💡 <strong>Importante:</strong> Apresente o QR Code na entrada do evento.
                     Cada ingresso só pode ser validado uma vez.
                   </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
