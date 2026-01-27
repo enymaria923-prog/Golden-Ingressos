@@ -90,29 +90,37 @@ export default function ProdutorPage() {
   const calcularBilheteriaReal = async (eventoId) => {
     const { data: ingressosVendidos } = await supabase
       .from('ingressos_vendidos')
-      .select('valor, pedido_id')
+      .select('valor, tipo_pagamento, parcelas, pedido_id')
       .eq('evento_id', eventoId);
 
     if (!ingressosVendidos || ingressosVendidos.length === 0) {
       return 0;
     }
 
-    const pedidosIds = [...new Set(ingressosVendidos.map(i => i.pedido_id))];
-    
-    const { data: pedidos } = await supabase
-      .from('pedidos')
-      .select('id, forma_pagamento, parcelas')
-      .in('id', pedidosIds);
+    // Agrupa ingressos por pedido_id
+    const pedidosAgrupados = ingressosVendidos.reduce((acc, ingresso) => {
+      if (!acc[ingresso.pedido_id]) {
+        acc[ingresso.pedido_id] = {
+          ingressos: [],
+          tipo_pagamento: ingresso.tipo_pagamento,
+          parcelas: ingresso.parcelas
+        };
+      }
+      acc[ingresso.pedido_id].ingressos.push(ingresso);
+      return acc;
+    }, {});
 
     let bilheteriaTotal = 0;
 
-    pedidos?.forEach(pedido => {
-      const ingressosDoPedido = ingressosVendidos.filter(i => i.pedido_id === pedido.id);
-      const valorIngressosPedido = ingressosDoPedido.reduce((sum, ing) => sum + parseFloat(ing.valor), 0);
+    // Calcula bilheteria para cada pedido
+    Object.values(pedidosAgrupados).forEach(pedido => {
+      const valorIngressosPedido = pedido.ingressos.reduce((sum, ing) => {
+        return sum + parseFloat(ing.valor || 0);
+      }, 0);
       
       const taxaPagamento = calcularTaxaPagamento(
         valorIngressosPedido, 
-        pedido.forma_pagamento, 
+        pedido.tipo_pagamento, 
         pedido.parcelas
       );
       
