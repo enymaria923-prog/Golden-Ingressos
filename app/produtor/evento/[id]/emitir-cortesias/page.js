@@ -1,4 +1,4 @@
-'use client';
+'use client';  //caralho
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { createClient } from '../../../../../utils/supabase/client';
