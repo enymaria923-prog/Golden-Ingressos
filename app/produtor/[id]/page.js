@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { createClient } from '../../../utils/supabase/client';
-import './produtor.css';
+
 
 export default function ProdutorPage() {
   const params = useParams();
