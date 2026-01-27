@@ -27,6 +27,7 @@ export default function EmitirCortesiasPage() {
   const [emailBeneficiario, setEmailBeneficiario] = useState('');
   const [cpfBeneficiario, setCpfBeneficiario] = useState('');
   const [observacoes, setObservacoes] = useState('');
+  const [quantidade, setQuantidade] = useState(1);
   const [emitindo, setEmitindo] = useState(false);
 
   useEffect(() => {
@@ -175,6 +176,10 @@ export default function EmitirCortesiasPage() {
     return tipos;
   };
 
+  const gerarQRCodeURL = (texto) => {
+    return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(texto)}`;
+  };
+
   useEffect(() => {
     if (sessoes.length === 1 && !sessaoSelecionada) {
       setSessaoSelecionada(sessoes[0].id);
@@ -215,8 +220,18 @@ export default function EmitirCortesiasPage() {
       return;
     }
 
-    if (evento.tem_lugar_marcado && !assentoSelecionado) {
+    if (evento.tem_lugar_marcado && !assentoSelecionado && quantidade === 1) {
       alert('Por favor, selecione um assento');
+      return;
+    }
+
+    if (evento.tem_lugar_marcado && quantidade > 1) {
+      alert('Para eventos com lugar marcado, emita cortesias uma por vez');
+      return;
+    }
+
+    if (quantidade < 1) {
+      alert('Quantidade deve ser pelo menos 1');
       return;
     }
 
@@ -231,22 +246,24 @@ export default function EmitirCortesiasPage() {
 
       const disponiveis = calcularDisponiveis(ingressoTipo);
       
-      if (disponiveis <= 0) {
-        throw new Error('Não há ingressos disponíveis deste tipo');
+      if (disponiveis < quantidade) {
+        throw new Error(`Não há ingressos suficientes. Disponíveis: ${disponiveis}`);
       }
 
-      const timestamp = Date.now();
-      const random = Math.random().toString(36).substring(2, 15);
-      const qrCode = `CORTESIA-${eventoId}-${timestamp}-${random}`;
+      // Emitir múltiplas cortesias
+      const cortesiasParaInserir = [];
+      
+      for (let i = 0; i < quantidade; i++) {
+        const timestamp = Date.now() + i;
+        const random = Math.random().toString(36).substring(2, 15);
+        const qrCode = `CORTESIA-${eventoId}-${timestamp}-${random}`;
 
-      const { data: cortesiaData, error: cortesiaError } = await supabase
-        .from('ingressos_vendidos')
-        .insert([{
+        cortesiasParaInserir.push({
           evento_id: eventoId,
           sessao_id: sessaoSelecionada,
           tipo_ingresso: ingressoTipo.tipo,
           valor: 0,
-          assento: assentoSelecionado || null,
+          assento: quantidade === 1 ? (assentoSelecionado || null) : null,
           qr_code: qrCode,
           status: 'ATIVO',
           tipo_pagamento: 'cortesia',
@@ -255,23 +272,27 @@ export default function EmitirCortesiasPage() {
           comprador_email: emailBeneficiario,
           comprador_cpf: cpfBeneficiario || null,
           observacoes: observacoes || null
-        }])
-        .select()
-        .single();
+        });
+      }
+
+      const { data: cortesiasData, error: cortesiaError } = await supabase
+        .from('ingressos_vendidos')
+        .insert(cortesiasParaInserir)
+        .select();
 
       if (cortesiaError) throw cortesiaError;
 
       const cortesiasAtuais = parseInt(ingressoTipo.cortesias) || 0;
       const { error: updateError } = await supabase
         .from('ingressos')
-        .update({ cortesias: cortesiasAtuais + 1 })
+        .update({ cortesias: cortesiasAtuais + quantidade })
         .eq('id', tipoSelecionado);
 
       if (updateError) {
         console.warn('Erro ao atualizar cortesias:', updateError);
       }
 
-      alert('✅ Cortesia emitida com sucesso!');
+      alert(`✅ ${quantidade} cortesia(s) emitida(s) com sucesso!`);
       
       setAssentoSelecionado('');
       setNomeBeneficiario('');
@@ -280,6 +301,7 @@ export default function EmitirCortesiasPage() {
       setObservacoes('');
       setTipoSelecionado('');
       setLoteSelecionado('');
+      setQuantidade(1);
 
       carregarDados();
 
@@ -459,6 +481,31 @@ export default function EmitirCortesiasPage() {
               </div>
             )}
 
+            {tipoSelecionado && !evento.tem_lugar_marcado && (
+              <div>
+                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>
+                  🔢 Quantidade *
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max={tipoSelecionado ? calcularDisponiveis(ingressos.find(i => i.id === tipoSelecionado)) : 1}
+                  value={quantidade}
+                  onChange={(e) => setQuantidade(parseInt(e.target.value) || 1)}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '2px solid #e0e0e0',
+                    borderRadius: '8px',
+                    fontSize: '14px'
+                  }}
+                />
+                <div style={{ fontSize: '12px', color: '#666', marginTop: '5px' }}>
+                  Máximo: {tipoSelecionado ? calcularDisponiveis(ingressos.find(i => i.id === tipoSelecionado)) : 0} cortesias
+                </div>
+              </div>
+            )}
+
             {evento.tem_lugar_marcado && tipoSelecionado && (
               <div>
                 <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#333' }}>
@@ -586,7 +633,7 @@ export default function EmitirCortesiasPage() {
                 marginTop: '10px'
               }}
             >
-              {emitindo ? '⏳ Emitindo...' : '✅ Emitir Cortesia'}
+              {emitindo ? '⏳ Emitindo...' : `✅ Emitir ${quantidade} Cortesia(s)`}
             </button>
           </div>
         </div>
@@ -653,17 +700,34 @@ export default function EmitirCortesiasPage() {
                           💬 {cortesia.observacoes}
                         </div>
                       )}
+                      
+                      {/* QR CODE */}
                       <div style={{ 
-                        marginTop: '8px',
-                        padding: '6px',
+                        marginTop: '12px',
+                        padding: '15px',
                         backgroundColor: 'white',
-                        borderRadius: '4px',
-                        fontSize: '10px',
-                        fontFamily: 'monospace',
-                        wordBreak: 'break-all',
-                        color: '#666'
+                        borderRadius: '8px',
+                        textAlign: 'center',
+                        border: '2px solid #5d34a4'
                       }}>
-                        🔑 {cortesia.qr_code}
+                        <img
+                          src={gerarQRCodeURL(cortesia.qr_code)}
+                          alt="QR Code"
+                          style={{ 
+                            width: '150px', 
+                            height: '150px',
+                            margin: '0 auto'
+                          }}
+                        />
+                        <div style={{ 
+                          marginTop: '8px',
+                          fontSize: '10px',
+                          fontFamily: 'monospace',
+                          wordBreak: 'break-all',
+                          color: '#666'
+                        }}>
+                          {cortesia.qr_code}
+                        </div>
                       </div>
                     </div>
                   </div>
