@@ -235,18 +235,13 @@ export default function EmitirCortesiasPage() {
         throw new Error('Não há ingressos disponíveis deste tipo');
       }
 
-      // Gerar IDs únicos
       const timestamp = Date.now();
       const random = Math.random().toString(36).substring(2, 15);
       const qrCode = `CORTESIA-${eventoId}-${timestamp}-${random}`;
-      const pedidoId = `${timestamp}${random}${Math.random().toString(36).substring(2, 15)}`.substring(0, 36);
-
-      console.log('🔑 pedidoId gerado:', pedidoId);
 
       const { data: cortesiaData, error: cortesiaError } = await supabase
         .from('ingressos_vendidos')
         .insert([{
-          pedido_id: pedidoId,
           evento_id: eventoId,
           sessao_id: sessaoSelecionada,
           tipo_ingresso: ingressoTipo.tipo,
