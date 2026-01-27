@@ -86,35 +86,16 @@ export default function ProdutorPage() {
     return 1.99;
   };
 
-  // FUNÇÃO PARA BUSCAR BILHETERIA REAL DO EVENTO (CORRIGIDA - AGRUPA POR PEDIDO)
+  // FUNÇÃO PARA BUSCAR BILHETERIA REAL DO EVENTO (CORRIGIDA)
   const calcularBilheteriaReal = async (eventoId) => {
-    // Busca todos os ingressos vendidos do evento
     const { data: ingressosVendidos } = await supabase
       .from('ingressos_vendidos')
-      .select('ingresso_id, tipo_pagamento, parcelas, pedido_id')
+      .select('valor, tipo_pagamento, parcelas, pedido_id')
       .eq('evento_id', eventoId);
 
     if (!ingressosVendidos || ingressosVendidos.length === 0) {
       return 0;
     }
-
-    // Busca os valores dos ingressos na tabela de ingressos
-    const ingressosIds = [...new Set(ingressosVendidos.map(i => i.ingresso_id))];
-    
-    const { data: ingressos } = await supabase
-      .from('ingressos')
-      .select('id, valor')
-      .in('id', ingressosIds);
-
-    if (!ingressos || ingressos.length === 0) {
-      return 0;
-    }
-
-    // Cria um mapa de valores dos ingressos
-    const mapaValores = {};
-    ingressos.forEach(ing => {
-      mapaValores[ing.id] = parseFloat(ing.valor || 0);
-    });
 
     // Agrupa ingressos vendidos por pedido_id (CADA PEDIDO = UMA COMPRA)
     const pedidosAgrupados = {};
@@ -129,7 +110,7 @@ export default function ProdutorPage() {
       }
       
       // Soma o valor do ingresso ao total do pedido
-      const valorIngresso = mapaValores[ingressoVendido.ingresso_id] || 0;
+      const valorIngresso = parseFloat(ingressoVendido.valor || 0);
       pedidosAgrupados[ingressoVendido.pedido_id].valorTotal += valorIngresso;
     });
 
