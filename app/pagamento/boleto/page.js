@@ -123,7 +123,6 @@ function PagamentoBoletoContent() {
       let itens = [];
       
       if (pedidoAtual.itens) {
-        // Verificar se é string ou objeto
         if (typeof pedidoAtual.itens === 'string') {
           itens = JSON.parse(pedidoAtual.itens);
         } else {
@@ -160,7 +159,9 @@ function PagamentoBoletoContent() {
             comprador_cpf: pedidoAtual.cpf_comprador,
             assento: item.assento || null,
             qr_code: qrCode,
-            status: 'ATIVO'
+            status: 'ATIVO',
+            tipo_pagamento: 'boleto',
+            parcelas: 1
           });
         }
       });
