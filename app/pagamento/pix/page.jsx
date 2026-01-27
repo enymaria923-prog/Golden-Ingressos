@@ -105,7 +105,6 @@ function PixPaymentContent() {
       let itens = [];
       
       if (pedido.itens) {
-        // Verificar se é string ou objeto
         if (typeof pedido.itens === 'string') {
           itens = JSON.parse(pedido.itens);
         } else {
@@ -142,7 +141,9 @@ function PixPaymentContent() {
             comprador_cpf: pedido.cpf_comprador,
             assento: item.assento || null,
             qr_code: qrCode,
-            status: 'ATIVO'
+            status: 'ATIVO',
+            tipo_pagamento: 'pix',
+            parcelas: 1
           });
         }
       });
