@@ -86,45 +86,66 @@ export default function ProdutorPage() {
     return 1.99;
   };
 
-  // FUNÇÃO PARA BUSCAR BILHETERIA REAL DO EVENTO
+  // FUNÇÃO PARA BUSCAR BILHETERIA REAL DO EVENTO (CORRIGIDA - AGRUPA POR PEDIDO)
   const calcularBilheteriaReal = async (eventoId) => {
+    // Busca todos os ingressos vendidos do evento
     const { data: ingressosVendidos } = await supabase
       .from('ingressos_vendidos')
-      .select('valor, tipo_pagamento, parcelas, pedido_id')
+      .select('ingresso_id, tipo_pagamento, parcelas, pedido_id')
       .eq('evento_id', eventoId);
 
     if (!ingressosVendidos || ingressosVendidos.length === 0) {
       return 0;
     }
 
-    // Agrupa ingressos por pedido_id
-    const pedidosAgrupados = ingressosVendidos.reduce((acc, ingresso) => {
-      if (!acc[ingresso.pedido_id]) {
-        acc[ingresso.pedido_id] = {
-          ingressos: [],
-          tipo_pagamento: ingresso.tipo_pagamento,
-          parcelas: ingresso.parcelas
+    // Busca os valores dos ingressos na tabela de ingressos
+    const ingressosIds = [...new Set(ingressosVendidos.map(i => i.ingresso_id))];
+    
+    const { data: ingressos } = await supabase
+      .from('ingressos')
+      .select('id, valor')
+      .in('id', ingressosIds);
+
+    if (!ingressos || ingressos.length === 0) {
+      return 0;
+    }
+
+    // Cria um mapa de valores dos ingressos
+    const mapaValores = {};
+    ingressos.forEach(ing => {
+      mapaValores[ing.id] = parseFloat(ing.valor || 0);
+    });
+
+    // Agrupa ingressos vendidos por pedido_id (CADA PEDIDO = UMA COMPRA)
+    const pedidosAgrupados = {};
+    
+    ingressosVendidos.forEach(ingressoVendido => {
+      if (!pedidosAgrupados[ingressoVendido.pedido_id]) {
+        pedidosAgrupados[ingressoVendido.pedido_id] = {
+          valorTotal: 0,
+          tipo_pagamento: ingressoVendido.tipo_pagamento,
+          parcelas: ingressoVendido.parcelas
         };
       }
-      acc[ingresso.pedido_id].ingressos.push(ingresso);
-      return acc;
-    }, {});
+      
+      // Soma o valor do ingresso ao total do pedido
+      const valorIngresso = mapaValores[ingressoVendido.ingresso_id] || 0;
+      pedidosAgrupados[ingressoVendido.pedido_id].valorTotal += valorIngresso;
+    });
 
     let bilheteriaTotal = 0;
 
-    // Calcula bilheteria para cada pedido
+    // Calcula bilheteria para cada pedido (CADA COMPRA TEM SUA TAXA)
     Object.values(pedidosAgrupados).forEach(pedido => {
-      const valorIngressosPedido = pedido.ingressos.reduce((sum, ing) => {
-        return sum + parseFloat(ing.valor || 0);
-      }, 0);
-      
+      // Calcula a taxa do gateway PARA ESTE PEDIDO/COMPRA
       const taxaPagamento = calcularTaxaPagamento(
-        valorIngressosPedido, 
+        pedido.valorTotal, 
         pedido.tipo_pagamento, 
         pedido.parcelas
       );
       
-      const valorLiquido = valorIngressosPedido - taxaPagamento;
+      // Valor líquido = valor total dos ingressos deste pedido - taxa do gateway
+      const valorLiquido = pedido.valorTotal - taxaPagamento;
       bilheteriaTotal += Math.max(0, valorLiquido);
     });
 
