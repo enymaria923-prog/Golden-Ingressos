@@ -133,6 +133,20 @@ export default function ProdutorPage() {
     return bilheteriaTotal;
   };
 
+  // NOVA FUNÇÃO: Calcular quantidade real de ingressos vendidos
+  const calcularIngressosVendidos = async (eventoId) => {
+    const { data: ingressos } = await supabase
+      .from('ingressos')
+      .select('vendidos')
+      .eq('evento_id', eventoId);
+
+    if (!ingressos || ingressos.length === 0) {
+      return 0;
+    }
+
+    return ingressos.reduce((total, ing) => total + (parseInt(ing.vendidos) || 0), 0);
+  };
+
   // CORRIGIDO: Bônus Golden correto por plano - SEM valores negativos
   const calcularBonusGolden = (bilheteria, taxaCliente) => {
     const taxa = parseFloat(taxaCliente) || 0;
@@ -170,7 +184,7 @@ export default function ProdutorPage() {
 
   const calcularDadosEvento = async (evento) => {
     const totalIngressos = evento.total_ingressos || 0;
-    const ingressosVendidos = evento.ingressos_vendidos || 0;
+    const ingressosVendidos = await calcularIngressosVendidos(evento.id);
     const ingressosDisponiveis = Math.max(0, totalIngressos - ingressosVendidos);
     
     const valorTotalIngressos = await calcularBilheteriaReal(evento.id);
