@@ -21,7 +21,6 @@ export default function SeguindoPage() {
       }
       setUser(userData);
 
-      // Carregar quem o usuário está seguindo com informações dos perfis
       const { data: seguindoData } = await supabase
         .from('seguidores')
         .select(`
@@ -74,7 +73,6 @@ export default function SeguindoPage() {
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#fafafa', minHeight: '100vh' }}>
       
-      {/* Header */}
       <header style={{ 
         backgroundColor: 'white', 
         borderBottom: '1px solid #dbdbdb',
@@ -97,7 +95,6 @@ export default function SeguindoPage() {
 
       <div style={{ maxWidth: '600px', margin: '60px auto 0', padding: '30px 20px' }}>
         
-        {/* Cabeçalho da página */}
         <div style={{ 
           backgroundColor: 'white', 
           padding: '20px', 
@@ -116,7 +113,6 @@ export default function SeguindoPage() {
           </h1>
         </div>
 
-        {/* Lista de quem está seguindo */}
         <div style={{ backgroundColor: 'white', borderRadius: '8px', border: '1px solid #dbdbdb' }}>
           {seguindo.length > 0 ? (
             seguindo.map(seguindoItem => (
@@ -141,7 +137,6 @@ export default function SeguindoPage() {
                     flex: 1
                   }}
                 >
-                  {/* Foto de perfil */}
                   <div style={{ 
                     width: '44px', 
                     height: '44px', 
@@ -151,7 +146,6 @@ export default function SeguindoPage() {
                     flexShrink: 0
                   }}>
                     {seguindoItem.perfis?.foto_perfil_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
                       <img 
                         src={seguindoItem.perfis.foto_perfil_url} 
                         alt={seguindoItem.perfis.username || seguindoItem.perfis.nome_completo}
@@ -171,7 +165,6 @@ export default function SeguindoPage() {
                     )}
                   </div>
 
-                  {/* Informações */}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ 
                       margin: 0, 
@@ -210,7 +203,6 @@ export default function SeguindoPage() {
                   </div>
                 </Link>
 
-                {/* Botão deixar de seguir */}
                 <button
                   onClick={() => deixarDeSeguir(seguindoItem.seguido_id)}
                   style={{
@@ -265,14 +257,3 @@ export default function SeguindoPage() {
     </div>
   );
 }
-```
-
-## Estrutura de pastas
-
-Crie os arquivos nesta estrutura:
-```
-app/
-├── seguidores/
-│   └── page.js
-└── seguindo/
-    └── page.js
