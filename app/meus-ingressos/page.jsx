@@ -21,7 +21,6 @@ export default function MeusIngressosPage() {
     try {
       setLoading(true);
 
-      // Verificar autenticação
       const { data: { user } } = await supabase.auth.getUser();
      
       if (!user) {
@@ -31,7 +30,6 @@ export default function MeusIngressosPage() {
 
       setUser(user);
 
-      // Buscar pedidos pagos do usuário
       const { data: pedidos, error: pedidosError } = await supabase
         .from('pedidos')
         .select('id, evento_id, sessao_id, status')
@@ -48,7 +46,6 @@ export default function MeusIngressosPage() {
 
       const pedidosIds = pedidos.map(p => p.id);
 
-      // Buscar ingressos
       const { data: ingressosData, error: ingressosError } = await supabase
         .from('ingressos_vendidos')
         .select('*')
@@ -57,7 +54,6 @@ export default function MeusIngressosPage() {
 
       if (ingressosError) throw ingressosError;
 
-      // Buscar informações dos eventos
       const eventosIds = [...new Set(pedidos.map(p => p.evento_id))];
       const sessoesIds = [...new Set(pedidos.map(p => p.sessao_id))];
 
@@ -71,7 +67,6 @@ export default function MeusIngressosPage() {
         .select('id, data, hora')
         .in('id', sessoesIds);
 
-      // Combinar dados
       const ingressosCompletos = ingressosData.map(ingresso => {
         const pedido = pedidos.find(p => p.id === ingresso.pedido_id);
         const evento = eventos?.find(e => e.id === pedido?.evento_id);
@@ -106,26 +101,30 @@ export default function MeusIngressosPage() {
     );
   }
 
-  // Agrupar ingressos por evento
-  const ingressosPorEvento = {};
+  // Agrupar manualmente - VERSÃO SIMPLIFICADA
+  const grupos = [];
+  const eventosProcessados = new Set();
+
   ingressos.forEach(ingresso => {
     const eventoId = ingresso.evento?.id;
-    if (eventoId) {
-      if (!ingressosPorEvento[eventoId]) {
-        ingressosPorEvento[eventoId] = {
-          evento: ingresso.evento,
-          sessao: ingresso.sessao,
-          ingressos: []
-        };
-      }
-      ingressosPorEvento[eventoId].ingressos.push(ingresso);
+    
+    if (eventoId && !eventosProcessados.has(eventoId)) {
+      eventosProcessados.add(eventoId);
+      
+      // Pegar todos os ingressos deste evento
+      const ingressosDoEvento = ingressos.filter(i => i.evento?.id === eventoId);
+      
+      grupos.push({
+        evento: ingresso.evento,
+        sessao: ingresso.sessao,
+        ingressos: ingressosDoEvento
+      });
     }
   });
 
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', paddingBottom: '40px' }}>
      
-      {/* Header */}
       <header style={{ backgroundColor: '#5d34a4', color: 'white', padding: '20px 30px' }}>
         <Link href="/" style={{ color: 'white', textDecoration: 'none', fontSize: '16px' }}>
           ← Voltar
@@ -136,7 +135,6 @@ export default function MeusIngressosPage() {
       <div style={{ maxWidth: '1200px', margin: '30px auto', padding: '0 20px' }}>
        
         {ingressos.length === 0 ? (
-          // Nenhum ingresso
           <div style={{
             backgroundColor: 'white',
             padding: '60px 40px',
@@ -165,7 +163,6 @@ export default function MeusIngressosPage() {
             </Link>
           </div>
         ) : (
-          // Lista de ingressos agrupados por evento
           <div>
             <div style={{
               backgroundColor: '#d4edda',
@@ -179,10 +176,9 @@ export default function MeusIngressosPage() {
               </p>
             </div>
 
-            {Object.values(ingressosPorEvento).map((grupo, grupoIndex) => (
+            {grupos.map((grupo, grupoIndex) => (
               <div key={grupoIndex} style={{ marginBottom: '50px' }}>
                 
-                {/* Cabeçalho do Evento */}
                 <div style={{
                   backgroundColor: '#5d34a4',
                   color: 'white',
@@ -199,7 +195,6 @@ export default function MeusIngressosPage() {
                   </h2>
                 </div>
 
-                {/* Container dos ingressos */}
                 <div style={{
                   backgroundColor: 'white',
                   borderRadius: '0 0 12px 12px',
@@ -216,7 +211,6 @@ export default function MeusIngressosPage() {
                       }}
                     >
                       
-                      {/* Título do Evento */}
                       <h3 style={{
                         color: '#5d34a4',
                         margin: '0 0 15px 0',
@@ -226,7 +220,6 @@ export default function MeusIngressosPage() {
                         {ingresso.evento?.nome}
                       </h3>
 
-                      {/* Data e Hora */}
                       <div style={{ 
                         fontSize: '16px', 
                         color: '#666',
@@ -241,7 +234,6 @@ export default function MeusIngressosPage() {
                         })} • 🕐 {ingresso.sessao?.hora}
                       </div>
 
-                      {/* Local */}
                       <div style={{ 
                         fontSize: '16px', 
                         color: '#666',
@@ -251,7 +243,6 @@ export default function MeusIngressosPage() {
                         📍 {ingresso.evento?.local}
                       </div>
 
-                      {/* Foto do Evento e QR Code lado a lado */}
                       <div style={{
                         display: 'grid',
                         gridTemplateColumns: '1fr 1fr',
@@ -260,7 +251,6 @@ export default function MeusIngressosPage() {
                         alignItems: 'center'
                       }}>
                         
-                        {/* Foto do Evento */}
                         <div style={{
                           width: '100%',
                           height: '300px',
@@ -293,7 +283,6 @@ export default function MeusIngressosPage() {
                           )}
                         </div>
 
-                        {/* QR Code */}
                         <div style={{
                           display: 'flex',
                           flexDirection: 'column',
@@ -316,7 +305,6 @@ export default function MeusIngressosPage() {
                             />
                           </div>
                           
-                          {/* Status */}
                           <div style={{ marginTop: '15px' }}>
                             {ingresso.validado ? (
                               <div style={{
@@ -345,7 +333,6 @@ export default function MeusIngressosPage() {
                         </div>
                       </div>
 
-                      {/* Informações do Ingresso */}
                       <div style={{
                         display: 'grid',
                         gridTemplateColumns: ingresso.assento ? 'repeat(2, 1fr)' : '1fr',
@@ -393,7 +380,6 @@ export default function MeusIngressosPage() {
                     </div>
                   ))}
                   
-                  {/* Aviso importante no final do grupo */}
                   <div style={{
                     padding: '20px 30px',
                     backgroundColor: '#fff3cd',
