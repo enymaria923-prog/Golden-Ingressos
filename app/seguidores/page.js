@@ -22,7 +22,6 @@ export default function SeguidoresPage() {
       }
       setUser(userData);
 
-      // Carregar seguidores com informações dos perfis
       const { data: seguidoresData } = await supabase
         .from('seguidores')
         .select(`
@@ -39,7 +38,6 @@ export default function SeguidoresPage() {
 
       setSeguidores(seguidoresData || []);
 
-      // Carregar IDs de quem o usuário está seguindo
       const { data: seguindoData } = await supabase
         .from('seguidores')
         .select('seguido_id')
@@ -60,7 +58,6 @@ export default function SeguidoresPage() {
       const estaSeguindo = seguindoIds.has(perfilId);
 
       if (estaSeguindo) {
-        // Deixar de seguir
         await supabase
           .from('seguidores')
           .delete()
@@ -73,7 +70,6 @@ export default function SeguidoresPage() {
           return newSet;
         });
       } else {
-        // Seguir
         await supabase
           .from('seguidores')
           .insert({
@@ -120,7 +116,6 @@ export default function SeguidoresPage() {
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#fafafa', minHeight: '100vh' }}>
       
-      {/* Header */}
       <header style={{ 
         backgroundColor: 'white', 
         borderBottom: '1px solid #dbdbdb',
@@ -143,7 +138,6 @@ export default function SeguidoresPage() {
 
       <div style={{ maxWidth: '600px', margin: '60px auto 0', padding: '30px 20px' }}>
         
-        {/* Cabeçalho da página */}
         <div style={{ 
           backgroundColor: 'white', 
           padding: '20px', 
@@ -162,7 +156,6 @@ export default function SeguidoresPage() {
           </h1>
         </div>
 
-        {/* Lista de seguidores */}
         <div style={{ backgroundColor: 'white', borderRadius: '8px', border: '1px solid #dbdbdb' }}>
           {seguidores.length > 0 ? (
             seguidores.map(seguidor => (
@@ -187,7 +180,6 @@ export default function SeguidoresPage() {
                     flex: 1
                   }}
                 >
-                  {/* Foto de perfil */}
                   <div style={{ 
                     width: '44px', 
                     height: '44px', 
@@ -197,7 +189,6 @@ export default function SeguidoresPage() {
                     flexShrink: 0
                   }}>
                     {seguidor.perfis?.foto_perfil_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
                       <img 
                         src={seguidor.perfis.foto_perfil_url} 
                         alt={seguidor.perfis.username || seguidor.perfis.nome_completo}
@@ -217,7 +208,6 @@ export default function SeguidoresPage() {
                     )}
                   </div>
 
-                  {/* Informações */}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ 
                       margin: 0, 
@@ -256,7 +246,6 @@ export default function SeguidoresPage() {
                   </div>
                 </Link>
 
-                {/* Botões de ação */}
                 <div style={{ display: 'flex', gap: '10px', marginLeft: '10px' }}>
                   {seguidor.seguidor_id !== user?.id && (
                     <button
