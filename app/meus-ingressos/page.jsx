@@ -99,20 +99,23 @@ export default function MeusIngressosPage() {
   };
 
   // Agrupar ingressos por evento
-  const ingressosPorEvento = {};
-  ingressos.forEach(ingresso => {
-    const eventoId = ingresso.evento?.id;
-    if (eventoId) {
-      if (!ingressosPorEvento[eventoId]) {
-        ingressosPorEvento[eventoId] = {
+  const agruparPorEvento = () => {
+    const grupos = {};
+    
+    ingressos.forEach(ingresso => {
+      const eventoId = ingresso.evento?.id;
+      if (!grupos[eventoId]) {
+        grupos[eventoId] = {
           evento: ingresso.evento,
           sessao: ingresso.sessao,
           ingressos: []
         };
       }
-      ingressosPorEvento[eventoId].ingressos.push(ingresso);
-    }
-  });
+      grupos[eventoId].ingressos.push(ingresso);
+    });
+    
+    return Object.values(grupos);
+  };
 
   if (loading) {
     return (
@@ -121,6 +124,8 @@ export default function MeusIngressosPage() {
       </div>
     );
   }
+
+  const gruposDeEventos = agruparPorEvento();
 
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', paddingBottom: '40px' }}>
@@ -165,7 +170,7 @@ export default function MeusIngressosPage() {
             </Link>
           </div>
         ) : (
-          // Lista de eventos com ingressos agrupados
+          // Lista de ingressos agrupados por evento
           <div>
             <div style={{
               backgroundColor: '#d4edda',
@@ -179,10 +184,10 @@ export default function MeusIngressosPage() {
               </p>
             </div>
 
-            {Object.values(ingressosPorEvento).map((grupo, grupoIndex) => (
+            {gruposDeEventos.map((grupo, grupoIndex) => (
               <div key={grupoIndex} style={{ marginBottom: '50px' }}>
                 
-                {/* Separador/Cabeçalho do Evento */}
+                {/* Cabeçalho do Evento */}
                 <div style={{
                   backgroundColor: '#5d34a4',
                   color: 'white',
@@ -191,18 +196,15 @@ export default function MeusIngressosPage() {
                   marginBottom: '0'
                 }}>
                   <h2 style={{ 
-                    margin: '0 0 5px 0', 
+                    margin: '0', 
                     fontSize: '24px',
                     fontWeight: 'bold'
                   }}>
-                    🎭 {grupo.evento?.nome}
+                    🎭 {grupo.evento?.nome || 'Evento'}
                   </h2>
-                  <div style={{ fontSize: '14px', opacity: 0.9 }}>
-                    {grupo.ingressos.length} ingresso{grupo.ingressos.length > 1 ? 's' : ''}
-                  </div>
                 </div>
 
-                {/* Lista de ingressos deste evento */}
+                {/* Container dos ingressos */}
                 <div style={{
                   backgroundColor: 'white',
                   borderRadius: '0 0 12px 12px',
@@ -219,36 +221,39 @@ export default function MeusIngressosPage() {
                       }}
                     >
                       
-                      {/* Cabeçalho do Ingresso com informações principais */}
-                      <div style={{ marginBottom: '25px' }}>
-                        <h3 style={{
-                          color: '#5d34a4',
-                          margin: '0 0 15px 0',
-                          fontSize: '20px',
-                          fontWeight: 'bold'
-                        }}>
-                          {grupo.evento?.nome}
-                        </h3>
-                        
-                        <div style={{ 
-                          fontSize: '15px', 
-                          color: '#666',
-                          marginBottom: '8px'
-                        }}>
-                          📅 {grupo.sessao?.data && new Date(grupo.sessao.data).toLocaleDateString('pt-BR', {
-                            weekday: 'long',
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                          })} • 🕐 {grupo.sessao?.hora}
-                        </div>
-                        
-                        <div style={{ 
-                          fontSize: '15px', 
-                          color: '#666'
-                        }}>
-                          📍 {grupo.evento?.local}
-                        </div>
+                      {/* Título do Evento */}
+                      <h3 style={{
+                        color: '#5d34a4',
+                        margin: '0 0 15px 0',
+                        fontSize: '22px',
+                        fontWeight: 'bold'
+                      }}>
+                        {ingresso.evento?.nome}
+                      </h3>
+
+                      {/* Data e Hora */}
+                      <div style={{ 
+                        fontSize: '16px', 
+                        color: '#666',
+                        marginBottom: '10px',
+                        fontWeight: '500'
+                      }}>
+                        📅 {ingresso.sessao?.data && new Date(ingresso.sessao.data).toLocaleDateString('pt-BR', {
+                          weekday: 'long',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })} • 🕐 {ingresso.sessao?.hora}
+                      </div>
+
+                      {/* Local */}
+                      <div style={{ 
+                        fontSize: '16px', 
+                        color: '#666',
+                        marginBottom: '25px',
+                        fontWeight: '500'
+                      }}>
+                        📍 {ingresso.evento?.local}
                       </div>
 
                       {/* Foto do Evento e QR Code lado a lado */}
@@ -269,10 +274,10 @@ export default function MeusIngressosPage() {
                           backgroundColor: '#e0e0e0',
                           border: '3px solid #5d34a4'
                         }}>
-                          {grupo.evento?.imagem ? (
+                          {ingresso.evento?.imagem ? (
                             <img 
-                              src={grupo.evento.imagem} 
-                              alt={grupo.evento.nome}
+                              src={ingresso.evento.imagem} 
+                              alt={ingresso.evento.nome}
                               style={{ 
                                 width: '100%', 
                                 height: '100%', 
@@ -297,7 +302,8 @@ export default function MeusIngressosPage() {
                         <div style={{
                           display: 'flex',
                           flexDirection: 'column',
-                          alignItems: 'center'
+                          alignItems: 'center',
+                          justifyContent: 'center'
                         }}>
                           <div style={{
                             width: '300px',
@@ -351,7 +357,8 @@ export default function MeusIngressosPage() {
                         gap: '20px',
                         padding: '20px',
                         backgroundColor: '#f0e6ff',
-                        borderRadius: '8px'
+                        borderRadius: '8px',
+                        marginBottom: ingresso.validado ? '20px' : '0'
                       }}>
                         <div style={{ textAlign: 'center' }}>
                           <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px', fontWeight: '600' }}>
@@ -376,7 +383,6 @@ export default function MeusIngressosPage() {
 
                       {ingresso.validado && (
                         <div style={{
-                          marginTop: '20px',
                           padding: '15px',
                           backgroundColor: '#f8d7da',
                           borderRadius: '8px',
