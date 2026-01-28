@@ -1,4 +1,4 @@
-'use client'; //aaa
+'use client';
 
 import { useState, useEffect } from 'react';
 import { createClient } from '../../utils/supabase/client';
@@ -84,10 +84,6 @@ export default function MeusIngressosPage() {
         };
       });
 
-      console.log('🎫 Ingressos carregados:', ingressosCompletos);
-      console.log('🎭 Eventos:', eventos);
-      console.log('📅 Sessões:', sessoes);
-
       setIngressos(ingressosCompletos);
 
     } catch (error) {
@@ -102,30 +98,6 @@ export default function MeusIngressosPage() {
     return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(texto)}`;
   };
 
-  // Agrupar ingressos por evento
-  const agruparPorEvento = () => {
-    const grupos = {};
-    
-    ingressos.forEach(ingresso => {
-      const eventoId = ingresso.evento?.id;
-      if (eventoId) {
-        if (!grupos[eventoId]) {
-          grupos[eventoId] = {
-            evento: ingresso.evento,
-            sessao: ingresso.sessao,
-            ingressos: []
-          };
-        }
-        grupos[eventoId].ingressos.push(ingresso);
-      }
-    });
-    
-    console.log('📦 Grupos de eventos:', grupos);
-    console.log('📋 Grupos array:', Object.values(grupos));
-    
-    return Object.values(grupos);
-  };
-
   if (loading) {
     return (
       <div style={{ fontFamily: 'sans-serif', padding: '50px', textAlign: 'center' }}>
@@ -134,7 +106,21 @@ export default function MeusIngressosPage() {
     );
   }
 
-  const gruposDeEventos = agruparPorEvento();
+  // Agrupar ingressos por evento
+  const ingressosPorEvento = {};
+  ingressos.forEach(ingresso => {
+    const eventoId = ingresso.evento?.id;
+    if (eventoId) {
+      if (!ingressosPorEvento[eventoId]) {
+        ingressosPorEvento[eventoId] = {
+          evento: ingresso.evento,
+          sessao: ingresso.sessao,
+          ingressos: []
+        };
+      }
+      ingressosPorEvento[eventoId].ingressos.push(ingresso);
+    }
+  });
 
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', paddingBottom: '40px' }}>
@@ -193,7 +179,7 @@ export default function MeusIngressosPage() {
               </p>
             </div>
 
-            {gruposDeEventos.map((grupo, grupoIndex) => (
+            {Object.values(ingressosPorEvento).map((grupo, grupoIndex) => (
               <div key={grupoIndex} style={{ marginBottom: '50px' }}>
                 
                 {/* Cabeçalho do Evento */}
@@ -209,7 +195,7 @@ export default function MeusIngressosPage() {
                     fontSize: '24px',
                     fontWeight: 'bold'
                   }}>
-                    🎭 {grupo.evento?.nome || 'Evento'}
+                    🎭 {grupo.evento?.nome}
                   </h2>
                 </div>
 
