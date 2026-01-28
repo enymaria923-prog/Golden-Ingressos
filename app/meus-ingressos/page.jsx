@@ -101,8 +101,22 @@ export default function MeusIngressosPage() {
     );
   }
 
-  // Pegar IDs únicos de eventos
-  const eventosUnicos = [...new Set(ingressos.map(i => i.evento?.id).filter(Boolean))];
+  // Agrupar ingressos por evento
+  const ingressosPorEvento = ingressos.reduce((acc, ingresso) => {
+    const eventoId = ingresso.evento?.id;
+    if (!eventoId) return acc;
+    
+    if (!acc[eventoId]) {
+      acc[eventoId] = {
+        evento: ingresso.evento,
+        ingressos: []
+      };
+    }
+    acc[eventoId].ingressos.push(ingresso);
+    return acc;
+  }, {});
+
+  const eventosComIngressos = Object.values(ingressosPorEvento);
 
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', paddingBottom: '40px' }}>
@@ -158,12 +172,12 @@ export default function MeusIngressosPage() {
               </p>
             </div>
 
-            {eventosUnicos.map((eventoId) => {
-              const ingressosDoEvento = ingressos.filter(i => i.evento?.id === eventoId);
-              const primeiroIngresso = ingressosDoEvento[0];
+            {eventosComIngressos.map((grupo) => {
+              const evento = grupo.evento;
+              const ingressosDoEvento = grupo.ingressos;
               
               return (
-                <div key={eventoId} style={{ marginBottom: '50px' }}>
+                <div key={evento.id} style={{ marginBottom: '50px' }}>
                   
                   <div style={{
                     backgroundColor: '#5d34a4',
@@ -177,8 +191,17 @@ export default function MeusIngressosPage() {
                       fontSize: '24px',
                       fontWeight: 'bold'
                     }}>
-                      🎭 {primeiroIngresso?.evento?.nome}
+                      🎭 {evento.nome}
                     </h2>
+                    {evento.local && (
+                      <div style={{ 
+                        marginTop: '8px', 
+                        fontSize: '16px',
+                        opacity: '0.95'
+                      }}>
+                        📍 {evento.local}
+                      </div>
+                    )}
                   </div>
 
                   <div style={{
@@ -196,16 +219,6 @@ export default function MeusIngressosPage() {
                           borderLeft: ingresso.validado ? '5px solid #dc3545' : '5px solid #27ae60'
                         }}
                       >
-                        
-                        <h3 style={{
-                          color: '#5d34a4',
-                          margin: '0 0 15px 0',
-                          fontSize: '22px',
-                          fontWeight: 'bold'
-                        }}>
-                          {ingresso.evento?.nome}
-                        </h3>
-
                         <div style={{ 
                           fontSize: '16px', 
                           color: '#666',
@@ -218,15 +231,6 @@ export default function MeusIngressosPage() {
                             month: 'long',
                             day: 'numeric'
                           })} • 🕐 {ingresso.sessao?.hora}
-                        </div>
-
-                        <div style={{ 
-                          fontSize: '16px', 
-                          color: '#666',
-                          marginBottom: '25px',
-                          fontWeight: '500'
-                        }}>
-                          📍 {ingresso.evento?.local}
                         </div>
 
                         <div style={{
@@ -245,10 +249,10 @@ export default function MeusIngressosPage() {
                             backgroundColor: '#e0e0e0',
                             border: '3px solid #5d34a4'
                           }}>
-                            {ingresso.evento?.imagem_url ? (
+                            {evento.imagem_url ? (
                               <img 
-                                src={ingresso.evento.imagem_url} 
-                                alt={ingresso.evento.nome}
+                                src={evento.imagem_url} 
+                                alt={evento.nome}
                                 style={{ 
                                   width: '100%', 
                                   height: '100%', 
