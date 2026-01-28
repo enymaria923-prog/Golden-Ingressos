@@ -21,21 +21,32 @@ export default function SeguindoPage() {
       }
       setUser(userData);
 
-      const { data: seguindoData } = await supabase
+      // Buscar quem está seguindo
+      const { data: seguindoData, error: segError } = await supabase
         .from('seguidores')
-        .select(`
-          *,
-          perfis!seguidores_seguido_id_fkey (
-            id,
-            nome_completo,
-            username,
-            foto_perfil_url,
-            bio
-          )
-        `)
+        .select('*')
         .eq('seguidor_id', userData.id);
 
-      setSeguindo(seguindoData || []);
+      console.log('Seguindo data:', seguindoData);
+      console.log('Seguindo error:', segError);
+
+      if (seguindoData && seguindoData.length > 0) {
+        // Buscar perfis de quem está seguindo
+        const seguidoIds = seguindoData.map(s => s.seguido_id);
+        const { data: perfisData } = await supabase
+          .from('perfis')
+          .select('*')
+          .in('id', seguidoIds);
+
+        // Combinar dados
+        const seguindoComPerfis = seguindoData.map(seg => ({
+          ...seg,
+          perfil: perfisData?.find(p => p.id === seg.seguido_id)
+        }));
+
+        setSeguindo(seguindoComPerfis);
+      }
+
       setLoading(false);
     }
 
@@ -145,10 +156,10 @@ export default function SeguindoPage() {
                     backgroundColor: '#dbdbdb',
                     flexShrink: 0
                   }}>
-                    {seguindoItem.perfis?.foto_perfil_url ? (
+                    {seguindoItem.perfil?.foto_perfil_url ? (
                       <img 
-                        src={seguindoItem.perfis.foto_perfil_url} 
-                        alt={seguindoItem.perfis.username || seguindoItem.perfis.nome_completo}
+                        src={seguindoItem.perfil.foto_perfil_url} 
+                        alt={seguindoItem.perfil.username || seguindoItem.perfil.nome_completo}
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                       />
                     ) : (
@@ -174,9 +185,9 @@ export default function SeguindoPage() {
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap'
                     }}>
-                      {seguindoItem.perfis?.username || seguindoItem.perfis?.nome_completo || 'Usuário'}
+                      {seguindoItem.perfil?.username || seguindoItem.perfil?.nome_completo || 'Usuário'}
                     </p>
-                    {seguindoItem.perfis?.nome_completo && seguindoItem.perfis?.username && (
+                    {seguindoItem.perfil?.nome_completo && seguindoItem.perfil?.username && (
                       <p style={{ 
                         margin: '2px 0 0 0', 
                         color: '#8e8e8e', 
@@ -185,10 +196,10 @@ export default function SeguindoPage() {
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap'
                       }}>
-                        {seguindoItem.perfis.nome_completo}
+                        {seguindoItem.perfil.nome_completo}
                       </p>
                     )}
-                    {seguindoItem.perfis?.bio && (
+                    {seguindoItem.perfil?.bio && (
                       <p style={{ 
                         margin: '2px 0 0 0', 
                         color: '#8e8e8e', 
@@ -197,7 +208,7 @@ export default function SeguindoPage() {
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap'
                       }}>
-                        {seguindoItem.perfis.bio}
+                        {seguindoItem.perfil.bio}
                       </p>
                     )}
                   </div>
