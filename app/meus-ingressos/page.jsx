@@ -63,7 +63,7 @@ export default function MeusIngressosPage() {
 
       const { data: eventos } = await supabase
         .from('eventos')
-        .select('id, nome, local, imagem')
+        .select('id, nome, local, imagem_url')
         .in('id', eventosIds);
 
       const { data: sessoes } = await supabase
@@ -83,6 +83,10 @@ export default function MeusIngressosPage() {
           sessao
         };
       });
+
+      console.log('🎫 Ingressos carregados:', ingressosCompletos);
+      console.log('🎭 Eventos:', eventos);
+      console.log('📅 Sessões:', sessoes);
 
       setIngressos(ingressosCompletos);
 
@@ -104,15 +108,20 @@ export default function MeusIngressosPage() {
     
     ingressos.forEach(ingresso => {
       const eventoId = ingresso.evento?.id;
-      if (!grupos[eventoId]) {
-        grupos[eventoId] = {
-          evento: ingresso.evento,
-          sessao: ingresso.sessao,
-          ingressos: []
-        };
+      if (eventoId) {
+        if (!grupos[eventoId]) {
+          grupos[eventoId] = {
+            evento: ingresso.evento,
+            sessao: ingresso.sessao,
+            ingressos: []
+          };
+        }
+        grupos[eventoId].ingressos.push(ingresso);
       }
-      grupos[eventoId].ingressos.push(ingresso);
     });
+    
+    console.log('📦 Grupos de eventos:', grupos);
+    console.log('📋 Grupos array:', Object.values(grupos));
     
     return Object.values(grupos);
   };
@@ -274,9 +283,9 @@ export default function MeusIngressosPage() {
                           backgroundColor: '#e0e0e0',
                           border: '3px solid #5d34a4'
                         }}>
-                          {ingresso.evento?.imagem ? (
+                          {ingresso.evento?.imagem_url ? (
                             <img 
-                              src={ingresso.evento.imagem} 
+                              src={ingresso.evento.imagem_url} 
                               alt={ingresso.evento.nome}
                               style={{ 
                                 width: '100%', 
