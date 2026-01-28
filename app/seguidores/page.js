@@ -22,22 +22,33 @@ export default function SeguidoresPage() {
       }
       setUser(userData);
 
-      const { data: seguidoresData } = await supabase
+      // Buscar seguidores
+      const { data: seguidoresData, error: segError } = await supabase
         .from('seguidores')
-        .select(`
-          *,
-          perfis!seguidores_seguidor_id_fkey (
-            id,
-            nome_completo,
-            username,
-            foto_perfil_url,
-            bio
-          )
-        `)
+        .select('*')
         .eq('seguido_id', userData.id);
 
-      setSeguidores(seguidoresData || []);
+      console.log('Seguidores data:', seguidoresData);
+      console.log('Seguidores error:', segError);
 
+      if (seguidoresData && seguidoresData.length > 0) {
+        // Buscar perfis dos seguidores
+        const seguidorIds = seguidoresData.map(s => s.seguidor_id);
+        const { data: perfisData } = await supabase
+          .from('perfis')
+          .select('*')
+          .in('id', seguidorIds);
+
+        // Combinar dados
+        const seguidoresComPerfis = seguidoresData.map(seg => ({
+          ...seg,
+          perfil: perfisData?.find(p => p.id === seg.seguidor_id)
+        }));
+
+        setSeguidores(seguidoresComPerfis);
+      }
+
+      // Carregar IDs de quem o usuário está seguindo
       const { data: seguindoData } = await supabase
         .from('seguidores')
         .select('seguido_id')
@@ -188,10 +199,10 @@ export default function SeguidoresPage() {
                     backgroundColor: '#dbdbdb',
                     flexShrink: 0
                   }}>
-                    {seguidor.perfis?.foto_perfil_url ? (
+                    {seguidor.perfil?.foto_perfil_url ? (
                       <img 
-                        src={seguidor.perfis.foto_perfil_url} 
-                        alt={seguidor.perfis.username || seguidor.perfis.nome_completo}
+                        src={seguidor.perfil.foto_perfil_url} 
+                        alt={seguidor.perfil.username || seguidor.perfil.nome_completo}
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                       />
                     ) : (
@@ -217,9 +228,9 @@ export default function SeguidoresPage() {
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap'
                     }}>
-                      {seguidor.perfis?.username || seguidor.perfis?.nome_completo || 'Usuário'}
+                      {seguidor.perfil?.username || seguidor.perfil?.nome_completo || 'Usuário'}
                     </p>
-                    {seguidor.perfis?.nome_completo && seguidor.perfis?.username && (
+                    {seguidor.perfil?.nome_completo && seguidor.perfil?.username && (
                       <p style={{ 
                         margin: '2px 0 0 0', 
                         color: '#8e8e8e', 
@@ -228,10 +239,10 @@ export default function SeguidoresPage() {
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap'
                       }}>
-                        {seguidor.perfis.nome_completo}
+                        {seguidor.perfil.nome_completo}
                       </p>
                     )}
-                    {seguidor.perfis?.bio && (
+                    {seguidor.perfil?.bio && (
                       <p style={{ 
                         margin: '2px 0 0 0', 
                         color: '#8e8e8e', 
@@ -240,7 +251,7 @@ export default function SeguidoresPage() {
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap'
                       }}>
-                        {seguidor.perfis.bio}
+                        {seguidor.perfil.bio}
                       </p>
                     )}
                   </div>
