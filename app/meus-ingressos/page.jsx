@@ -101,22 +101,8 @@ export default function MeusIngressosPage() {
     );
   }
 
-  // Agrupar ingressos por evento
-  const ingressosPorEvento = ingressos.reduce((acc, ingresso) => {
-    const eventoId = ingresso.evento?.id;
-    if (!eventoId) return acc;
-    
-    if (!acc[eventoId]) {
-      acc[eventoId] = {
-        evento: ingresso.evento,
-        ingressos: []
-      };
-    }
-    acc[eventoId].ingressos.push(ingresso);
-    return acc;
-  }, {});
-
-  const eventosComIngressos = Object.values(ingressosPorEvento);
+  // Pegar IDs únicos de eventos
+  const eventosUnicos = [...new Set(ingressos.map(i => i.evento?.id).filter(Boolean))];
 
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', paddingBottom: '40px' }}>
@@ -172,12 +158,13 @@ export default function MeusIngressosPage() {
               </p>
             </div>
 
-            {eventosComIngressos.map((grupo) => {
-              const evento = grupo.evento;
-              const ingressosDoEvento = grupo.ingressos;
+            {eventosUnicos.map((eventoId) => {
+              const ingressosDoEvento = ingressos.filter(i => i.evento?.id === eventoId);
+              const primeiroIngresso = ingressosDoEvento[0];
+              const evento = primeiroIngresso?.evento;
               
               return (
-                <div key={evento.id} style={{ marginBottom: '50px' }}>
+                <div key={eventoId} style={{ marginBottom: '50px' }}>
                   
                   <div style={{
                     backgroundColor: '#5d34a4',
@@ -191,9 +178,9 @@ export default function MeusIngressosPage() {
                       fontSize: '24px',
                       fontWeight: 'bold'
                     }}>
-                      🎭 {evento.nome}
+                      🎭 {evento?.nome || 'Evento'}
                     </h2>
-                    {evento.local && (
+                    {evento?.local && (
                       <div style={{ 
                         marginTop: '8px', 
                         fontSize: '16px',
@@ -219,6 +206,7 @@ export default function MeusIngressosPage() {
                           borderLeft: ingresso.validado ? '5px solid #dc3545' : '5px solid #27ae60'
                         }}
                       >
+                        
                         <div style={{ 
                           fontSize: '16px', 
                           color: '#666',
@@ -249,7 +237,7 @@ export default function MeusIngressosPage() {
                             backgroundColor: '#e0e0e0',
                             border: '3px solid #5d34a4'
                           }}>
-                            {evento.imagem_url ? (
+                            {evento?.imagem_url ? (
                               <img 
                                 src={evento.imagem_url} 
                                 alt={evento.nome}
