@@ -67,12 +67,6 @@ export default function MeusIngressosPage() {
         .select('id, data, hora')
         .in('id', sessoesIds);
 
-      console.log('=== DEBUG ===');
-      console.log('Pedidos:', pedidos);
-      console.log('Ingressos Data:', ingressosData);
-      console.log('Eventos:', eventos);
-      console.log('Sessões:', sessoes);
-
       const ingressosCompletos = ingressosData.map(ingresso => {
         const pedido = pedidos.find(p => p.id === ingresso.pedido_id);
         const evento = eventos?.find(e => e.id === pedido?.evento_id);
@@ -80,12 +74,12 @@ export default function MeusIngressosPage() {
 
         return {
           ...ingresso,
+          pedido_evento_id: pedido?.evento_id,
           evento,
           sessao
         };
       });
 
-      console.log('Ingressos Completos:', ingressosCompletos);
       setIngressos(ingressosCompletos);
 
     } catch (error) {
@@ -108,13 +102,18 @@ export default function MeusIngressosPage() {
     );
   }
 
-  // Pegar IDs únicos de eventos
-  const eventosUnicos = [...new Set(ingressos.map(i => i.evento?.id).filter(Boolean))];
+  // Agrupar ingressos por evento_id do pedido
+  const ingressosPorEvento = {};
   
-  console.log('=== RENDER ===');
-  console.log('Total ingressos:', ingressos.length);
-  console.log('Eventos únicos:', eventosUnicos);
-  console.log('Ingressos:', ingressos);
+  ingressos.forEach(ingresso => {
+    const eventoId = ingresso.pedido_evento_id;
+    if (!eventoId) return;
+    
+    if (!ingressosPorEvento[eventoId]) {
+      ingressosPorEvento[eventoId] = [];
+    }
+    ingressosPorEvento[eventoId].push(ingresso);
+  });
 
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', paddingBottom: '40px' }}>
@@ -166,34 +165,16 @@ export default function MeusIngressosPage() {
               border: '1px solid #c3e6cb'
             }}>
               <p style={{ margin: 0, color: '#155724', fontSize: '14px' }}>
-                ✅ <strong>Total de ingressos:</strong> {ingressos.length} ingresso(s) | 
-                <strong> Eventos únicos:</strong> {eventosUnicos.length}
+                ✅ <strong>Total de ingressos:</strong> {ingressos.length} ingresso(s)
               </p>
             </div>
 
-            {eventosUnicos.length === 0 && (
-              <div style={{
-                backgroundColor: '#fff3cd',
-                padding: '20px',
-                borderRadius: '8px',
-                marginBottom: '20px'
-              }}>
-                <strong>⚠️ DEBUG:</strong> Nenhum evento único encontrado. 
-                Verifique o console do navegador para mais detalhes.
-              </div>
-            )}
-
-            {eventosUnicos.map((eventoId) => {
-              const ingressosDoEvento = ingressos.filter(i => i.evento?.id === eventoId);
+            {Object.keys(ingressosPorEvento).map((eventoId) => {
+              const ingressosDoEvento = ingressosPorEvento[eventoId];
               const primeiroIngresso = ingressosDoEvento[0];
               const evento = primeiroIngresso?.evento;
               
-              console.log(`Renderizando evento ${eventoId}:`, {
-                eventoId,
-                ingressosDoEvento: ingressosDoEvento.length,
-                primeiroIngresso,
-                evento
-              });
+              if (!evento) return null;
               
               return (
                 <div key={eventoId} style={{ marginBottom: '50px' }}>
@@ -210,9 +191,9 @@ export default function MeusIngressosPage() {
                       fontSize: '24px',
                       fontWeight: 'bold'
                     }}>
-                      🎭 {evento?.nome || 'Evento sem nome'}
+                      🎭 {evento.nome}
                     </h2>
-                    {evento?.local && (
+                    {evento.local && (
                       <div style={{ 
                         marginTop: '8px', 
                         fontSize: '16px',
@@ -269,7 +250,7 @@ export default function MeusIngressosPage() {
                             backgroundColor: '#e0e0e0',
                             border: '3px solid #5d34a4'
                           }}>
-                            {evento?.imagem_url ? (
+                            {evento.imagem_url ? (
                               <img 
                                 src={evento.imagem_url} 
                                 alt={evento.nome}
