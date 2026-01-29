@@ -39,8 +39,6 @@ export default function MeusIngressosPage() {
 
       if (pedidosError) throw pedidosError;
 
-      console.log('PEDIDOS:', pedidos);
-
       if (!pedidos || pedidos.length === 0) {
         setEventoComIngressos([]);
         setLoading(false);
@@ -53,58 +51,40 @@ export default function MeusIngressosPage() {
         .from('ingressos_vendidos')
         .select('*')
         .in('pedido_id', pedidosIds)
-        .order('created_at', { ascending: false });
+        .order('data_compra', { ascending: false });
 
       if (ingressosError) throw ingressosError;
 
-      console.log('INGRESSOS DATA:', ingressosData);
-
-      // 3. Buscar eventos
-      const eventosIds = [...new Set(pedidos.map(p => p.evento_id))];
-      console.log('EVENTOS IDS:', eventosIds);
+      // 3. Buscar eventos - CONVERTER PARA INT
+      const eventosIds = [...new Set(pedidos.map(p => parseInt(p.evento_id)))];
       
       const { data: eventos } = await supabase
         .from('eventos')
         .select('id, nome, local, imagem_url')
         .in('id', eventosIds);
 
-      console.log('EVENTOS:', eventos);
-
       // 4. Buscar sessões
       const sessoesIds = [...new Set(pedidos.map(p => p.sessao_id))];
       const { data: sessoes } = await supabase
         .from('sessoes')
-        .select('id, data, hora')
+        .select('id, data, hora, evento_id')
         .in('id', sessoesIds);
-
-      console.log('SESSÕES:', sessoes);
 
       // 5. Organizar por evento
       const organizadoPorEvento = [];
       
-      console.log('COMEÇANDO ORGANIZAÇÃO...');
-      
       eventosIds.forEach(eventoId => {
-        console.log('Processando evento ID:', eventoId);
-        
+        // Buscar o evento (agora ambos são int)
         const evento = eventos?.find(e => e.id === eventoId);
-        console.log('Evento encontrado:', evento);
         
-        if (!evento) {
-          console.log('EVENTO NÃO ENCONTRADO! ID:', eventoId);
-          return;
-        }
+        if (!evento) return;
         
-        // Pegar todos os pedidos deste evento
-        const pedidosDoEvento = pedidos.filter(p => p.evento_id === eventoId);
-        console.log('Pedidos do evento:', pedidosDoEvento);
-        
+        // Pegar todos os pedidos deste evento (converter evento_id para int)
+        const pedidosDoEvento = pedidos.filter(p => parseInt(p.evento_id) === eventoId);
         const pedidosIdsDoEvento = pedidosDoEvento.map(p => p.id);
-        console.log('IDs dos pedidos do evento:', pedidosIdsDoEvento);
         
         // Pegar todos os ingressos desses pedidos
         const ingressosDoEvento = ingressosData.filter(ing => pedidosIdsDoEvento.includes(ing.pedido_id));
-        console.log('Ingressos do evento:', ingressosDoEvento);
         
         // Adicionar dados de sessão a cada ingresso
         const ingressosCompletos = ingressosDoEvento.map(ing => {
@@ -117,15 +97,12 @@ export default function MeusIngressosPage() {
           };
         });
         
-        console.log('Adicionando grupo:', { evento, ingressos: ingressosCompletos.length });
-        
         organizadoPorEvento.push({
           evento,
           ingressos: ingressosCompletos
         });
       });
 
-      console.log('ORGANIZADO POR EVENTO:', organizadoPorEvento);
       setEventoComIngressos(organizadoPorEvento);
 
     } catch (error) {
@@ -149,9 +126,6 @@ export default function MeusIngressosPage() {
   }
 
   const totalIngressos = eventoComIngressos.reduce((total, grupo) => total + grupo.ingressos.length, 0);
-
-  console.log('RENDERIZANDO COM:', eventoComIngressos.length, 'eventos');
-  console.log('TOTAL INGRESSOS:', totalIngressos);
 
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', paddingBottom: '40px' }}>
@@ -203,7 +177,7 @@ export default function MeusIngressosPage() {
               border: '1px solid #c3e6cb'
             }}>
               <p style={{ margin: 0, color: '#155724', fontSize: '14px' }}>
-                ✅ <strong>Total de ingressos:</strong> {totalIngressos} ingresso(s) | <strong>Eventos:</strong> {eventoComIngressos.length}
+                ✅ <strong>Total de ingressos:</strong> {totalIngressos} ingresso(s)
               </p>
             </div>
 
@@ -249,7 +223,7 @@ export default function MeusIngressosPage() {
                       style={{
                         padding: '30px',
                         borderBottom: index < grupo.ingressos.length - 1 ? '2px dashed #e0e0e0' : 'none',
-                        borderLeft: ingresso.validado ? '5px solid #dc3545' : '5px solid #27ae60'
+                        borderLeft: ingresso.status === 'CANCELADO' ? '5px solid #dc3545' : '5px solid #27ae60'
                       }}
                     >
                       
@@ -332,7 +306,7 @@ export default function MeusIngressosPage() {
                           </div>
                           
                           <div style={{ marginTop: '15px' }}>
-                            {ingresso.validado ? (
+                            {ingresso.status === 'CANCELADO' ? (
                               <div style={{
                                 padding: '10px 25px',
                                 backgroundColor: '#dc3545',
@@ -341,7 +315,7 @@ export default function MeusIngressosPage() {
                                 fontWeight: 'bold',
                                 fontSize: '14px'
                               }}>
-                                ❌ JÁ UTILIZADO
+                                ❌ CANCELADO
                               </div>
                             ) : (
                               <div style={{
@@ -367,7 +341,7 @@ export default function MeusIngressosPage() {
                         padding: '20px',
                         backgroundColor: '#f0e6ff',
                         borderRadius: '8px',
-                        marginBottom: ingresso.validado ? '20px' : '0'
+                        marginBottom: ingresso.status === 'CANCELADO' ? '20px' : '0'
                       }}>
                         <div style={{ textAlign: 'center' }}>
                           <div style={{ fontSize: '12px', color: '#666', marginBottom: '8px', fontWeight: '600' }}>
@@ -390,7 +364,7 @@ export default function MeusIngressosPage() {
                         )}
                       </div>
 
-                      {ingresso.validado && (
+                      {ingresso.status === 'CANCELADO' && ingresso.data_cancelamento && (
                         <div style={{
                           padding: '15px',
                           backgroundColor: '#f8d7da',
@@ -399,8 +373,8 @@ export default function MeusIngressosPage() {
                           textAlign: 'center'
                         }}>
                           <div style={{ fontSize: '14px', color: '#721c24' }}>
-                            <strong>⚠️ Ingresso utilizado</strong><br />
-                            Validado em: {new Date(ingresso.validado_em).toLocaleString('pt-BR')}
+                            <strong>⚠️ Ingresso cancelado</strong><br />
+                            Cancelado em: {new Date(ingresso.data_cancelamento).toLocaleString('pt-BR')}
                           </div>
                         </div>
                       )}
@@ -417,7 +391,6 @@ export default function MeusIngressosPage() {
                     textAlign: 'center'
                   }}>
                     💡 <strong>Importante:</strong> Apresente o QR Code na entrada do evento.
-                    Cada ingresso só pode ser validado uma vez.
                   </div>
                 </div>
               </div>
