@@ -39,6 +39,8 @@ export default function MeusIngressosPage() {
 
       if (pedidosError) throw pedidosError;
 
+      console.log('PEDIDOS:', pedidos);
+
       if (!pedidos || pedidos.length === 0) {
         setEventoComIngressos([]);
         setLoading(false);
@@ -55,12 +57,18 @@ export default function MeusIngressosPage() {
 
       if (ingressosError) throw ingressosError;
 
+      console.log('INGRESSOS DATA:', ingressosData);
+
       // 3. Buscar eventos
       const eventosIds = [...new Set(pedidos.map(p => p.evento_id))];
+      console.log('EVENTOS IDS:', eventosIds);
+      
       const { data: eventos } = await supabase
         .from('eventos')
         .select('id, nome, local, imagem_url')
         .in('id', eventosIds);
+
+      console.log('EVENTOS:', eventos);
 
       // 4. Buscar sessões
       const sessoesIds = [...new Set(pedidos.map(p => p.sessao_id))];
@@ -69,20 +77,34 @@ export default function MeusIngressosPage() {
         .select('id, data, hora')
         .in('id', sessoesIds);
 
+      console.log('SESSÕES:', sessoes);
+
       // 5. Organizar por evento
       const organizadoPorEvento = [];
       
+      console.log('COMEÇANDO ORGANIZAÇÃO...');
+      
       eventosIds.forEach(eventoId => {
-        const evento = eventos?.find(e => e.id === eventoId);
+        console.log('Processando evento ID:', eventoId);
         
-        if (!evento) return;
+        const evento = eventos?.find(e => e.id === eventoId);
+        console.log('Evento encontrado:', evento);
+        
+        if (!evento) {
+          console.log('EVENTO NÃO ENCONTRADO! ID:', eventoId);
+          return;
+        }
         
         // Pegar todos os pedidos deste evento
         const pedidosDoEvento = pedidos.filter(p => p.evento_id === eventoId);
+        console.log('Pedidos do evento:', pedidosDoEvento);
+        
         const pedidosIdsDoEvento = pedidosDoEvento.map(p => p.id);
+        console.log('IDs dos pedidos do evento:', pedidosIdsDoEvento);
         
         // Pegar todos os ingressos desses pedidos
         const ingressosDoEvento = ingressosData.filter(ing => pedidosIdsDoEvento.includes(ing.pedido_id));
+        console.log('Ingressos do evento:', ingressosDoEvento);
         
         // Adicionar dados de sessão a cada ingresso
         const ingressosCompletos = ingressosDoEvento.map(ing => {
@@ -95,12 +117,15 @@ export default function MeusIngressosPage() {
           };
         });
         
+        console.log('Adicionando grupo:', { evento, ingressos: ingressosCompletos.length });
+        
         organizadoPorEvento.push({
           evento,
           ingressos: ingressosCompletos
         });
       });
 
+      console.log('ORGANIZADO POR EVENTO:', organizadoPorEvento);
       setEventoComIngressos(organizadoPorEvento);
 
     } catch (error) {
@@ -124,6 +149,9 @@ export default function MeusIngressosPage() {
   }
 
   const totalIngressos = eventoComIngressos.reduce((total, grupo) => total + grupo.ingressos.length, 0);
+
+  console.log('RENDERIZANDO COM:', eventoComIngressos.length, 'eventos');
+  console.log('TOTAL INGRESSOS:', totalIngressos);
 
   return (
     <div style={{ fontFamily: 'sans-serif', backgroundColor: '#f4f4f4', minHeight: '100vh', paddingBottom: '40px' }}>
@@ -175,7 +203,7 @@ export default function MeusIngressosPage() {
               border: '1px solid #c3e6cb'
             }}>
               <p style={{ margin: 0, color: '#155724', fontSize: '14px' }}>
-                ✅ <strong>Total de ingressos:</strong> {totalIngressos} ingresso(s)
+                ✅ <strong>Total de ingressos:</strong> {totalIngressos} ingresso(s) | <strong>Eventos:</strong> {eventoComIngressos.length}
               </p>
             </div>
 
