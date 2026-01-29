@@ -38,8 +38,8 @@ export default function CriarContaPage() {
     try {
       const supabase = createClient();
       
-      // Criar conta no Supabase
-      const { error: signUpError } = await supabase.auth.signUp({
+      // Criar conta no Supabase Auth
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: email,
         password: password,
         options: {
@@ -53,6 +53,24 @@ export default function CriarContaPage() {
         setErro(signUpError.message);
         setIsLoading(false);
         return;
+      }
+
+      // ✅ NOVO: Salvar na tabela clientes
+      if (authData.user) {
+        const { error: clienteError } = await supabase
+          .from('clientes')
+          .insert([{
+            user_id: authData.user.id,
+            nome_completo: nomeCompleto,
+            email: email,
+            status: 'ATIVO'
+          }]);
+
+        if (clienteError) {
+          console.error('Erro ao criar cliente:', clienteError);
+          // Não bloqueia o cadastro se der erro aqui, 
+          // pois a conta do Auth já foi criada
+        }
       }
 
       // SEMPRE mostrar tela de sucesso
